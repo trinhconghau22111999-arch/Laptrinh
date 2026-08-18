@@ -63,7 +63,16 @@ class MainActivity : AppCompatActivity() {
         super.onWindowFocusChanged(hasFocus)
         // Chế độ ẩn toàn màn hình có thể bị huỷ khi bàn phím hiện lên, chuyển app đi rồi quay
         // lại... - áp dụng lại mỗi lần cửa sổ được lấy focus để luôn giữ đúng trạng thái ẩn.
-        if (hasFocus) enableImmersiveMode()
+        //
+        // LỖI ĐÃ SỬA: bấm vào ô địa chỉ (edtUrl) để gõ chữ thì bàn phím ảo KHÔNG bật lên được.
+        // Nguyên nhân: ngay lúc EditText nhận focus và hệ thống chuẩn bị hiện bàn phím, cửa sổ
+        // app cũng nhận lại window-focus (hasFocus = true) trên rất nhiều máy/Android - callback
+        // này lập tức gọi enableImmersiveMode() -> controller.hide(systemBars()) NGAY GIỮA lúc
+        // bàn phím đang hiện lên, khiến yêu cầu hiện IME bị huỷ/chớp tắt rồi biến mất. Sửa bằng
+        // cách KHÔNG ép ẩn thanh hệ thống nếu view đang giữ focus là 1 ô nhập liệu (nghĩa là bàn
+        // phím đang cần hiện) - để yên cho bàn phím hiện lên bình thường, chỉ áp dụng lại chế độ
+        // ẩn toàn màn hình khi không có ô nhập liệu nào đang được focus.
+        if (hasFocus && currentFocus !is EditText) enableImmersiveMode()
     }
 
     private lateinit var webView: WebView
