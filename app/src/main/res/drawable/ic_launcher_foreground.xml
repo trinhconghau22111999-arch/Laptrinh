@@ -1,40 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lớp TRƯỚC của icon app (adaptive icon) - nội dung chính PHẢI nằm gọn trong vùng an toàn
-     (hình tròn ~66-72dp giữa canvas 108x108) vì hệ thống có thể cắt phần ngoài vùng này theo
-     mask riêng của từng máy. KHIÊN trắng (bảo vệ/trình duyệt) + HUY HIỆU ĐỎ dấu "cấm" (chặn) ở
-     góc dưới phải - để icon nói rõ đây là app CHẶN quảng cáo, không chỉ chung chung "bảo mật". -->
+<!-- Lớp TRƯỚC icon app - icon "lai" giữa Chrome và Cốc Cốc: 3 vòng tròn màu đỏ/vàng/xanh lá
+     xoay quanh tâm (gợi bố cục nhiều màu quen thuộc của trình duyệt Chrome, nhưng vẽ bằng
+     hình tròn chồng nhau thay vì lát cắt hình quạt để không sao chép logo gốc) + tâm hình
+     tròn xanh dương với 2 nét "sóng" trắng (gợi hình quả địa cầu/web, phong cách Cốc Cốc).
+     Toàn bộ nằm gọn trong vùng an toàn (~66dp) giữa canvas 108x108 để không bị cắt theo mask
+     icon của từng dòng máy. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Thân khiên - bo tròn mềm mại, thu gọn trong vùng an toàn. -->
+    <!-- Vòng đỏ (trên) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,26
-            C47,26 40,28.3 34.3,32.3
-            C33.2,33.1 32.5,34.4 32.5,35.7
-            L32.5,54
-            C32.5,67 40,77.5 54,84
-            C68,77.5 75.5,67 75.5,54
-            L75.5,35.7
-            C75.5,34.4 74.8,33.1 73.7,32.3
-            C68,28.3 61,26 54,26 Z" />
+        android:fillColor="#EA4335"
+        android:pathData="M54,39 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
 
-    <!-- Huy hiệu đỏ hình tròn "cấm/chặn" đè lên góc dưới-phải khiên, viền trắng để tách lớp
-         rõ ràng khỏi khiên bên dưới. -->
+    <!-- Vòng vàng (dưới-phải) -->
     <path
-        android:fillColor="#FF3B30"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3"
-        android:pathData="M94,76 A18,18 0 1,1 58,76 A18,18 0 1,1 94,76 Z" />
+        android:fillColor="#FBBC05"
+        android:pathData="M67,61.5 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
 
-    <!-- Gạch chéo trắng trong huy hiệu - biểu tượng "cấm/chặn" quốc tế. -->
+    <!-- Vòng xanh lá (dưới-trái) -->
+    <path
+        android:fillColor="#34A853"
+        android:pathData="M41,61.5 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
+
+    <!-- Tâm xanh dương (kiểu Cốc Cốc) đè lên trên, che phần giao của 3 vòng màu -->
+    <path
+        android:fillColor="#0068FF"
+        android:pathData="M54,54 m-13,0 a13,13 0 1,0 26,0 a13,13 0 1,0 -26,0" />
+
+    <!-- 2 nét sóng trắng trong tâm - gợi hình quả địa cầu/kết nối web -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
+        android:strokeWidth="2.2"
         android:strokeLineCap="round"
-        android:pathData="M65.5,65.5 L86.5,86.5" />
+        android:pathData="M44,52 Q54,46 64,52" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:fillAlpha="0.7"
+        android:strokeAlpha="0.7"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:pathData="M44,58 Q54,52 64,58" />
 </vector>
