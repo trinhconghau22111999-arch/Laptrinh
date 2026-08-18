@@ -1,49 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lớp TRƯỚC icon app - icon "lai" giữa Chrome và Cốc Cốc: 3 vòng tròn màu đỏ/vàng/xanh lá
-     xoay quanh tâm (gợi bố cục nhiều màu quen thuộc của trình duyệt Chrome, nhưng vẽ bằng
-     hình tròn chồng nhau thay vì lát cắt hình quạt để không sao chép logo gốc) + tâm hình
-     tròn xanh dương với 2 nét "sóng" trắng (gợi hình quả địa cầu/web, phong cách Cốc Cốc).
-     Toàn bộ nằm gọn trong vùng an toàn (~66dp) giữa canvas 108x108 để không bị cắt theo mask
-     icon của từng dòng máy. -->
+<!-- Lớp TRƯỚC icon app - phiên bản tối giản chỉ 2 màu (xanh dương nền + trắng lớp trước):
+     quả địa cầu (vòng tròn + 2 nét "kinh tuyến" cong + 1 "vĩ tuyến" dọc) tượng trưng trình
+     duyệt web, kèm huy hiệu tròn nhỏ có gạch chéo ở góc dưới-phải tượng trưng "chặn quảng
+     cáo". Toàn bộ nằm trong vùng an toàn (~66dp) giữa canvas 108x108. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Vòng đỏ (trên) -->
+    <!-- Vòng ngoài quả địa cầu -->
     <path
-        android:fillColor="#EA4335"
-        android:pathData="M54,39 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M48,48 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0" />
 
-    <!-- Vòng vàng (dưới-phải) -->
+    <!-- Vĩ tuyến dọc -->
     <path
-        android:fillColor="#FBBC05"
-        android:pathData="M67,61.5 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:pathData="M48,30 L48,66" />
 
-    <!-- Vòng xanh lá (dưới-trái) -->
+    <!-- 2 kinh tuyến cong -->
     <path
-        android:fillColor="#34A853"
-        android:pathData="M41,61.5 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0" />
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:pathData="M30,48 Q48,38 66,48" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:pathData="M30,48 Q48,58 66,48" />
 
-    <!-- Tâm xanh dương (kiểu Cốc Cốc) đè lên trên, che phần giao của 3 vòng màu -->
+    <!-- Huy hiệu "chặn" - đè lên góc dưới-phải quả địa cầu -->
     <path
         android:fillColor="#0068FF"
-        android:pathData="M54,54 m-13,0 a13,13 0 1,0 26,0 a13,13 0 1,0 -26,0" />
-
-    <!-- 2 nét sóng trắng trong tâm - gợi hình quả địa cầu/kết nối web -->
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M70,70 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.2"
+        android:strokeWidth="2.6"
         android:strokeLineCap="round"
-        android:pathData="M44,52 Q54,46 64,52" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:fillAlpha="0.7"
-        android:strokeAlpha="0.7"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:pathData="M44,58 Q54,52 64,58" />
+        android:pathData="M64,64 L76,76" />
 </vector>

@@ -1,22 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lớp NỀN icon app - nền sáng (trắng ngả xanh nhạt) để 3 vòng màu (đỏ/vàng/xanh lá kiểu
-     Chrome) và tâm xanh dương (kiểu Cốc Cốc) ở lớp trước nổi bật, giống cách các trình duyệt
-     lớn dùng nền sáng làm icon dễ nhận diện trên mọi màn hình chính. -->
+<!-- Lớp NỀN icon app - phủ kín xanh dương đơn sắc, giữ icon tối giản chỉ 2 màu (xanh dương +
+     trắng ở lớp trước) thay vì gradient nhiều màu như bản trước. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <path android:pathData="M0,0h108v108h-108z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="4" android:startY="4"
-                android:endX="104" android:endY="104"
-                android:startColor="#FFFFFF"
-                android:endColor="#D8ECFF" />
-        </aapt:attr>
-    </path>
+    <path
+        android:fillColor="#0068FF"
+        android:pathData="M0,0h108v108h-108z" />
 </vector>
