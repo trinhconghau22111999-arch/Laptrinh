@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
+    <application
+        android:name=".BrowserApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.AdBlockBrowser"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".LockScreenActivity" android:exported="false"
+            android:launchMode="singleTask" />
+        <activity android:name=".AppLockSetupActivity" android:exported="false" />
+        <activity android:name=".SettingsActivity" android:exported="false" />
+        <!-- android:process=":incognito" - chạy ở TIẾN TRÌNH RIÊNG, WebView trong tiến trình này
+             tự động dùng thư mục dữ liệu (cookie, phiên đăng nhập...) RIÊNG BIỆT hoàn toàn với
+             trình duyệt chính, không cần code phức tạp để tự tách - đây là cách làm chuẩn của
+             Android cho việc cô lập dữ liệu WebView theo tiến trình. -->
+        <activity android:name=".IncognitoActivity" android:exported="false"
+            android:process=":incognito"
+            android:resizeableActivity="false" />
+
+        <!-- "Nhiều tài khoản": màn hình chọn/quản lý hồ sơ (chạy ở tiến trình chính, chỉ hiển
+             thị danh sách, KHÔNG tự nó dùng WebView nên không cần tiến trình riêng). -->
+        <activity android:name=".AccountsActivity" android:exported="false" />
+
+        <!-- 10 "hồ sơ" tài khoản, MỖI hồ sơ 1 tiến trình RIÊNG (:acct1..:acct10) - giống hệt
+             cách ":incognito" ở trên cô lập dữ liệu WebView theo tiến trình, nhưng ở đây dữ
+             liệu (cookie/phiên đăng nhập Google...) được GIỮ LẠI lâu dài cho từng hồ sơ, cho
+             phép đăng nhập nhiều tài khoản Google khác nhau CÙNG LÚC mà không xung đột.
+             android:taskAffinity RIÊNG cho từng hồ sơ để mỗi hồ sơ hiện thành 1 mục RIÊNG
+             trong Recents (Đa nhiệm) - cho phép mở đồng thời nhiều hồ sơ và chạy song song
+             thật sự (mỗi hồ sơ là 1 tiến trình hệ điều hành độc lập). -->
+        <activity android:name=".AccountBrowserActivity1" android:exported="false"
+            android:process=":acct1" android:taskAffinity=":acct1"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity2" android:exported="false"
+            android:process=":acct2" android:taskAffinity=":acct2"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity3" android:exported="false"
+            android:process=":acct3" android:taskAffinity=":acct3"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity4" android:exported="false"
+            android:process=":acct4" android:taskAffinity=":acct4"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity5" android:exported="false"
+            android:process=":acct5" android:taskAffinity=":acct5"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity6" android:exported="false"
+            android:process=":acct6" android:taskAffinity=":acct6"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity7" android:exported="false"
+            android:process=":acct7" android:taskAffinity=":acct7"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity8" android:exported="false"
+            android:process=":acct8" android:taskAffinity=":acct8"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity9" android:exported="false"
+            android:process=":acct9" android:taskAffinity=":acct9"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+        <activity android:name=".AccountBrowserActivity10" android:exported="false"
+            android:process=":acct10" android:taskAffinity=":acct10"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.h.adblockbrowser.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

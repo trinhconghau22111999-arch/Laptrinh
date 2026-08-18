@@ -1,0 +1,2 @@
+rootProject.name = "AdBlockBrowser"
+include ':app'

@@ -1,0 +1,61 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.7
+
+      - name: Build debug APK
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || true
+          echo "build_exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Save build log to repo (via API)
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          base64 -w0 build.log > /tmp/b64.txt
+          curl -s -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/${{ github.repository }}/contents/build-logs/last-build.log?ref=main" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('sha','') if isinstance(d, dict) else '')" > /tmp/sha.txt
+          python3 -c "import json; sha=open('/tmp/sha.txt').read().strip(); c=open('/tmp/b64.txt').read().strip(); d={'message':'chore: cap nhat build log [skip ci]','content':c,'branch':'main'}; d.update({'sha':sha} if sha else {}); print(json.dumps(d))" > /tmp/body.json
+          curl -s -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/contents/build-logs/last-build.log" -d @/tmp/body.json -w "\nHTTP_STATUS:%{http_code}\n"
+
+      - name: Dừng job nếu build thật sự thất bại
+        if: steps.build.outputs.build_exit != '0'
+        run: |
+          echo "Build failed with exit code ${{ steps.build.outputs.build_exit }}"
+          exit 1
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk

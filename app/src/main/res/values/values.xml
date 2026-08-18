@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Trình duyệt của tôi</string>
+
+    <color name="neon_purple">#C724FF</color>
+    <color name="neon_purple_dark">#8A00C4</color>
+    <color name="pure_black">#000000</color>
+    <color name="pure_white">#FFFFFF</color>
+
+    <style name="Theme.AdBlockBrowser" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/pure_black</item>
+        <item name="colorPrimaryDark">@color/pure_black</item>
+        <item name="colorAccent">@color/neon_purple</item>
+        <item name="android:windowBackground">@color/pure_white</item>
+        <item name="android:textColorPrimary">@color/pure_white</item>
+        <item name="android:statusBarColor">@color/pure_black</item>
+    </style>
+</resources>

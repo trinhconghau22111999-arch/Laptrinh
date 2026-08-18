@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icon "adaptive" (Android 8.0+/API 26+) - hệ thống tự cắt theo hình dạng riêng của từng
+     dòng máy (tròn, vuông bo, giọt nước...) từ 2 lớp nền + trước bên dưới, thay vì 1 hình cố
+     định như trước - icon sẽ khớp đúng kiểu icon các app khác trên cùng máy. monochrome dùng
+     cho chế độ icon "theme" 1 màu của Android 13+ (Material You) - hệ thống tự tô lại theo màu
+     hệ thống người dùng chọn, dùng chung hình khiên+huy hiệu ở lớp trước là đủ. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
