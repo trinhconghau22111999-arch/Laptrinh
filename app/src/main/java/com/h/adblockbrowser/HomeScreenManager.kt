@@ -68,7 +68,7 @@ class HomeScreenManager(
             ShortcutsRepository.ALL[key]?.let { item ->
                 row.addView(buildIconCell(item), LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-                ).also { it.leftMargin = dp(16); it.rightMargin = dp(16) })
+                ).also { it.leftMargin = dp(8); it.rightMargin = dp(8) })
             }
         }
 
@@ -108,7 +108,7 @@ class HomeScreenManager(
         }
 
         val icon = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(64), dp(64))
+            layoutParams = LinearLayout.LayoutParams(dp(51), dp(51))
             setImageResource(item.iconRes)
             // Icon "Nhiều tài khoản" (hình người) - thêm viền tròn bao quanh cho nổi bật, giống
             // kiểu vòng tròn avatar ở màn chọn hồ sơ (AccountsActivity).
