@@ -706,6 +706,69 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
 
+            // FIX "màn hình đen" khi mở YouTube (hoặc trang bất kỳ): trước đây KHÔNG bắt lỗi tải
+            // trang nào cả -> nếu trang tải thất bại (mất mạng, DNS lỗi, timeout, lỗi chứng chỉ...)
+            // WebView chỉ đứng im, không hiển thị gì, mà nền WebView lại bị đặt cứng màu ĐEN (xem
+            // initAfterUnlock() - để tránh chớp trắng lúc mới vào) -> kết quả là 1 màn hình đen
+            // tuyệt đối, không có bất kỳ thông báo lỗi nào cho người dùng biết chuyện gì đã xảy ra.
+            // Giờ bắt lỗi ở KHUNG CHÍNH (isForMainFrame - bỏ qua lỗi của các tài nguyên phụ như
+            // ảnh/quảng cáo bị chặn) và báo rõ nguyên nhân + tự thử tải lại 1 lần.
+            private var lastErrorReloadAt = 0L
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: android.webkit.WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame != true) return
+                runOnUiThread {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Không tải được trang (${error?.description ?: "lỗi mạng"}). Đang thử lại...",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                // Tự thử tải lại 1 lần (tối đa 1 lần mỗi 3 giây để tránh lặp vô hạn nếu mất mạng
+                // hẳn) - nhiều trường hợp chỉ là lỗi mạng thoáng qua lúc mới bật WebView.
+                val now = System.currentTimeMillis()
+                if (now - lastErrorReloadAt > 3000) {
+                    lastErrorReloadAt = now
+                    view?.postDelayed({ view.reload() }, 800)
+                }
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: android.webkit.WebResourceResponse?
+            ) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                val code = errorResponse?.statusCode ?: return
+                if (request?.isForMainFrame == true && code >= 400) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity, "Máy chủ trả lỗi $code khi tải trang", Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+
+            override fun onReceivedSslError(
+                view: WebView?,
+                handler: android.webkit.SslErrorHandler?,
+                error: android.net.http.SslError?
+            ) {
+                // KHÔNG tự ý bỏ qua lỗi chứng chỉ (mất an toàn) - chỉ báo rõ cho người dùng biết
+                // vì sao trang không tải được thay vì để màn hình đen im lặng như trước.
+                Toast.makeText(
+                    this@MainActivity,
+                    "Lỗi chứng chỉ bảo mật khi tải trang - đã chặn để an toàn",
+                    Toast.LENGTH_LONG
+                ).show()
+                handler?.cancel()
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 isVideoPlaying = false
