@@ -1,0 +1,298 @@
+package com.h.adblockbrowser
+
+import android.app.AlertDialog
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.os.Environment
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.LinearLayout
+import android.widget.ListView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
+import java.io.File
+
+class FilesActivity : AppCompatActivity() {
+
+    private lateinit var tvPath: TextView
+    private lateinit var listView: ListView
+    private lateinit var actionBar: LinearLayout
+    private lateinit var tvSelCount: TextView
+    private var currentDir: File = Environment.getExternalStorageDirectory()
+    private var entries: List<File> = emptyList()
+
+    private var selectionMode = false
+    private val selected = LinkedHashSet<Int>() // chỉ số trong `entries`
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF000000.toInt())
+            setPadding(24, statusBarHeight() + dp(8), 24, 24)
+        }
+
+        val titleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, 12)
+        }
+        val title = TextView(this).apply {
+            text = "📁 Trang Tệp"
+            textSize = 20f
+            setTextColor(0xFFC724FF.toInt())
+            setPadding(12, 0, 0, 0)
+        }
+        // Nút back: nếu đang chọn nhiều thì thoát chế độ chọn trước; nếu không thì đi lên 1 cấp
+        // thư mục (giống hệt onBackPressed()), không thoát thẳng nếu đang ở thư mục con.
+        titleRow.addView(buildBackArrow(onBack = {
+            if (selectionMode) exitSelectionMode() else onBackPressed()
+        }))
+        titleRow.addView(title)
+
+        tvPath = TextView(this).apply {
+            textSize = 13f
+            setTextColor(0xFF888888.toInt())
+            setPadding(0, 0, 0, 12)
+        }
+
+        // ── Thanh hành động khi đang chọn nhiều - chỉ hiện khi selectionMode = true ──
+        actionBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(0xFF1A1A1A.toInt())
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            visibility = android.view.View.GONE
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.bottomMargin = dp(8)
+            layoutParams = lp
+        }
+        tvSelCount = TextView(this).apply {
+            text = "Đã chọn 0"
+            setTextColor(0xFFFFFFFF.toInt())
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val btnShare = TextView(this).apply {
+            text = "↗ Chia sẻ"
+            setTextColor(0xFFC724FF.toInt())
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            isClickable = true
+            setOnClickListener { shareSelected() }
+        }
+        val btnDelete = TextView(this).apply {
+            text = "🗑 Xoá"
+            setTextColor(0xFFFF6B6B.toInt())
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            isClickable = true
+            setOnClickListener { confirmDeleteSelected() }
+        }
+        val btnCancel = TextView(this).apply {
+            text = "✕"
+            setTextColor(0xFF888888.toInt())
+            setPadding(dp(12), dp(6), dp(4), dp(6))
+            isClickable = true
+            setOnClickListener { exitSelectionMode() }
+        }
+        actionBar.addView(tvSelCount)
+        actionBar.addView(btnShare)
+        actionBar.addView(btnDelete)
+        actionBar.addView(btnCancel)
+
+        listView = ListView(this).apply {
+            setBackgroundColor(0xFF0D0D0D.toInt())
+        }
+
+        root.addView(titleRow)
+        root.addView(tvPath)
+        root.addView(actionBar)
+        root.addView(listView)
+        setContentView(root)
+
+        listView.setOnItemClickListener { _, _, position, _ ->
+            if (selectionMode) toggleSelect(position) else onItemClick(position)
+        }
+        listView.setOnItemLongClickListener { _, _, position, _ ->
+            if (!selectionMode) {
+                selectionMode = true
+                actionBar.visibility = android.view.View.VISIBLE
+            }
+            toggleSelect(position)
+            true
+        }
+
+        checkAllFilesAccess()
+        openDir(currentDir)
+    }
+
+    /** Android 11+ (API 30+) chặn app đọc/ghi/xoá file NGOÀI thư mục riêng của app trừ khi được
+     *  cấp quyền "Truy cập mọi tệp" (MANAGE_EXTERNAL_STORAGE) - quyền này KHÔNG xin được qua hộp
+     *  thoại quyền thông thường, phải mở đúng màn Cài đặt hệ thống để người dùng tự bật. Thiếu
+     *  quyền này chính là lý do "không chia sẻ/xoá được tệp" dù code chia sẻ/xoá không có lỗi gì -
+     *  Android âm thầm chặn ở tầng hệ điều hành, không báo lỗi rõ ràng cho app biết. */
+    private fun checkAllFilesAccess() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            if (!android.os.Environment.isExternalStorageManager()) {
+                AlertDialog.Builder(this)
+                    .setTitle("Cần quyền truy cập tệp")
+                    .setMessage("Để xem/xoá/chia sẻ được mọi tệp trên máy, hãy cấp quyền \"Truy cập mọi tệp\" cho ứng dụng này ở Cài đặt hệ thống.")
+                    .setPositiveButton("Mở Cài đặt") { _, _ ->
+                        try {
+                            val intent = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                            intent.data = Uri.parse("package:$packageName")
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            try {
+                                startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                            } catch (e2: Exception) { }
+                        }
+                    }
+                    .setNegativeButton("Để sau", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun hasParentRow(): Boolean =
+        tvPath.text != Environment.getExternalStorageDirectory().absolutePath && currentDir.parentFile != null
+
+    private fun openDir(dir: File) {
+        currentDir = dir
+        tvPath.text = dir.absolutePath
+        exitSelectionMode()
+
+        val list = (dir.listFiles()?.toMutableList() ?: mutableListOf())
+        list.sortWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
+        entries = list
+        refreshAdapter()
+    }
+
+    private fun refreshAdapter() {
+        val names = ArrayList<String>()
+        if (hasParentRow()) names.add(".. (Lên thư mục cha)")
+        entries.forEachIndexed { idx, f ->
+            val mark = if (selected.contains(idx)) "✓ " else ""
+            names.add(mark + (if (f.isDirectory) "📁 ${f.name}" else "📄 ${f.name}"))
+        }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, names)
+        listView.adapter = adapter
+    }
+
+    private fun toggleSelect(position: Int) {
+        val hasParent = hasParentRow()
+        if (hasParent && position == 0) return // không cho chọn dòng ".."
+        val index = if (hasParent) position - 1 else position
+        if (index < 0 || index >= entries.size) return
+        if (selected.contains(index)) selected.remove(index) else selected.add(index)
+        tvSelCount.text = "Đã chọn ${selected.size}"
+        if (selected.isEmpty()) exitSelectionMode()
+        refreshAdapter()
+    }
+
+    private fun exitSelectionMode() {
+        selectionMode = false
+        selected.clear()
+        actionBar.visibility = android.view.View.GONE
+        refreshAdapter()
+    }
+
+    private fun onItemClick(position: Int) {
+        val hasParent = hasParentRow()
+        if (hasParent && position == 0) {
+            currentDir.parentFile?.let { openDir(it) }
+            return
+        }
+        val index = if (hasParent) position - 1 else position
+        if (index < 0 || index >= entries.size) return
+        val file = entries[index]
+        if (file.isDirectory) openDir(file) else openFile(file)
+    }
+
+    private fun openFile(file: File) {
+        try {
+            val uri: Uri = FileProvider.getUriForFile(this, "com.h.adblockbrowser.fileprovider", file)
+            val mime = contentResolver.getType(uri) ?: guessMime(file.name)
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.setDataAndType(uri, mime)
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Không mở được tệp này", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun guessMime(name: String): String {
+        return when {
+            name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") -> "image/*"
+            name.endsWith(".mp4") || name.endsWith(".mkv") -> "video/*"
+            name.endsWith(".mp3") || name.endsWith(".m4a") -> "audio/*"
+            name.endsWith(".pdf") -> "application/pdf"
+            name.endsWith(".txt") -> "text/plain"
+            else -> "*/*"
+        }
+    }
+
+    private fun shareSelected() {
+        val files = selected.mapNotNull { entries.getOrNull(it) }.filter { !it.isDirectory }
+        if (files.isEmpty()) {
+            Toast.makeText(this, "Chỉ chia sẻ được tệp, không chia sẻ được thư mục", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val uris = ArrayList(files.map { FileProvider.getUriForFile(this, "com.h.adblockbrowser.fileprovider", it) })
+            val intent = if (uris.size == 1) {
+                Intent(Intent.ACTION_SEND).apply {
+                    type = contentResolver.getType(uris[0]) ?: "*/*"
+                    putExtra(Intent.EXTRA_STREAM, uris[0])
+                }
+            } else {
+                Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                    type = "*/*"
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                }
+            }
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(Intent.createChooser(intent, "Chia sẻ"))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Không chia sẻ được", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun confirmDeleteSelected() {
+        val count = selected.size
+        AlertDialog.Builder(this)
+            .setTitle("Xoá $count mục?")
+            .setMessage("Các tệp/thư mục đã chọn sẽ bị xoá vĩnh viễn.")
+            .setPositiveButton("Xoá") { _, _ ->
+                val toDelete = selected.mapNotNull { entries.getOrNull(it) }
+                var okCount = 0
+                for (f in toDelete) {
+                    val ok = if (f.isDirectory) f.deleteRecursively() else f.delete()
+                    if (ok) okCount++
+                }
+                Toast.makeText(this, "Đã xoá $okCount/${toDelete.size} mục", Toast.LENGTH_SHORT).show()
+                openDir(currentDir)
+            }
+            .setNegativeButton("Huỷ", null)
+            .show()
+    }
+
+    override fun onBackPressed() {
+        if (selectionMode) {
+            exitSelectionMode()
+            return
+        }
+        val parent = currentDir.parentFile
+        if (parent != null && currentDir != Environment.getExternalStorageDirectory()) {
+            openDir(parent)
+        } else {
+            super.onBackPressed()
+        }
+    }
+}

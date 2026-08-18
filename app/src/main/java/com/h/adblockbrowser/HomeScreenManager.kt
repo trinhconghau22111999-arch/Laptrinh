@@ -39,6 +39,9 @@ object ShortcutsRepository {
         ),
         "app_lock" to ShortcutItem(
             "app_lock", "Khoá", ShortcutType.ACTIVITY, "AppLockSetupActivity", R.drawable.ic_shortcut_applock
+        ),
+        "files" to ShortcutItem(
+            "files", "Quản lý tệp", ShortcutType.ACTIVITY, "FilesActivity", R.drawable.ic_shortcut_files
         )
     )
 }
@@ -61,7 +64,7 @@ class HomeScreenManager(
             )
         }
 
-        listOf("youtube", "incognito", "accounts").forEach { key ->
+        listOf("youtube", "incognito", "accounts", "files").forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
                 row.addView(buildIconCell(item), LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT

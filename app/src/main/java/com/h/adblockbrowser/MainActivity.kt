@@ -479,6 +479,7 @@ class MainActivity : AppCompatActivity() {
                 "IncognitoActivity" -> IncognitoActivity::class.java
                 "AccountsActivity" -> AccountsActivity::class.java
                 "AppLockSetupActivity" -> AppLockSetupActivity::class.java
+                "FilesActivity" -> FilesActivity::class.java
                 else -> null
             }
             if (activityClass != null) {

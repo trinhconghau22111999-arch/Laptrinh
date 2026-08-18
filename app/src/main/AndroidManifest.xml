@@ -45,6 +45,7 @@
             android:launchMode="singleTask" />
         <activity android:name=".AppLockSetupActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".FilesActivity" android:exported="false" />
         <!-- android:process=":incognito" - chạy ở TIẾN TRÌNH RIÊNG, WebView trong tiến trình này
              tự động dùng thư mục dữ liệu (cookie, phiên đăng nhập...) RIÊNG BIỆT hoàn toàn với
              trình duyệt chính, không cần code phức tạp để tự tách - đây là cách làm chuẩn của
