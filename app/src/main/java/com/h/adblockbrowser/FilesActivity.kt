@@ -31,17 +31,23 @@ class FilesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ẩn thanh trạng thái (giờ/mạng/pin) - phần khoanh đỏ người dùng muốn ẩn ở trên cùng.
+        hideStatusBar()
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(0xFF000000.toInt())
-            setPadding(24, statusBarHeight() + dp(8), 24, 24)
+            setPadding(24, dp(8), 24, 24)
         }
 
         val titleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, 0, 0, 12)
+            // Ẩn hẳn cả khối tiêu đề (mũi tên Back + chữ "Trang Tệp") theo yêu cầu - không còn
+            // hiện phía trên nữa. Điều hướng "lên thư mục cha" vẫn hoạt động bình thường qua nút
+            // Back hệ thống (xem onBackPressed() ở dưới, không phụ thuộc mũi tên này).
+            visibility = android.view.View.GONE
         }
         val title = TextView(this).apply {
             text = "📁 Trang Tệp"
@@ -60,6 +66,10 @@ class FilesActivity : AppCompatActivity() {
             textSize = 13f
             setTextColor(0xFF888888.toInt())
             setPadding(0, 0, 0, 12)
+            // Ẩn luôn dòng đường dẫn (/storage/emulated/0...) - chỉ giữ lại TextView này ở dạng
+            // ẩn để logic hasParentRow() (so sánh path hiện tại với thư mục gốc) vẫn hoạt động
+            // bình thường, không liên quan tới việc hiển thị.
+            visibility = android.view.View.GONE
         }
 
         // ── Thanh hành động khi đang chọn nhiều - chỉ hiện khi selectionMode = true ──
@@ -169,6 +179,10 @@ class FilesActivity : AppCompatActivity() {
         exitSelectionMode()
 
         val list = (dir.listFiles()?.toMutableList() ?: mutableListOf())
+        // Ẩn tệp/thư mục ẩn (tên bắt đầu bằng dấu chấm, vd. .pmtemp, .trashBin...) khỏi danh
+        // sách hiển thị - đây là các thư mục dữ liệu nội bộ của hệ thống/app khác, không phải
+        // thứ người dùng cần thấy hay thao tác tới trong màn Quản lý tệp này.
+        list.removeAll { it.name.startsWith(".") }
         list.sortWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
         entries = list
         refreshAdapter()

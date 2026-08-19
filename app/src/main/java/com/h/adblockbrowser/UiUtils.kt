@@ -33,3 +33,16 @@ fun Activity.buildBackArrow(onBack: () -> Unit = { finish() }): TextView =
         typeface = android.graphics.Typeface.DEFAULT_BOLD
         setOnClickListener { onBack() }
     }
+
+/** Ẩn thanh trạng thái hệ thống (giờ/mạng/pin) CHO 1 MÀN CỤ THỂ - dùng ở các màn phụ (vd. Quản
+ *  lý tệp) muốn dùng trọn vẹn phần không gian phía trên thay vì để trống/đè lên nội dung phía
+ *  sau (ví dụ video đang mở ở app khác dạng cửa sổ nổi lộ ra phía sau vùng status bar trong suốt
+ *  của app này). Thanh điều hướng hệ thống (Back/Home/Recent) GIỮ NGUYÊN, không bị ẩn - giống
+ *  cách MainActivity.enableImmersiveMode() làm cho màn chính. */
+fun Activity.hideStatusBar() {
+    androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+    val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+    controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+    controller.systemBarsBehavior =
+        androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+}
