@@ -759,9 +759,14 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 edtUrl.setText(url)
                 view?.evaluateJavascript(AdOverlayBlocker.JS, null)
-                view?.evaluateJavascript(VideoDownloadUI.JS, null)
                 if (YoutubeAdSkipper.isYoutube(url)) {
                     view?.evaluateJavascript(YoutubeAdSkipper.JS, null)
+                } else {
+                    // Nút "Tải về" (VideoDownloadUI) KHÔNG chèn trên YouTube - vì YouTube mã
+                    // hoá luồng video dạng blob: nên nút này bấm vào không tải được gì cả (xem
+                    // giải thích ở VideoDownloadUI), chỉ án ngữ giao diện vô ích. Các trang khác
+                    // có video link file trực tiếp (mp4/webm...) vẫn hiện nút bình thường.
+                    view?.evaluateJavascript(VideoDownloadUI.JS, null)
                 }
                 if (ZaloDesktopStyler.isZalo(try { Uri.parse(url).host } catch (e: Exception) { null })) {
                     view?.evaluateJavascript(ZaloDesktopStyler.JS, null)
@@ -900,17 +905,21 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     private fun addFloatingBackHomeButtons() {
         val root = findViewById<FrameLayout>(R.id.rootFrame)
+        // fixed = true: nút Back CỐ ĐỊNH ở góc DƯỚI-PHẢI, không kéo-thả được nữa và không đổi
+        // vị trí dù xoay ngang/dọc màn hình (xem chi tiết ở FloatingBackButton.attach).
         floatingBackButtonHandle = FloatingBackButton.attach(
             activity = this,
             root = root,
             onTap = { doBack() },
-            onLongPress = { if (homeOverlay.visibility != View.VISIBLE) showHomeOverlay() }
+            onLongPress = { if (homeOverlay.visibility != View.VISIBLE) showHomeOverlay() },
+            defaultIsRight = true,
+            fixed = true
         )
 
         // Nút "Off" nổi - bấm để phủ màn hình giả tắt (xem FakeScreenOff). Icon "⏻" (nút nguồn)
-        // để phân biệt rõ với mũi tên "◁" của nút Back. Vị trí mặc định LẦN ĐẦU đặt bên cạnh
-        // TRÁI, hơi lệch phía trên giữa (yFraction 0.35) để không đè lên nút Back (mặc định bên
-        // phải, giữa màn hình) - sau đó người dùng kéo đi đâu tuỳ ý, tự nhớ vị trí riêng.
+        // để phân biệt rõ với mũi tên "◁" của nút Back. fixed = true: CỐ ĐỊNH ở góc DƯỚI-TRÁI
+        // (defaultIsRight = false), đối xứng với nút Back ở góc dưới-phải, không kéo-thả được
+        // và không đổi vị trí dù xoay màn hình.
         floatingOffButtonHandle = FloatingBackButton.attach(
             activity = this,
             root = root,
@@ -921,7 +930,7 @@ class MainActivity : AppCompatActivity() {
             id = "off",
             icon = "⏻",
             defaultIsRight = false,
-            defaultYFraction = 0.35f
+            fixed = true
         )
     }
 
@@ -1105,7 +1114,9 @@ object AdOverlayBlocker {
  * xuống Kotlin (qua AndroidDownloader) để lưu video vào bộ nhớ máy.
  * Lưu ý: chỉ hoạt động với video có link file trực tiếp (mp4/webm...). Với các
  * trang mã hoá luồng video dạng blob: (ví dụ YouTube) sẽ không tải được, vì đó
- * là giới hạn kỹ thuật/điều khoản của các trang đó, không phải lỗi app.
+ * là giới hạn kỹ thuật/điều khoản của các trang đó, không phải lỗi app - nên
+ * KHÔNG chèn script này trên YouTube nữa (xem điều kiện gọi ở onPageFinished),
+ * để tránh hiện 1 nút vô dụng (bấm không tải được gì) đè lên logo/UI YouTube.
  */
 object VideoDownloadUI {
     const val JS = """

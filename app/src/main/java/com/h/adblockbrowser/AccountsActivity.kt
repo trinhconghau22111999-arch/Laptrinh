@@ -86,10 +86,14 @@ class AccountsActivity : AppCompatActivity() {
     // app. Đây là màn "gốc" (không có trang con để lùi), nên bấm nhanh = thoát màn này về lại
     // nơi đã mở nó (MainActivity). Không cần hành động long-press riêng ở màn này.
     private fun addFloatingBackButton(root: FrameLayout) {
+        // fixed = true: nút Back CỐ ĐỊNH ở góc DƯỚI-PHẢI, không kéo-thả được nữa và không đổi
+        // vị trí dù xoay ngang/dọc màn hình (xem chi tiết ở FloatingBackButton.attach).
         floatingBackButtonHandle = FloatingBackButton.attach(
             activity = this,
             root = root,
-            onTap = { onBackPressed() }
+            onTap = { onBackPressed() },
+            defaultIsRight = true,
+            fixed = true
         )
     }
 

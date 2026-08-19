@@ -177,11 +177,15 @@ class IncognitoActivity : AppCompatActivity() {
     // hình chính app (xoá sạch dữ liệu phiên Ẩn danh như trước).
     @SuppressLint("ClickableViewAccessibility")
     private fun addFloatingBackHomeButtons(root: FrameLayout) {
+        // fixed = true: nút Back CỐ ĐỊNH ở góc DƯỚI-PHẢI, không kéo-thả được nữa và không đổi
+        // vị trí dù xoay ngang/dọc màn hình (xem chi tiết ở FloatingBackButton.attach).
         floatingBackButtonHandle = FloatingBackButton.attach(
             activity = this,
             root = root,
             onTap = { onBackPressed() },
-            onLongPress = { saveSession(); finish() }
+            onLongPress = { saveSession(); finish() },
+            defaultIsRight = true,
+            fixed = true
         )
     }
 
