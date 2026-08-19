@@ -48,14 +48,14 @@ class MainActivity : AppCompatActivity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     private fun enableImmersiveMode() {
-        // Ẩn CẢ thanh trạng thái (giờ/mạng/pin) LẪN thanh điều hướng hệ thống - kiểu "toàn màn
-        // hình khi chơi game". Vuốt từ mép màn hình để hiện lại TẠM THỜI rồi tự ẩn lại sau đó
-        // (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE), không phải hiện ra rồi ở nguyên đó như trước.
+        // CHỈ ẩn thanh trạng thái (giờ/mạng/pin) để có thêm không gian màn hình. Thanh điều
+        // hướng hệ thống (3 phím Back/Home/Recent hoặc gesture bar) được GIỮ NGUYÊN, LUÔN HIỆN
+        // MẶC ĐỊNH, không còn bị ẩn đi như trước (trước đây dùng Type.systemBars() ẩn cả hai).
         // Dùng WindowInsetsControllerCompat của androidx để hoạt động đúng trên mọi phiên bản
         // Android (kể cả các máy Android cũ hơn không có API ẩn thanh điều hướng mới).
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.hide(WindowInsetsCompat.Type.statusBars())
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 

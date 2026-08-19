@@ -55,7 +55,7 @@ class IncognitoActivity : AppCompatActivity() {
 
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
         insetsController.systemBarsBehavior =
             androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
@@ -466,7 +466,7 @@ class IncognitoActivity : AppCompatActivity() {
                 ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
             if (!imeVisible) {
                 val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
             }
         }
     }

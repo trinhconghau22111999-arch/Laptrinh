@@ -39,7 +39,7 @@ class AccountsActivity : AppCompatActivity() {
 
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
