@@ -55,6 +55,15 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     /** Số hồ sơ (1..MAX_PROFILES) - mỗi lớp con ghi đè giá trị cố định của riêng nó. */
     abstract val slot: Int
 
+    /** Ghi đè finish() 1 LẦN ở lớp cơ sở để áp dụng cho CẢ 10 lớp con (AccountBrowserActivity1..10)
+     *  - màn này luôn thoát kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp]
+     *  ở UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, phím Back cứng...). */
+    override fun finish() {
+        super.finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.wp_slide_in_left, R.anim.wp_slide_out_right)
+    }
+
     private data class Tab(val webView: WebView, var title: String = "Tab mới")
 
     private val tabs = ArrayList<Tab>()

@@ -24,6 +24,15 @@ import androidx.appcompat.app.AppCompatActivity
  *  1 hồ sơ để đổi tên hoặc xoá hồ sơ khỏi danh sách. */
 class AccountsActivity : AppCompatActivity() {
 
+    /** Thoát màn này kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp] ở
+     *  UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, mũi tên ◀, phím Back cứng...). */
+    override fun finish() {
+        super.finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.wp_slide_in_left, R.anim.wp_slide_out_right)
+    }
+
+
     private lateinit var grid: GridLayout
     private var floatingBackButtonHandle: FloatingBackButton.Handle? = null
 
@@ -268,7 +277,7 @@ class AccountsActivity : AppCompatActivity() {
 
     private fun openProfile(profile: AccountProfileStore.Profile) {
         val activityClass = classForSlot(profile.slot) ?: return
-        startActivity(Intent(this, activityClass))
+        startActivityWp(Intent(this, activityClass))
     }
 
     private fun classForSlot(slot: Int): Class<*>? = when (slot) {

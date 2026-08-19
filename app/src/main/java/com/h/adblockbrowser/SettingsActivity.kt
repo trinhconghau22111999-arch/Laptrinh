@@ -26,6 +26,15 @@ import androidx.appcompat.app.AppCompatActivity
  *  không liệt kê phẳng 1 danh sách dài không phân nhóm như bản trước). */
 class SettingsActivity : AppCompatActivity() {
 
+    /** Thoát màn này kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp] ở
+     *  UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, mũi tên ◀, phím Back cứng...). */
+    override fun finish() {
+        super.finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.wp_slide_in_left, R.anim.wp_slide_out_right)
+    }
+
+
     private lateinit var root: LinearLayout
     private lateinit var accentSwatches: MutableList<View>
 
@@ -83,7 +92,7 @@ class SettingsActivity : AppCompatActivity() {
         // ═══════════════════ NHÓM: BẢO MẬT ═══════════════════
         root.addView(groupHeader("bảo mật"))
         root.addView(menuRow("Quản lý khoá ứng dụng") {
-            startActivity(Intent(this, AppLockSetupActivity::class.java))
+            startActivityWp(Intent(this, AppLockSetupActivity::class.java))
         })
     }
 
@@ -95,7 +104,9 @@ class SettingsActivity : AppCompatActivity() {
         this.text = text
         textSize = 14f
         setTextColor(0xFF9A9A9A.toInt())
-        typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        // sans-serif-light, không phải "sans-serif" thường - khớp font mảnh (Segoe UI Semilight)
+        // dùng xuyên suốt app thay vì lạc tông đậm hơn hẳn các chữ khác trên cùng màn hình.
+        typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lp.topMargin = dp(20); lp.bottomMargin = dp(4)
         layoutParams = lp

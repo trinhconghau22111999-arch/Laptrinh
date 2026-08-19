@@ -26,6 +26,15 @@ import java.util.Locale
 
 class ClockActivity : AppCompatActivity() {
 
+    /** Thoát màn này kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp] ở
+     *  UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, mũi tên ◀, phím Back cứng...). */
+    override fun finish() {
+        super.finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.wp_slide_in_left, R.anim.wp_slide_out_right)
+    }
+
+
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var tvTime: TextView
     private lateinit var tvDate: TextView

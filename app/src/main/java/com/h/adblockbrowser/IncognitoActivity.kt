@@ -35,6 +35,15 @@ import androidx.appcompat.app.AppCompatActivity
  *  tab này thì tab kia trong CÙNG phiên ẩn danh cũng thấy đã đăng nhập). */
 class IncognitoActivity : AppCompatActivity() {
 
+    /** Thoát màn này kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp] ở
+     *  UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, mũi tên ◀, phím Back cứng...). */
+    override fun finish() {
+        super.finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.wp_slide_in_left, R.anim.wp_slide_out_right)
+    }
+
+
     private data class Tab(val webView: WebView, var title: String = "Tab mới")
 
     private val tabs = ArrayList<Tab>()

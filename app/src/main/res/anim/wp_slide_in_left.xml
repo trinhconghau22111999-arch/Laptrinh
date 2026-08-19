@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Màn hình PHÍA SAU (đã có sẵn trong ngăn xếp) trượt vào lại từ bên trái, kèm hiện dần lên -
+     dùng khi LÙI LẠI (Back), hướng ngược với wp_slide_in_right.xml dùng khi tiến tới. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/decelerate_interpolator">
+    <translate
+        android:fromXDelta="-15%"
+        android:toXDelta="0%"
+        android:duration="240" />
+    <alpha
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0"
+        android:duration="240" />
+</set>

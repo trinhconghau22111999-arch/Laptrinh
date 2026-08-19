@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Màn hình CŨ trượt ra bên trái (chậm hơn màn mới 1 chút - hiệu ứng thị sai/parallax nhẹ),
+     kèm mờ dần đi, dùng kèm wp_slide_in_right.xml khi MỞ 1 màn hình mới. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/decelerate_interpolator">
+    <translate
+        android:fromXDelta="0%"
+        android:toXDelta="-15%"
+        android:duration="240" />
+    <alpha
+        android:fromAlpha="1.0"
+        android:toAlpha="0.0"
+        android:duration="240" />
+</set>

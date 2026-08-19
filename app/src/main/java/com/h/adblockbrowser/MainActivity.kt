@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         homeScreenManager = HomeScreenManager(
             this,
             onOpenShortcut = { item -> openShortcutByKey(item.key) },
-            onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
+            onOpenSettings = { startActivityWp(Intent(this, SettingsActivity::class.java)) }
         )
         val homeContainer = homeOverlay as android.widget.FrameLayout
         homeContainer.addView(homeScreenManager.build(buildClockWidget()))
@@ -539,7 +539,7 @@ class MainActivity : AppCompatActivity() {
             if (activityClass != null) {
                 val intent = Intent(this, activityClass)
                 if (initialUrl != null) intent.putExtra("initial_url", initialUrl)
-                startActivity(intent)
+                startActivityWp(intent)
             }
         }
     }

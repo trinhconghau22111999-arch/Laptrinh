@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Màn hình hiện tại trượt ra bên phải kèm mờ dần đi - dùng khi LÙI LẠI (Back), dùng kèm
+     wp_slide_in_left.xml. -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
     android:interpolator="@android:anim/decelerate_interpolator">
-    <scale
-        android:fromXScale="1.0"
-        android:toXScale="1.05"
-        android:fromYScale="1.0"
-        android:toYScale="1.05"
-        android:pivotX="50%"
-        android:pivotY="50%"
-        android:duration="320" />
+    <translate
+        android:fromXDelta="0%"
+        android:toXDelta="35%"
+        android:duration="240" />
     <alpha
         android:fromAlpha="1.0"
         android:toAlpha="0.0"

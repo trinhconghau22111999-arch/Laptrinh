@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Màn hình MỚI trượt vào từ bên phải, kèm mờ dần hiện lên - đúng hiệu ứng "turnstile" chuyển
+     màn hình đặc trưng của Windows Phone/Windows 10 Mobile (không phóng to/thu nhỏ như iOS). -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/decelerate_interpolator">
+    <translate
+        android:fromXDelta="35%"
+        android:toXDelta="0%"
+        android:duration="240" />
+    <alpha
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0"
+        android:duration="200" />
+</set>

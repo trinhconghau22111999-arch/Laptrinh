@@ -20,6 +20,15 @@ import java.util.Calendar
 
 class CalendarActivity : AppCompatActivity() {
 
+    /** Thoát màn này kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp] ở
+     *  UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, mũi tên ◀, phím Back cứng...). */
+    override fun finish() {
+        super.finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.wp_slide_in_left, R.anim.wp_slide_out_right)
+    }
+
+
     private val today = Calendar.getInstance()
     private var viewYear = today.get(Calendar.YEAR)
     private var viewMonth = today.get(Calendar.MONTH) // 0-11
