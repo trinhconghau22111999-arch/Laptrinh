@@ -36,7 +36,7 @@ class AppLockSetupActivity : AppCompatActivity() {
         root.addView(TextView(this).apply {
             this.text = text
             textSize = 18f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             gravity = Gravity.CENTER
             setPadding(0, 0, 0, dp(24))
         })

@@ -3,12 +3,15 @@ package com.h.adblockbrowser
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.graphics.Color
+import android.graphics.Typeface
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebStorage
-import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -30,19 +33,30 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Danh sách cài đặt kiểu Windows Phone: căn trái, không nền, không nút bo góc kiểu
+        // pill như bản cũ - chỉ có tiêu đề lớn mảnh phía trên + các dòng phẳng cách nhau bằng
+        // khoảng trắng, đúng phong cách màn "Settings" của WP/Windows 10 Mobile.
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setBackgroundColor(0xFF000000.toInt())
-            setPadding(dp(32), dp(40), dp(32), dp(32))
+            gravity = Gravity.START
+            setBackgroundColor(Color.BLACK)
+            setPadding(dp(20), dp(40), dp(20), dp(32))
         }
         setContentView(root)
 
-        root.addView(menuButton("Đổi hình nền") { pickWallpaper.launch("image/*") })
-        root.addView(menuButton("Quản lý khoá ứng dụng") {
+        root.addView(TextView(this).apply {
+            text = "cài đặt"
+            textSize = 30f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(0, 0, 0, dp(20))
+        })
+
+        root.addView(menuRow("Đổi hình nền") { pickWallpaper.launch("image/*") })
+        root.addView(menuRow("Quản lý khoá ứng dụng") {
             startActivity(Intent(this, AppLockSetupActivity::class.java))
         })
-        root.addView(menuButton("Xoá dữ liệu duyệt web (cookie/cache)") {
+        root.addView(menuRow("Xoá dữ liệu duyệt web (cookie/cache)") {
             CookieManager.getInstance().removeAllCookies(null)
             CookieManager.getInstance().flush()
             WebStorage.getInstance().deleteAllData()
@@ -52,13 +66,30 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    private fun menuButton(label: String, onClick: () -> Unit) = Button(this).apply {
-        text = label
-        setTextColor(0xFFFFFFFF.toInt())
-        setBackgroundColor(0xFF1A1A1A.toInt())
-        val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lp.topMargin = dp(8)
-        layoutParams = lp
-        setOnClickListener { onClick() }
+    /** 1 dòng cài đặt phẳng kiểu WP: chỉ chữ trắng căn trái + gạch chân mảnh màu accent phía
+     *  dưới khi chạm - KHÔNG có khối nền xám bo góc như nút Material mặc định trước đây. */
+    private fun menuRow(label: String, onClick: () -> Unit): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutParams = lp
+            isClickable = true
+            isFocusable = true
+        }
+        val text = TextView(this).apply {
+            text = label
+            textSize = 18f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(0, dp(14), 0, dp(14))
+        }
+        val divider = View(this).apply {
+            setBackgroundColor(0x33FFFFFF)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+        }
+        row.addView(text)
+        row.addView(divider)
+        row.setOnClickListener { onClick() }
+        return row
     }
 }

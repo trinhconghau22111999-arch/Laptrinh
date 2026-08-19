@@ -1,17 +1,70 @@
 <resources>
     <string name="app_name">Trình duyệt của tôi</string>
 
-    <color name="neon_purple">#C724FF</color>
-    <color name="neon_purple_dark">#8A00C4</color>
+    <!-- ================= BẢNG MÀU WINDOWS PHONE / WINDOWS 10 MOBILE (METRO) =================
+         Giữ tên biến "neon_purple" để KHÔNG phải sửa hàng chục chỗ tham chiếu R.color trong
+         code cũ (đổi tên sẽ vỡ build) - chỉ đổi GIÁ TRỊ màu sang "Cobalt Blue", màu accent mặc
+         định kinh điển của Windows Phone/Windows 10. -->
+    <color name="neon_purple">#0078D7</color>       <!-- Accent chính (Cobalt) -->
+    <color name="neon_purple_dark">#005A9E</color>   <!-- Accent đậm (nhấn/pressed) -->
     <color name="pure_black">#000000</color>
     <color name="pure_white">#FFFFFF</color>
 
+    <!-- Accent hệ thống, dùng chung cho mọi màn hình thay vì @color/neon_purple từ giờ trở đi -->
+    <color name="wp_accent">#0078D7</color>
+    <color name="wp_accent_dark">#005A9E</color>
+    <color name="wp_black">#000000</color>
+    <color name="wp_gray_dark">#1A1A1A</color>
+    <color name="wp_gray_mid">#767676</color>
+    <color name="wp_gray_light">#CCCCCC</color>
+
+    <!-- 20 màu "Live Tile" gốc của Windows Phone - dùng xoay vòng cho các ô tile trên màn
+         hình chính, mỗi shortcut/app 1 màu như Start Screen thật. -->
+    <color name="wp_tile_lime">#A4C400</color>
+    <color name="wp_tile_green">#60A917</color>
+    <color name="wp_tile_emerald">#008A00</color>
+    <color name="wp_tile_teal">#00ABA9</color>
+    <color name="wp_tile_cyan">#1BA1E2</color>
+    <color name="wp_tile_cobalt">#0050EF</color>
+    <color name="wp_tile_indigo">#6A00FF</color>
+    <color name="wp_tile_violet">#AA00FF</color>
+    <color name="wp_tile_pink">#F472D0</color>
+    <color name="wp_tile_magenta">#D80073</color>
+    <color name="wp_tile_crimson">#A20025</color>
+    <color name="wp_tile_red">#E51400</color>
+    <color name="wp_tile_orange">#FA6800</color>
+    <color name="wp_tile_amber">#F0A30A</color>
+    <color name="wp_tile_yellow">#E3C800</color>
+    <color name="wp_tile_brown">#825A2C</color>
+    <color name="wp_tile_olive">#6D8764</color>
+    <color name="wp_tile_steel">#647687</color>
+    <color name="wp_tile_mauve">#76608A</color>
+    <color name="wp_tile_taupe">#87794E</color>
+
+    <!-- Bo góc = 0 khắp nơi (Metro/Flat Design không có bo góc), áp cho MỌI component
+         Material (nút, hộp thoại, thẻ...) trong toàn app chỉ bằng 3 dòng này. -->
+    <style name="ShapeAppearance.WP.Flat" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">0dp</item>
+    </style>
+
     <style name="Theme.AdBlockBrowser" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="colorPrimary">@color/pure_black</item>
-        <item name="colorPrimaryDark">@color/pure_black</item>
-        <item name="colorAccent">@color/neon_purple</item>
-        <item name="android:windowBackground">@color/pure_white</item>
+        <item name="colorPrimary">@color/wp_black</item>
+        <item name="colorPrimaryDark">@color/wp_black</item>
+        <item name="colorAccent">@color/wp_accent</item>
+        <item name="colorSecondary">@color/wp_accent</item>
+        <item name="android:windowBackground">@color/wp_black</item>
         <item name="android:textColorPrimary">@color/pure_white</item>
-        <item name="android:statusBarColor">@color/pure_black</item>
+        <item name="android:statusBarColor">@color/wp_black</item>
+        <item name="android:navigationBarColor">@color/wp_black</item>
+        <!-- Font gần giống Segoe UI nhất có sẵn trên Android: mảnh, không chân -->
+        <item name="android:fontFamily">sans-serif-light</item>
+        <item name="fontFamily">sans-serif-light</item>
+        <!-- Bo góc = 0 cho toàn bộ nút/thẻ/hộp thoại Material trong app -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.WP.Flat</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.WP.Flat</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.WP.Flat</item>
+        <!-- Bỏ hiệu ứng đổ bóng Material (elevation) - Metro là thiết kế PHẲNG tuyệt đối -->
+        <item name="elevationOverlayEnabled">false</item>
     </style>
 </resources>

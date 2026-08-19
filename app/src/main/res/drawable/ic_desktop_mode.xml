@@ -5,7 +5,7 @@
     android:viewportHeight="48">
     <!-- Vòng tròn nền tím neon -->
     <path
-        android:fillColor="#C724FF"
+        android:fillColor="#0078D7"
         android:pathData="M24,2 A22,22 0 1,0 24,46 A22,22 0 1,0 24,2 Z" />
     <!-- Màn hình máy tính (monitor body) -->
     <path
@@ -13,7 +13,7 @@
         android:pathData="M10,13 Q10,11 12,11 L36,11 Q38,11 38,13 L38,30 Q38,32 36,32 L12,32 Q10,32 10,30 Z" />
     <!-- Màn hình bên trong (màu tím đậm) -->
     <path
-        android:fillColor="#8A00C4"
+        android:fillColor="#005A9E"
         android:pathData="M12,13 L36,13 L36,29 L12,29 Z" />
     <!-- Chân đế -->
     <path

@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#1A1A1A" />
-    <corners android:radius="8dp" />
-</shape>
+<!-- Ô nhập liệu kiểu Windows Phone: nền đen phẳng, KHÔNG bo góc, chỉ có 1 gạch chân màu
+     accent ở đáy (đặc trưng của TextBox trên Windows Phone/Windows 10 Mobile) thay vì khung
+     bo tròn màu xám như bản iOS cũ. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#000000" />
+        </shape>
+    </item>
+    <item android:gravity="bottom" android:height="2dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/wp_accent" />
+        </shape>
+    </item>
+</layer-list>

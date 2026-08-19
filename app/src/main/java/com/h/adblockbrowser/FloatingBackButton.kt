@@ -214,10 +214,13 @@ object FloatingBackButton {
             textSize = 24f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
+            // Nút vòng tròn viền trắng, KHÔNG tô nền (chỉ viền mảnh) - đúng kiểu nút trên
+            // "Application Bar" (thanh lệnh) của Windows Phone/Windows 10 Mobile, thay cho
+            // hình tròn nền đen mờ kiểu iOS/Android trước đây.
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0xAA1C1C1E.toInt())
-                setStroke(dp(1), 0x33FFFFFF)
+                setColor(Color.TRANSPARENT)
+                setStroke(dp(2), 0xCCFFFFFF.toInt())
             }
         }
 

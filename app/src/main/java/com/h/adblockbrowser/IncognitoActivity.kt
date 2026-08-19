@@ -125,7 +125,7 @@ class IncognitoActivity : AppCompatActivity() {
         urlRow.addView(TextView(this).apply {
             text = "★ Mở hết"
             textSize = 12f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             setPadding(dp(8), dp(6), dp(4), dp(6))
             isClickable = true
             setOnClickListener { openAllStarred() }
@@ -134,7 +134,7 @@ class IncognitoActivity : AppCompatActivity() {
 
         progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
-            progressTintList = android.content.res.ColorStateList.valueOf(0xFFC724FF.toInt())
+            progressTintList = android.content.res.ColorStateList.valueOf(0xFF0078D7.toInt())
             visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3))
         }
@@ -415,7 +415,7 @@ class IncognitoActivity : AppCompatActivity() {
             cell.addView(TextView(this).apply {
                 text = tab.title
                 textSize = 12f
-                setTextColor(if (i == activeIndex) 0xFFC724FF.toInt() else 0xFFAAAAAA.toInt())
+                setTextColor(if (i == activeIndex) 0xFF0078D7.toInt() else 0xFFAAAAAA.toInt())
             })
             cell.addView(TextView(this).apply {
                 text = " ✕"
@@ -430,7 +430,7 @@ class IncognitoActivity : AppCompatActivity() {
         tabBar.addView(TextView(this).apply {
             text = "+ Tab"
             textSize = 13f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             setPadding(dp(12), dp(8), dp(12), dp(8))
             isClickable = true
             setOnClickListener { newTab("about:blank") }

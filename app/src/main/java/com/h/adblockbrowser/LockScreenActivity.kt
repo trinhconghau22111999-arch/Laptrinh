@@ -32,7 +32,7 @@ class LockScreenActivity : AppCompatActivity() {
         val title = TextView(this).apply {
             text = "🔒 Nhập khoá để mở app"
             textSize = 18f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             gravity = Gravity.CENTER
             setPadding(0, 0, 0, dp(24))
         }
@@ -83,7 +83,7 @@ class LockScreenActivity : AppCompatActivity() {
             val btnOk = Button(this).apply {
                 text = "Mở khoá"
                 setTextColor(0xFFFFFFFF.toInt())
-                setBackgroundColor(0xFFC724FF.toInt())
+                setBackgroundColor(0xFF0078D7.toInt())
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 lp.topMargin = dp(16)
                 layoutParams = lp

@@ -1,12 +1,11 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="56dp" android:height="56dp"
-    android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="#2B2B2B" android:pathData="M12,0A12,12 0 1,0 12,24A12,12 0 1,0 12,0Z"/>
-    <!-- Quai khoá - TÔ ĐẶC THUẦN, không dùng stroke (tránh lỗi MIUI render méo hình khi trộn
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">    <!-- Quai khoá - TÔ ĐẶC THUẦN, không dùng stroke (tránh lỗi MIUI render méo hình khi trộn
          stroke không kèm fill trên vector) -->
     <path android:fillColor="#FFFFFF" android:pathData="M8.5,10.5 L8.5,8.5 A3.5,3.5 0 0,1 15.5,8.5 L15.5,10.5 L13.7,10.5 L13.7,8.5 A1.7,1.7 0 0,0 10.3,8.5 L10.3,10.5 Z"/>
     <!-- Thân khoá -->
-    <path android:fillColor="#C724FF" android:pathData="M7,10.5h10a1,1 0 0,1 1,1v6a1,1 0 0,1 -1,1h-10a1,1 0 0,1 -1,-1v-6a1,1 0 0,1 1,-1Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M7,10.5h10a1,1 0 0,1 1,1v6a1,1 0 0,1 -1,1h-10a1,1 0 0,1 -1,-1v-6a1,1 0 0,1 1,-1Z"/>
     <!-- Lỗ khoá -->
     <path android:fillColor="#FFFFFF" android:pathData="M12,13.3m-1.1,0a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0"/>
     <path android:fillColor="#FFFFFF" android:pathData="M11.5,14.4h1l0.4,2h-1.8Z"/>

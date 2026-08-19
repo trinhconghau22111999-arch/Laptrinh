@@ -411,11 +411,14 @@ class MainActivity : AppCompatActivity() {
             background = null
         }
 
+        // Font mảnh (sans-serif-thin) cho số giờ - đúng kiểu đồng hồ khoá màn hình của Windows
+        // Phone/Windows 10 Mobile (số rất to, nét cực mảnh, không đổ bóng đậm kiểu iOS/Android).
         val tvTime = android.widget.TextView(this).apply {
             textSize = baseTimeSize * scale
             setTextColor(0xFFFFFFFF.toInt())
             gravity = android.view.Gravity.CENTER
-            setShadowLayer(8f, 0f, 2f, 0xFF000000.toInt())
+            typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
+            setShadowLayer(4f, 0f, 1f, 0x99000000.toInt())
             isClickable = true
             isFocusable = true
         }
@@ -423,7 +426,8 @@ class MainActivity : AppCompatActivity() {
             textSize = baseDateSize * scale
             setTextColor(0xFFDDDDDD.toInt())
             gravity = android.view.Gravity.CENTER
-            setShadowLayer(4f, 0f, 1f, 0xFF000000.toInt())
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+            setShadowLayer(3f, 0f, 1f, 0x99000000.toInt())
             isClickable = true
             isFocusable = true
         }

@@ -22,9 +22,9 @@ class PatternLockView(context: Context, attrs: AttributeSet? = null) : View(cont
     var onPatternTooShort: (() -> Unit)? = null
 
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF3A3A3A.toInt() }
-    private val selectedDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC724FF.toInt() }
+    private val selectedDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0078D7.toInt() }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFC724FF.toInt(); style = Paint.Style.STROKE; strokeWidth = 10f; strokeCap = Paint.Cap.ROUND
+        color = 0xFF0078D7.toInt(); style = Paint.Style.STROKE; strokeWidth = 10f; strokeCap = Paint.Cap.ROUND
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {

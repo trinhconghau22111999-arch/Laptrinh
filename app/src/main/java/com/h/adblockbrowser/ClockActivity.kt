@@ -110,11 +110,11 @@ class ClockActivity : AppCompatActivity() {
             textSize = 48f
             setTextColor(0xFFFFFFFF.toInt())
             gravity = Gravity.CENTER
-            setShadowLayer(20f, 0f, 0f, 0xFFC724FF.toInt())
+            setShadowLayer(20f, 0f, 0f, 0xFF0078D7.toInt())
         }
         tvDate = TextView(this).apply {
             textSize = 16f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             gravity = Gravity.CENTER
             setPadding(0, 16, 0, 0)
         }
@@ -142,7 +142,7 @@ class ClockActivity : AppCompatActivity() {
         btnStopwatchToggle = Button(this).apply {
             text = "Bắt đầu"
             setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0xFFC724FF.toInt())
+            setBackgroundColor(0xFF0078D7.toInt())
             setOnClickListener { toggleStopwatch() }
         }
         val btnReset = Button(this).apply {
@@ -168,13 +168,13 @@ class ClockActivity : AppCompatActivity() {
         val alarmTitle = TextView(this).apply {
             text = "⏰ Báo thức"
             textSize = 16f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val btnAddAlarm = TextView(this).apply {
             text = "+ Thêm"
             textSize = 14f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             isClickable = true
             setPadding(dp(8), dp(4), dp(8), dp(4))
             setOnClickListener { showAddAlarmDialog() }
@@ -204,11 +204,11 @@ class ClockActivity : AppCompatActivity() {
             textSize = 64f
             setTextColor(0xFFFFFFFF.toInt())
             gravity = Gravity.CENTER
-            setShadowLayer(28f, 0f, 0f, 0xFFC724FF.toInt())
+            setShadowLayer(28f, 0f, 0f, 0xFF0078D7.toInt())
         }
         tvSleepDate = TextView(this).apply {
             textSize = 18f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             gravity = Gravity.CENTER
             setPadding(0, dp(16), 0, 0)
         }
@@ -271,7 +271,7 @@ class ClockActivity : AppCompatActivity() {
     private fun sectionTitle(text: String) = TextView(this).apply {
         this.text = text
         textSize = 16f
-        setTextColor(0xFFC724FF.toInt())
+        setTextColor(0xFF0078D7.toInt())
         setPadding(0, dp(4), 0, 0)
     }
 
@@ -354,7 +354,7 @@ class ClockActivity : AppCompatActivity() {
             }
             val toggle = Switch(this).apply {
                 isChecked = alarm.enabled
-                thumbTintList = ColorStateList.valueOf(0xFFC724FF.toInt())
+                thumbTintList = ColorStateList.valueOf(0xFF0078D7.toInt())
                 setOnCheckedChangeListener { _, checked ->
                     AlarmsStore.setEnabled(this@ClockActivity, alarm.id, checked)
                     if (checked) scheduleAlarm(alarm.copy(enabled = true))
@@ -407,7 +407,7 @@ class ClockActivity : AppCompatActivity() {
         val tvPick = TextView(this).apply {
             text = "Giờ: %02d:%02d".format(hour, minute)
             textSize = 16f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             isClickable = true
             setPadding(0, dp(8), 0, dp(16))
         }
@@ -426,7 +426,7 @@ class ClockActivity : AppCompatActivity() {
         val tvSound = TextView(this).apply {
             text = "Âm báo: ${soundNames.getOrElse(0) { "Mặc định" }}"
             textSize = 14f
-            setTextColor(0xFFC724FF.toInt())
+            setTextColor(0xFF0078D7.toInt())
             isClickable = true
             setPadding(0, dp(12), 0, dp(4))
             setOnClickListener {
