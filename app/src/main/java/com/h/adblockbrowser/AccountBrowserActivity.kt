@@ -28,6 +28,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 /** Trình duyệt "Nhiều tài khoản" - mỗi hồ sơ (slot) chạy ở TIẾN TRÌNH RIÊNG (xem các lớp con
  *  AccountBrowserActivity1..10 bên dưới + android:process trong Manifest) nên mỗi hồ sơ có
@@ -94,7 +95,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
         browserRoot = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF000000.toInt())
+            setBackgroundColor(themeColor(R.color.bg_primary))
         }
 
         val header = LinearLayout(this).apply {
@@ -123,11 +124,11 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             text = "3"
             textSize = 16f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(0xFFCCCCCC.toInt())
+            setTextColor(themeColor(R.color.text_primary))
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setStroke(dp(2), 0xFFCCCCCC.toInt())
+                setStroke(dp(2), themeColor(R.color.text_primary))
                 setColor(Color.TRANSPARENT)
             }
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
@@ -142,11 +143,11 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         val btnCloseProfile = TextView(this).apply {
             text = "✕"
             textSize = 16f
-            setTextColor(0xFFCCCCCC.toInt())
+            setTextColor(themeColor(R.color.text_primary))
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setStroke(dp(2), 0xFFCCCCCC.toInt())
+                setStroke(dp(2), themeColor(R.color.text_primary))
                 setColor(Color.TRANSPARENT)
             }
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
@@ -179,9 +180,9 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         }
         edtUrl = EditText(this).apply {
             hint = "Nhập địa chỉ web..."
-            setHintTextColor(0xFF888888.toInt())
-            setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0xFF1A1A1A.toInt())
+            setHintTextColor(themeColor(R.color.text_secondary))
+            setTextColor(themeColor(R.color.text_primary))
+            setBackgroundColor(themeColor(R.color.bg_actionbar))
             setPadding(dp(12), dp(10), dp(12), dp(10))
             setSingleLine(true)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
@@ -209,7 +210,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         btnStar = TextView(this).apply {
             text = "☆"
             textSize = 18f
-            setTextColor(0xFFCCCCCC.toInt())
+            setTextColor(themeColor(R.color.text_primary))
             setPadding(dp(10), dp(6), dp(4), dp(6))
             isClickable = true
             setOnClickListener { toggleStarCurrent() }
@@ -249,7 +250,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         // fullscreenContainer: dùng riêng cho video HTML5 toàn màn hình (onShowCustomView) -
         // nằm ĐÈ LÊN TRÊN browserRoot, ẩn/hiện tương ứng lúc vào/ra chế độ toàn màn hình.
         fullscreenContainer = FrameLayout(this).apply {
-            setBackgroundColor(0xFF000000.toInt())
+            setBackgroundColor(themeColor(R.color.bg_primary))
             visibility = View.GONE
         }
 
@@ -320,7 +321,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         } else {
             ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
-        btnSplit3.setTextColor(if (splitMode) 0xFF29B6F6.toInt() else 0xFFCCCCCC.toInt())
+        btnSplit3.setTextColor(if (splitMode) 0xFF29B6F6.toInt() else themeColor(R.color.text_primary))
         layoutWebArea()
     }
 
@@ -373,7 +374,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             row.addView(wv)
             if (i != paneCount - 1) {
                 row.addView(View(this).apply {
-                    setBackgroundColor(0xFF333333.toInt())
+                    setBackgroundColor(themeColor(R.color.bg_actionbar))
                     layoutParams = if (isLandscape) {
                         LinearLayout.LayoutParams(dp(2), ViewGroup.LayoutParams.MATCH_PARENT)
                     } else {
@@ -551,7 +552,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             val cell = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setBackgroundColor(if (i == activeIndex) 0xFF00344D.toInt() else 0xFF141414.toInt())
+                setBackgroundColor(if (i == activeIndex) themeColor(R.color.tab_active_bg) else themeColor(R.color.bg_secondary))
                 setPadding(dp(10), dp(3), dp(6), dp(3))
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 lp.marginEnd = dp(4)
@@ -562,12 +563,12 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             cell.addView(TextView(this).apply {
                 text = tab.title
                 textSize = 11f
-                setTextColor(if (i == activeIndex) 0xFF29B6F6.toInt() else 0xFFAAAAAA.toInt())
+                setTextColor(if (i == activeIndex) 0xFF29B6F6.toInt() else themeColor(R.color.text_secondary))
             })
             cell.addView(TextView(this).apply {
                 text = " ✕"
                 textSize = 11f
-                setTextColor(0xFF888888.toInt())
+                setTextColor(themeColor(R.color.text_secondary))
                 isClickable = true
                 setOnClickListener { closeTab(i) }
             })
@@ -589,7 +590,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         val url = tabs.getOrNull(activeIndex)?.webView?.url ?: ""
         val starred = url.isNotBlank() && AccountStarredStore.isStarred(this, slot, url)
         btnStar.text = if (starred) "★" else "☆"
-        btnStar.setTextColor(if (starred) 0xFFFFD700.toInt() else 0xFFCCCCCC.toInt())
+        btnStar.setTextColor(if (starred) 0xFFFFD700.toInt() else themeColor(R.color.text_primary))
     }
 
     private fun toggleStarCurrent() {

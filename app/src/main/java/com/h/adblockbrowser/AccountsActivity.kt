@@ -16,6 +16,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 /** Màn hình "Nhiều tài khoản" - danh sách các hồ sơ trình duyệt (giống màn chọn hồ sơ của
  *  Chrome/Android: mỗi hồ sơ = 1 vòng tròn avatar + tên). Bấm vào 1 hồ sơ -> mở trình duyệt
@@ -43,19 +44,19 @@ class AccountsActivity : AppCompatActivity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF0A0A0A.toInt())
+            setBackgroundColor(themeColor(R.color.bg_primary))
             setPadding(dp(20), dp(48), dp(20), dp(20))
         }
 
         root.addView(TextView(this).apply {
             text = "Nhiều tài khoản Google"
             textSize = 20f
-            setTextColor(Color.WHITE)
+            setTextColor(themeColor(R.color.text_primary))
         })
         root.addView(TextView(this).apply {
             text = "Mỗi hồ sơ có cookie & phiên đăng nhập riêng, hoàn toàn tách biệt - có thể\nđăng nhập nhiều tài khoản Google khác nhau cùng lúc."
             textSize = 12f
-            setTextColor(0xFF999999.toInt())
+            setTextColor(themeColor(R.color.text_secondary))
             setPadding(0, dp(6), 0, dp(20))
         })
 
@@ -137,19 +138,19 @@ class AccountsActivity : AppCompatActivity() {
         cell.addView(TextView(this).apply {
             text = profile.name.trim().take(1).uppercase().ifBlank { "?" }
             textSize = 24f
-            setTextColor(Color.WHITE)
+            setTextColor(themeColor(R.color.text_primary))
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(dp(64), dp(64))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(color)
-                setStroke(dp(2), Color.WHITE)
+                setStroke(dp(2), themeColor(R.color.text_primary))
             }
         })
         cell.addView(TextView(this).apply {
             text = profile.name
             textSize = 12f
-            setTextColor(Color.WHITE)
+            setTextColor(themeColor(R.color.text_primary))
             gravity = Gravity.CENTER
             maxLines = 2
             setPadding(0, dp(8), 0, 0)
@@ -172,7 +173,7 @@ class AccountsActivity : AppCompatActivity() {
         cell.addView(TextView(this).apply {
             text = "+"
             textSize = 28f
-            setTextColor(0xFFCCCCCC.toInt())
+            setTextColor(themeColor(R.color.text_primary))
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(dp(64), dp(64))
             background = GradientDrawable().apply {
@@ -184,7 +185,7 @@ class AccountsActivity : AppCompatActivity() {
         cell.addView(TextView(this).apply {
             text = "Thêm tài khoản"
             textSize = 12f
-            setTextColor(0xFFCCCCCC.toInt())
+            setTextColor(themeColor(R.color.text_primary))
             gravity = Gravity.CENTER
             maxLines = 2
             setPadding(0, dp(8), 0, 0)
@@ -195,8 +196,8 @@ class AccountsActivity : AppCompatActivity() {
     private fun showAddDialog() {
         val input = EditText(this).apply {
             hint = "Ví dụ: Cá nhân, Công việc..."
-            setTextColor(Color.WHITE)
-            setHintTextColor(0xFF888888.toInt())
+            setTextColor(themeColor(R.color.text_primary))
+            setHintTextColor(themeColor(R.color.text_secondary))
         }
         val container = FrameLayout(this).apply {
             setPadding(dp(20), dp(10), dp(20), 0)
@@ -234,7 +235,7 @@ class AccountsActivity : AppCompatActivity() {
     private fun showRenameDialog(profile: AccountProfileStore.Profile) {
         val input = EditText(this).apply {
             setText(profile.name)
-            setTextColor(Color.WHITE)
+            setTextColor(themeColor(R.color.text_primary))
         }
         val container = FrameLayout(this).apply {
             setPadding(dp(20), dp(10), dp(20), 0)

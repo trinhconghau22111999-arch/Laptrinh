@@ -23,6 +23,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 /** Chế độ Ẩn danh - chạy ở TIẾN TRÌNH RIÊNG (xem android:process trong Manifest) nên dữ liệu
  *  (cookie, phiên đăng nhập, cache) hoàn toàn TÁCH BIỆT khỏi trình duyệt chính, không ảnh hưởng
@@ -61,7 +62,7 @@ class IncognitoActivity : AppCompatActivity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF000000.toInt())
+            setBackgroundColor(themeColor(R.color.bg_primary))
         }
 
         val tabScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
@@ -79,9 +80,9 @@ class IncognitoActivity : AppCompatActivity() {
         }
         edtUrl = EditText(this).apply {
             hint = "Nhập địa chỉ web..."
-            setHintTextColor(0xFF888888.toInt())
-            setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0xFF1A1A1A.toInt())
+            setHintTextColor(themeColor(R.color.text_secondary))
+            setTextColor(themeColor(R.color.text_primary))
+            setBackgroundColor(themeColor(R.color.bg_actionbar))
             setPadding(dp(12), dp(10), dp(12), dp(10))
             setSingleLine(true)
             // Khai báo rõ kiểu URL để bàn phím chắc chắn hiện nút "Đi/Enter" đúng hành vi -
@@ -114,7 +115,7 @@ class IncognitoActivity : AppCompatActivity() {
         btnStar = TextView(this).apply {
             text = "☆"
             textSize = 20f
-            setTextColor(0xFFCCCCCC.toInt())
+            setTextColor(themeColor(R.color.text_primary))
             setPadding(dp(10), dp(6), dp(4), dp(6))
             isClickable = true
             setOnClickListener { toggleStarCurrent() }
@@ -210,7 +211,7 @@ class IncognitoActivity : AppCompatActivity() {
             visibility = View.INVISIBLE
             // Nền ĐEN cho WebView - khi tab đang trống (about:blank, chưa gõ địa chỉ) sẽ hiện
             // màu đen thay vì màu trắng mặc định của WebView, đúng yêu cầu "tối đen luôn".
-            setBackgroundColor(android.graphics.Color.BLACK)
+            setBackgroundColor(themeColor(R.color.bg_primary))
         }
         // Xoá sạch mọi dữ liệu gợi ý tìm kiếm/form đã lưu trước đó (nếu có sót lại), để Ẩn danh
         // KHÔNG bao giờ nhớ lịch sử tìm kiếm cục bộ trên máy.
@@ -377,7 +378,7 @@ class IncognitoActivity : AppCompatActivity() {
             val cell = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setBackgroundColor(if (i == activeIndex) 0xFF2A0033.toInt() else 0xFF141414.toInt())
+                setBackgroundColor(if (i == activeIndex) themeColor(R.color.tab_active_bg_incognito) else themeColor(R.color.bg_secondary))
                 setPadding(dp(12), dp(8), dp(8), dp(8))
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 lp.marginEnd = dp(6)
@@ -388,12 +389,12 @@ class IncognitoActivity : AppCompatActivity() {
             cell.addView(TextView(this).apply {
                 text = tab.title
                 textSize = 12f
-                setTextColor(if (i == activeIndex) 0xFFC724FF.toInt() else 0xFFAAAAAA.toInt())
+                setTextColor(if (i == activeIndex) 0xFFC724FF.toInt() else themeColor(R.color.text_secondary))
             })
             cell.addView(TextView(this).apply {
                 text = " ✕"
                 textSize = 12f
-                setTextColor(0xFF888888.toInt())
+                setTextColor(themeColor(R.color.text_secondary))
                 isClickable = true
                 setOnClickListener { closeTab(i) }
             })
@@ -415,7 +416,7 @@ class IncognitoActivity : AppCompatActivity() {
         val url = tabs.getOrNull(activeIndex)?.webView?.url ?: ""
         val starred = url.isNotBlank() && IncognitoStarredStore.isStarred(this, url)
         btnStar.text = if (starred) "★" else "☆"
-        btnStar.setTextColor(if (starred) 0xFFFFD700.toInt() else 0xFFCCCCCC.toInt())
+        btnStar.setTextColor(if (starred) 0xFFFFD700.toInt() else themeColor(R.color.text_primary))
     }
 
     private fun toggleStarCurrent() {
