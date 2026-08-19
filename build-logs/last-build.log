@@ -14,8 +14,8 @@ Daemon will be stopped at the end of the build
 > Task :app:preDebugBuild UP-TO-DATE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
 > Task :app:checkKotlinGradlePluginConfigurationErrors
-> Task :app:dataBindingMergeDependencyArtifactsDebug
 > Task :app:generateDebugResValues
+> Task :app:dataBindingMergeDependencyArtifactsDebug
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
 > Task :app:mergeDebugResources
@@ -32,8 +32,8 @@ Daemon will be stopped at the end of the build
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:desugarDebugFileDependencies
 > Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
 > Task :app:mergeDebugStartupProfile
 > Task :app:mergeDebugJniLibFolders
 > Task :app:checkDebugDuplicateClasses
@@ -62,8 +62,8 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
       {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
       The OnBackPressedDispatcher controls how back button events are dispatched
       to one or more {@link OnBackPressedCallback} objects.
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:206:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:474:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:223:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:491:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/LockScreenActivity.kt:119:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:151:13 'startActivityForResult(Intent, Int): Unit' is deprecated. This method has been deprecated in favor of using the Activity Result API
       which brings increased type safety via an {@link ActivityResultContract} and the prebuilt
@@ -94,5 +94,5 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 1m 33s
+BUILD SUCCESSFUL in 1m 53s
 40 actionable tasks: 40 executed
