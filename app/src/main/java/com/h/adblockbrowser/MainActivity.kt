@@ -1060,9 +1060,28 @@ object YoutubeAdSkipper {
                         '.video-ads, ytd-promoted-sparkles-web-renderer, ' +
                         'ytd-display-ad-renderer, ytd-in-feed-ad-layout-renderer, ytd-ad-slot-renderer, ' +
                         'ytd-banner-promo-renderer, ytd-mealbar-promo-renderer, #open-app, .app-promo, ' +
-                        'tp-yt-paper-dialog.ytd-popup-container'
+                        'tp-yt-paper-dialog.ytd-popup-container, ' +
+                        'ytm-open-in-app-button, ytm-app-promo-banner-renderer, ' +
+                        '.mobile-topbar-header-open-app-button-container, ' +
+                        'yt-open-in-app-button-renderer, [id*="open-in-app" i], [class*="open-in-app" i]'
                     );
                     overlays.forEach(function(el) { el.style.display = 'none'; });
+
+                    // Nút/thẻ "Mở ứng dụng" (mời cài/mở app YouTube thật) ở đầu trang - selector
+                    // CSS của YouTube hay đổi tên class nên KHÔNG đáng tin cậy 100%, dò thêm theo
+                    // NỘI DUNG CHỮ (đa ngôn ngữ) để chắc chắn bắt được, dù YouTube đổi class.
+                    var promoTexts = ['mở ứng dụng', 'open app', 'open the app', 'open in app'];
+                    var candidates = document.querySelectorAll('a, button, ytd-button-renderer, tp-yt-paper-button');
+                    for (var j = 0; j < candidates.length; j++) {
+                        var elx = candidates[j];
+                        var txt = (elx.innerText || elx.textContent || '').trim().toLowerCase();
+                        if (promoTexts.indexOf(txt) !== -1) {
+                            // Ẩn cả khối cha gần nhất (thường là 1 thanh/khung chứa icon + chữ)
+                            // thay vì chỉ ẩn mỗi chữ, để không để lại khoảng trống/icon mồ côi.
+                            var target = elx.closest('ytm-open-in-app-button, .mobile-topbar-header-open-app-button-container, ytm-app-promo-banner-renderer') || elx;
+                            target.style.display = 'none';
+                        }
+                    }
                 } catch (e) {}
             }, 500);
         })();
