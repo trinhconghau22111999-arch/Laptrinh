@@ -6,8 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 
-/** Bọc AlarmManager cho gọn - dùng cho nhắc nhở theo ngày ở CalendarActivity, bắn tới
- *  [ReminderReceiver]. */
+/** Bọc AlarmManager cho gọn - dùng chung cho nhắc nhở lịch (CalendarActivity) và báo thức đồng
+ *  hồ (ClockActivity), cả 2 đều bắn tới cùng 1 [ReminderReceiver]. */
 object AlarmScheduler {
 
     fun schedule(

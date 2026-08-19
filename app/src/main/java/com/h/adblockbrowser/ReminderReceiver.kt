@@ -10,9 +10,11 @@ import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 
-/** BroadcastReceiver cho nhắc nhở theo ngày ở trang Lịch (CalendarActivity): hiện thông báo
- *  (kèm âm thanh/rung) đúng giờ đã hẹn - không dựng riêng 1 màn hình chuông báo thức toàn màn
- *  hình để giữ phạm vi thay đổi gọn nhẹ. */
+/** BroadcastReceiver DÙNG CHUNG cho 2 nơi hẹn giờ trong app:
+ *  - Nhắc nhở theo ngày ở trang Lịch (CalendarActivity)
+ *  - Báo thức ở trang Đồng hồ (ClockActivity)
+ *  Cả 2 đều chỉ cần: hiện thông báo (kèm âm thanh/rung) đúng giờ đã hẹn - không dựng riêng 1 màn
+ *  hình chuông báo thức toàn màn hình để giữ phạm vi thay đổi gọn nhẹ. */
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -36,11 +38,13 @@ class ReminderReceiver : BroadcastReceiver() {
             nm.createNotificationChannel(channel)
         }
 
-        // Ghi chú: bản rút gọn này chỉ phục vụ nhắc nhở lịch (isAlarm luôn = false ở CalendarActivity),
-        // nên dùng âm thông báo mặc định của hệ thống thay vì AlarmSounds (đã không còn trong app).
-        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val soundUri = if (isAlarm) {
+            AlarmSounds.uriFor(context, soundIndex)
+        } else {
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        }
 
-        val openIntent = Intent(context, CalendarActivity::class.java)
+        val openIntent = Intent(context, if (isAlarm) ClockActivity::class.java else CalendarActivity::class.java)
         val contentPending = PendingIntent.getActivity(
             context, notifId, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

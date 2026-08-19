@@ -499,6 +499,7 @@ class MainActivity : AppCompatActivity() {
                 "FilesActivity" -> FilesActivity::class.java
                 "CalendarActivity" -> CalendarActivity::class.java
                 "CalculatorActivity" -> CalculatorActivity::class.java
+                "ClockActivity" -> ClockActivity::class.java
                 else -> null
             }
             if (activityClass != null) {
