@@ -14,8 +14,8 @@ Daemon will be stopped at the end of the build
 > Task :app:preDebugBuild UP-TO-DATE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
 > Task :app:checkKotlinGradlePluginConfigurationErrors
-> Task :app:generateDebugResValues
 > Task :app:dataBindingMergeDependencyArtifactsDebug
+> Task :app:generateDebugResValues
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
 > Task :app:mergeDebugResources
@@ -32,29 +32,28 @@ Daemon will be stopped at the end of the build
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:processDebugManifestForPackage
-> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
+> Task :app:compressDebugAssets
 > Task :app:mergeDebugStartupProfile
 > Task :app:mergeDebugJniLibFolders
 > Task :app:checkDebugDuplicateClasses
-> Task :app:processDebugResources
 > Task :app:mergeDebugNativeLibs
-> Task :app:compileDebugKotlin
-> Task :app:mergeExtDexDebug
+> Task :app:processDebugManifestForPackage
 > Task :app:mergeLibDexDebug
 
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libimage_processing_util_jni.so.
 
+> Task :app:processDebugResources
 > Task :app:validateSigningDebug
+> Task :app:mergeExtDexDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
 
 > Task :app:compileDebugKotlin
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:400:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:653:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountsActivity.kt:92:23 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:404:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:657:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountsActivity.kt:94:23 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
       {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
       The OnBackPressedDispatcher controls how back button events are dispatched
       to one or more {@link OnBackPressedCallback} objects.
@@ -63,8 +62,8 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
       {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
       The OnBackPressedDispatcher controls how back button events are dispatched
       to one or more {@link OnBackPressedCallback} objects.
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:202:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:470:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:206:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:474:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/LockScreenActivity.kt:119:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:151:13 'startActivityForResult(Intent, Int): Unit' is deprecated. This method has been deprecated in favor of using the Activity Result API
       which brings increased type safety via an {@link ActivityResultContract} and the prebuilt
@@ -75,15 +74,15 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
       {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)}
       passing in a {@link StartActivityForResult} object for the {@link ActivityResultContract}.
 w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:472:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:815:23 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:820:23 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
       {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
       The OnBackPressedDispatcher controls how back button events are dispatched
       to one or more {@link OnBackPressedCallback} objects.
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:843:19 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:848:19 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
       {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
       The OnBackPressedDispatcher controls how back button events are dispatched
       to one or more {@link OnBackPressedCallback} objects.
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:847:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:852:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 
 > Task :app:compileDebugJavaWithJavac
 > Task :app:dexBuilderDebug
@@ -95,5 +94,5 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 1m 42s
+BUILD SUCCESSFUL in 1m 48s
 40 actionable tasks: 40 executed
