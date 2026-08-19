@@ -64,7 +64,14 @@ class HomeScreenManager(
     private val onOpenShortcut: (ShortcutItem) -> Unit,
     private val onOpenSettings: () -> Unit
 ) {
-    fun build(): FrameLayout {
+    /** [clockWidget]: widget giờ/ngày (nếu có) được chèn làm mục ĐẦU TIÊN trong nội dung cuộn
+     *  dọc, NẰM NGAY TRONG LUỒNG LAYOUT (không phải overlay nổi tự do như trước) - nhờ vậy nó
+     *  "dính" liền phía trên hàng icon, và khi người dùng chụm/dãn tay phóng to widget này ra,
+     *  chiều cao của nó tăng lên sẽ tự động ĐẨY hàng shortcut + lưới app bên dưới xuống theo,
+     *  giống hệt cách 1 view bình thường trong LinearLayout chiếm thêm chỗ sẽ đẩy các view sau
+     *  nó dịch xuống - không cần code thêm gì để "đẩy icon" vì đây là hành vi mặc định của
+     *  layout khi thêm view vào đúng luồng thay vì đặt toạ độ x/y tự do như bản cũ. */
+    fun build(clockWidget: View? = null): FrameLayout {
         val root = FrameLayout(context)
 
         // ── Toàn bộ nội dung cuộn dọc ──
@@ -78,6 +85,13 @@ class HomeScreenManager(
 
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
+        }
+
+        // ── Widget giờ/ngày (nếu có) - luôn ở trên cùng, dính liền phía trên hàng icon ──
+        if (clockWidget != null) {
+            content.addView(clockWidget, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = dp(4) })
         }
 
         // ── Hàng shortcut cố định ──

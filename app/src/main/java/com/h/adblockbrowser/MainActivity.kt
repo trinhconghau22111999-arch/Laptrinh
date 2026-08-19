@@ -174,9 +174,7 @@ class MainActivity : AppCompatActivity() {
             onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
         )
         val homeContainer = homeOverlay as android.widget.FrameLayout
-        homeContainer.addView(homeScreenManager.build())
-        val clockWidget = buildDraggableClock(homeContainer)
-        homeContainer.addView(clockWidget)
+        homeContainer.addView(homeScreenManager.build(buildClockWidget()))
 
         requestAllPermissions()
         setupWebView()
@@ -382,33 +380,57 @@ class MainActivity : AppCompatActivity() {
     // ---------- Menu "đa nhiệm" (xem / xoá lịch sử phiên) ----------
 
 
-    private fun buildDraggableClock(container: android.widget.FrameLayout): android.widget.FrameLayout {
+    /** Widget giờ/ngày ở trang chủ - PHIÊN BẢN MỚI:
+     *  - Không còn kéo-thả tự do tới bất kỳ đâu và KHÔNG còn nền (ô/nơ) phía sau nữa - widget
+     *    giờ nằm NGAY TRONG luồng layout ở trang chủ (do [HomeScreenManager.build] chèn lên đầu),
+     *    "dính" cố định phía trên hàng icon thay vì nổi tự do đè lên màn hình.
+     *  - CHỤM/DÃN 2 ngón để phóng to - thu nhỏ tuỳ ý (qua [PinchZoomLayout]), nhỏ nhất đúng bằng
+     *    cỡ chữ mặc định hiện tại (48/14 - không cho thu nhỏ hơn nữa), tỉ lệ phóng to được LƯU
+     *    lại nên mở app lại vẫn giữ nguyên cỡ đã chỉnh.
+     *  - Vì widget nằm trong luồng layout bình thường (không phải toạ độ x/y tự do), phóng to nó
+     *    ra sẽ tự động ĐẨY hàng shortcut + lưới app phía dưới xuống theo - đúng hiệu ứng "di
+     *    chuyển/phóng to nó thì đẩy các icon khác" mà không cần code riêng gì thêm.
+     *  - Giờ/phút và ngày/tháng tách thành 2 vùng bấm riêng: bấm giờ/phút mở trang Đồng hồ, bấm
+     *    ngày/tháng mở trang Lịch (thay vì cả khối chỉ để kéo như trước). */
+    private fun buildClockWidget(): View {
         val prefs = getSharedPreferences("clock_widget_prefs", 0)
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
+        // Cỡ chữ MẶC ĐỊNH = cỡ NHỎ NHẤT được phép (đúng như yêu cầu "nhỏ nhất là như hiện tại").
+        val baseTimeSize = 48f
+        val baseDateSize = 14f
+        val minScale = 1f
+        val maxScale = 3f
+        var scale = prefs.getFloat("scale", minScale).coerceIn(minScale, maxScale)
 
         val widget = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(10), dp(16), dp(10))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadius = dp(16).toFloat()
-                setColor(0x88000000.toInt())
-            }
+            // Không còn nền/ô phía sau nữa - trong suốt hoàn toàn.
+            background = null
         }
 
         val tvTime = android.widget.TextView(this).apply {
-            textSize = 48f
+            textSize = baseTimeSize * scale
             setTextColor(0xFFFFFFFF.toInt())
             gravity = android.view.Gravity.CENTER
             setShadowLayer(8f, 0f, 2f, 0xFF000000.toInt())
+            isClickable = true
+            isFocusable = true
         }
         val tvDate = android.widget.TextView(this).apply {
-            textSize = 14f
+            textSize = baseDateSize * scale
             setTextColor(0xFFDDDDDD.toInt())
             gravity = android.view.Gravity.CENTER
             setShadowLayer(4f, 0f, 1f, 0xFF000000.toInt())
+            isClickable = true
+            isFocusable = true
         }
+        // Bấm vào giờ/phút -> mở trang Đồng hồ.
+        tvTime.setOnClickListener { openShortcutByKey("clock") }
+        // Bấm vào ngày/tháng -> mở trang Lịch.
+        tvDate.setOnClickListener { openShortcutByKey("calendar") }
         widget.addView(tvTime)
         widget.addView(tvDate)
 
@@ -425,39 +447,24 @@ class MainActivity : AppCompatActivity() {
         }
         handler.post(updateClock)
 
-        val wrapper = android.widget.FrameLayout(this).apply {
-            layoutParams = android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+        // Bọc trong PinchZoomLayout để chụm/dãn 2 ngón phóng to - thu nhỏ mà không chặn mất
+        // sự kiện bấm (tap) riêng lẻ trên tvTime/tvDate ở trên.
+        val pinchWrapper = PinchZoomLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
+            onScale = { factor ->
+                scale = (scale * factor).coerceIn(minScale, maxScale)
+                tvTime.textSize = baseTimeSize * scale
+                tvDate.textSize = baseDateSize * scale
+                prefs.edit().putFloat("scale", scale).apply()
+            }
         }
-        wrapper.addView(widget, android.widget.FrameLayout.LayoutParams(
+        pinchWrapper.addView(widget, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ))
 
-        // Kéo widget đến vị trí bất kỳ
-        var dX = 0f; var dY = 0f
-        widget.setOnTouchListener { v, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> { dX = v.x - event.rawX; dY = v.y - event.rawY; true }
-                MotionEvent.ACTION_MOVE -> {
-                    val nx = (event.rawX + dX).coerceIn(0f, (container.width - v.width).toFloat())
-                    val ny = (event.rawY + dY).coerceIn(0f, (container.height - v.height).toFloat())
-                    v.x = nx; v.y = ny; true
-                }
-                MotionEvent.ACTION_UP -> {
-                    prefs.edit().putFloat("x", v.x).putFloat("y", v.y).apply(); true
-                }
-                else -> false
-            }
-        }
-
-        // Phục hồi vị trí đã lưu
-        widget.post {
-            widget.x = prefs.getFloat("x", dp(16).toFloat())
-            widget.y = prefs.getFloat("y", dp(80).toFloat())
-        }
-
-        return wrapper
+        return pinchWrapper
     }
 
     private fun clearAllSessionData() {
