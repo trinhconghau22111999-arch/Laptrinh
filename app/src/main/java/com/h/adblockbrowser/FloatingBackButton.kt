@@ -338,6 +338,14 @@ object FloatingBackButton {
                 }
             }
         } else { // !fixed
+            // Double-tap cho nút KÉO-THẢ được (doubleTapOnly = true): khác nhánh "fixed" ở trên
+            // (dùng GestureDetector có sẵn), ở đây tự đếm thời gian giữa 2 lần thả tay (không
+            // kéo) - vì GestureDetector không phối hợp tốt với logic kéo-thả tự viết tay bên
+            // dưới (ACTION_MOVE cập nhật vị trí trực tiếp qua WindowManager). Chạm 1 lần (không
+            // kéo) trong vòng [doubleTapTimeoutMs] kể từ lần chạm trước đó (cũng không kéo) mới
+            // tính là double-tap và gọi onTap(); nếu không, chỉ ghi nhận mốc thời gian rồi chờ.
+            var lastSingleTapUpTime = 0L
+            val doubleTapTimeoutMs = 300L
             btn.setOnTouchListener { v, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
@@ -392,8 +400,20 @@ object FloatingBackButton {
                             val maxY = (root.height - lp.height).coerceAtLeast(1)
                             val yFraction = (lp.y.toFloat() / maxY).coerceIn(0f, 1f)
                             savePosition(activity, id, isRight, yFraction, excluding = resyncCallback)
+                            // Đang kéo thì không tính là chạm/double-tap - reset mốc double-tap.
+                            lastSingleTapUpTime = 0L
                         } else if (!longPressFired && event.actionMasked == MotionEvent.ACTION_UP) {
-                            onTap()
+                            if (doubleTapOnly) {
+                                val now = android.os.SystemClock.uptimeMillis()
+                                if (now - lastSingleTapUpTime <= doubleTapTimeoutMs) {
+                                    lastSingleTapUpTime = 0L
+                                    onTap()
+                                } else {
+                                    lastSingleTapUpTime = now
+                                }
+                            } else {
+                                onTap()
+                            }
                         }
                         true
                     }

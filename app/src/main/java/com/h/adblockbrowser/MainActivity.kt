@@ -927,9 +927,13 @@ class MainActivity : AppCompatActivity() {
         )
 
         // Nút "Off" nổi - bấm để phủ màn hình giả tắt (xem FakeScreenOff). Icon "⏻" (nút nguồn)
-        // để phân biệt rõ với mũi tên "◁" của nút Back. fixed = true: CỐ ĐỊNH ở góc DƯỚI-TRÁI
-        // (defaultIsRight = false), đối xứng với nút Back ở góc dưới-phải, không kéo-thả được
-        // và không đổi vị trí dù xoay màn hình.
+        // để phân biệt rõ với mũi tên "◁" của nút Back.
+        //
+        // fixed = false: nút NỔI và KÉO-THẢ được tự do như nút Back (không còn cố định 1 chỗ ở
+        // góc dưới-trái nữa) - kéo đi đâu tuỳ ý, thả tay tự "hít" vào cạnh trái/phải gần nhất,
+        // vị trí được nhớ riêng (key theo id "off", không đụng vị trí đã lưu của nút Back) và
+        // đồng bộ giữa các màn hình như nút Back. defaultYFraction = 0.7f (khác 0.5f mặc định
+        // của nút Back) để lần đầu xuất hiện 2 nút không chồng lên nhau.
         //
         // CHỈ HIỆN KHI ĐANG Ở TRANG YOUTUBE: nút này dùng để giả tắt màn hình lúc nghe video/
         // nhạc YouTube chạy nền, không có ý nghĩa gì ở các trang khác -> ẩn đi (setVisible(false)
@@ -945,7 +949,8 @@ class MainActivity : AppCompatActivity() {
             id = "off",
             icon = "⏻",
             defaultIsRight = false,
-            fixed = true,
+            defaultYFraction = 0.7f,
+            fixed = false,
             doubleTapOnly = true
         )
         floatingOffButtonHandle?.setVisible(false)
