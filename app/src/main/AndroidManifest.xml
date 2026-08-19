@@ -17,6 +17,22 @@
 
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
+    <!-- BẮT BUỘC từ Android 11 (API 30) trở lên: nếu không khai báo <queries> ở đây,
+         PackageManager.queryIntentActivities() (dùng ở HomeScreenManager.installedApps() để liệt
+         kê app ngoài lên lưới trang chủ) sẽ chỉ trả về được RẤT ÍT hoặc GẦN NHƯ KHÔNG app nào -
+         đây là giới hạn "package visibility" mới của Android, ẩn hầu hết app khác khỏi app của
+         mình trừ khi khai báo rõ mình cần quét loại app nào. Khai báo intent MAIN+LAUNCHER dưới
+         đây cho phép quét ĐÚNG NHÓM app "có thể mở từ màn hình chính" (giống mọi app launcher
+         thay thế trên Play Store khai báo) - không cần xin quyền QUERY_ALL_PACKAGES (quyền đặc
+         biệt, Google Play kiểm duyệt rất chặt, hầu như chỉ chấp nhận cho app launcher/quét virus
+         chính thức). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:name=".BrowserApplication"
         android:allowBackup="false"
