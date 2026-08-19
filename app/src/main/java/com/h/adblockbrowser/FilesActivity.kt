@@ -79,11 +79,11 @@ class FilesActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val btnShare = TextView(this).apply {
-            text = "↗ Chia sẻ"
+            text = "☑ Tất cả"
             setTextColor(0xFFC724FF.toInt())
             setPadding(dp(12), dp(6), dp(12), dp(6))
             isClickable = true
-            setOnClickListener { shareSelected() }
+            setOnClickListener { selectAll() }
         }
         val btnDelete = TextView(this).apply {
             text = "🗑 Xoá"
@@ -239,30 +239,10 @@ class FilesActivity : AppCompatActivity() {
         }
     }
 
-    private fun shareSelected() {
-        val files = selected.mapNotNull { entries.getOrNull(it) }.filter { !it.isDirectory }
-        if (files.isEmpty()) {
-            Toast.makeText(this, "Chỉ chia sẻ được tệp, không chia sẻ được thư mục", Toast.LENGTH_SHORT).show()
-            return
-        }
-        try {
-            val uris = ArrayList(files.map { FileProvider.getUriForFile(this, "com.h.adblockbrowser.fileprovider", it) })
-            val intent = if (uris.size == 1) {
-                Intent(Intent.ACTION_SEND).apply {
-                    type = contentResolver.getType(uris[0]) ?: "*/*"
-                    putExtra(Intent.EXTRA_STREAM, uris[0])
-                }
-            } else {
-                Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                    type = "*/*"
-                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-                }
-            }
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            startActivity(Intent.createChooser(intent, "Chia sẻ"))
-        } catch (e: Exception) {
-            Toast.makeText(this, "Không chia sẻ được", Toast.LENGTH_SHORT).show()
-        }
+    private fun selectAll() {
+        entries.indices.forEach { selected.add(it) }
+        tvSelCount.text = "Đã chọn ${selected.size}"
+        refreshAdapter()
     }
 
     private fun confirmDeleteSelected() {

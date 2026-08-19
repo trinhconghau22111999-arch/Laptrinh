@@ -913,7 +913,8 @@ class MainActivity : AppCompatActivity() {
             onTap = { doBack() },
             onLongPress = { if (homeOverlay.visibility != View.VISIBLE) showHomeOverlay() },
             defaultIsRight = true,
-            fixed = true
+            fixed = true,
+            doubleTapOnly = true
         )
 
         // Nút "Off" nổi - bấm để phủ màn hình giả tắt (xem FakeScreenOff). Icon "⏻" (nút nguồn)
@@ -930,7 +931,8 @@ class MainActivity : AppCompatActivity() {
             id = "off",
             icon = "⏻",
             defaultIsRight = false,
-            fixed = true
+            fixed = true,
+            doubleTapOnly = true
         )
     }
 

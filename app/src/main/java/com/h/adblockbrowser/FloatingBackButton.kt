@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -192,7 +193,10 @@ object FloatingBackButton {
         // tạo lại lúc xoay máy - chỉ trông chờ [Handle.resync] ở onResume() là không đủ, vì
         // xoay máy không tự gọi lại onResume. false (mặc định) = giữ nguyên hành vi kéo-thả +
         // tự nhớ vị trí đã kéo như trước.
-        fixed: Boolean = false
+        fixed: Boolean = false,
+        // [doubleTapOnly]: true = phải chạm 2 lần liên tiếp (double-tap) mới kích hoạt onTap,
+        // chạm 1 lần không làm gì - tránh chạm nhầm khi nút nằm gần các vùng tương tác khác.
+        doubleTapOnly: Boolean = false
     ): Handle {
         fun dp(v: Int) = (v * activity.resources.displayMetrics.density).toInt()
         val size = dp(56)
@@ -304,11 +308,19 @@ object FloatingBackButton {
         }
 
         if (fixed) {
-            // Nút cố định: không kéo-thả, chỉ cần chạm nhanh = [onTap] và (nếu có) giữ tay =
-            // [onLongPress] - dùng thẳng OnClickListener/OnLongClickListener chuẩn của View
-            // thay vì tự bắt MotionEvent như nút kéo-thả, đơn giản và đủ dùng vì không cần theo
-            // dõi toạ độ ngón tay để tính kéo nữa.
-            btn.setOnClickListener { onTap() }
+            // Nút cố định: không kéo-thả. Nếu doubleTapOnly = true thì dùng GestureDetector để
+            // chỉ kích hoạt onTap khi double-tap; chạm 1 lần bỏ qua (event xuyên xuống view dưới).
+            if (doubleTapOnly) {
+                val gd = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
+                    override fun onDoubleTap(e: MotionEvent): Boolean { onTap(); return true }
+                    override fun onSingleTapConfirmed(e: MotionEvent): Boolean = false
+                })
+                // Trả về false khi không phải double-tap để sự kiện "xuyên qua" nút, các view
+                // bên dưới vẫn nhận được như bình thường (tránh chặn nhầm).
+                btn.setOnTouchListener { _, event -> gd.onTouchEvent(event) }
+            } else {
+                btn.setOnClickListener { onTap() }
+            }
             if (onLongPress != null) {
                 btn.setOnLongClickListener {
                     it.animate().scaleX(1.15f).scaleY(1.15f).setDuration(80)
@@ -318,7 +330,7 @@ object FloatingBackButton {
                     true
                 }
             }
-        } else {
+        } else { // !fixed
             btn.setOnTouchListener { v, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
