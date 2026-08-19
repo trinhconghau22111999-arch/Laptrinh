@@ -98,8 +98,6 @@ class MainActivity : AppCompatActivity() {
     private var edtHomeSearch: EditText? = null
     private lateinit var homeScreenManager: HomeScreenManager
 
-    // Lịch sử phiên làm việc (chỉ trong RAM, không lưu file -> tự mất khi thoát app)
-
     // Đánh dấu điều hướng do chính app gọi (từ thanh địa chỉ / menu đề xuất / mở lại tab)
     // để KHÔNG hỏi xác nhận, chỉ hỏi khi người dùng bấm link ngay trên trang.
     private var programmaticLoad = false
@@ -107,30 +105,12 @@ class MainActivity : AppCompatActivity() {
     // Bấm nút "🖥 Bản máy tính" nổi -> ép trang HIỆN TẠI sang UA máy tính tới khi tắt lại.
     private var forceDesktop = false
 
-    // true khi trang hiện có video HTML5 đang phát (cập nhật qua JS -> JavascriptInterface bên
-    // dưới, xem VideoPlaybackTracker.JS). Dùng để: (1) quyết định có mở cửa sổ nổi TRONG APP
-    // (mini-player kéo được, xem showFloatingVideoPlayer()) khi back ra khỏi trang xem YouTube
-    // hay không; (2) KHÔNG còn dùng để tự vào Picture-in-Picture hệ thống khi rời app nữa - tính
-    // năng đó đã bị bỏ vì không đáng tin cậy trên nhiều máy, xem giải thích ở onUserLeaveHint().
-    private var isVideoPlaying = false
-
-    // ── Cửa sổ nổi TRONG APP (mini-player kéo/di chuyển được) - khác với PiP hệ thống ở trên:
-    // cái này nổi NGAY TRÊN trang đang duyệt trong app (vd. trang chủ YouTube) để vừa xem video
-    // đang phát vừa chọn video khác, không cần rời khỏi app.
-    // QUAN TRỌNG (đã đổi cách làm): TRƯỚC ĐÂY dùng CHÍNH customView (video HTML5 toàn màn hình
-    // thật của trang) làm nội dung cửa sổ nổi - nhưng cách đó khiến cửa sổ nổi BỊ PHỤ THUỘC vào
-    // trang đang duyệt: hễ webView chính điều hướng sang trang khác (kể cả chỉ là back về trang
-    // chủ YouTube) là trình duyệt COI NHƯ trang cũ đã đóng -> tự động huỷ luôn video/cửa sổ nổi
-    // theo (gọi onHideCustomView), dù không ai bấm nút đóng cả - đúng lỗi user báo cáo. GIỜ dùng
-    // 1 WebView THỨ HAI, HOÀN TOÀN RIÊNG BIỆT, không liên quan gì tới webView chính - tải cùng
-    // video đó qua link nhúng (embed) rồi phát trong 1 khung nhỏ nổi lên trên. Nhờ vậy webView
-    // chính muốn điều hướng đi đâu, back bao nhiêu lần trong nội bộ YouTube cũng KHÔNG ảnh hưởng
-    // gì tới WebView nổi này - đúng yêu cầu "tách biệt hoàn toàn, độc lập với trang YouTube bên
-    // dưới". Chỉ đóng hẳn khi: bấm nút ✕, hoặc thoát ra khỏi domain YouTube hoàn toàn. ──
-    private var floatContainer: FrameLayout? = null
+    // ĐÃ BỎ (theo yêu cầu): tính năng "cửa sổ nổi trong app" (mini-player WebView riêng tự动
+    // mở khi xem YouTube) - gây lỗi bàn phím ảo không bật lên được (WebView nổi tự cướp focus)
+    // và lỗi "153 - Lỗi cấu hình trình phát video" (tải embed sai cách). Không đáng công sửa
+    // tiếp vì tính năng "phát nền thật" khi thoát hẳn app (bấm Home vật lý) vốn không làm được
+    // bằng WebView (xem giải thích trong hội thoại) - giữ app đơn giản, ổn định hơn.
     private var floatingBackButtonHandle: FloatingBackButton.Handle? = null
-    private var floatWebView: WebView? = null
-    private val floatCheckHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     // Video/trang toàn màn hình HTML5 (xem onShowCustomView/onHideCustomView) - dùng chung với
     // logic chia 3 màn hình: khi đang ngang, customView (nếu có) sẽ là ô đầu tiên của chia 3
@@ -253,8 +233,6 @@ class MainActivity : AppCompatActivity() {
     private fun showHomeOverlay() {
         homeOverlay.visibility = View.VISIBLE
         toolbarUrl.visibility = View.GONE // trang chủ không phải trang web, không cần thanh địa chỉ
-        // Về màn hình chính app = thoát khỏi YouTube -> tắt cửa sổ nổi (nếu đang có).
-        if (floatWebView != null) closeFloatingVideoPlayer()
         // FIX: trước đây chỉ đóng cửa sổ nổi (customView) nếu có, còn video đang phát BÌNH
         // THƯỜNG (chưa fullscreen/chưa tách cửa sổ nổi) thì WebView vẫn nằm phía SAU
         // homeOverlay và tiếp tục chạy -> tiếng vẫn phát dù đã "thoát" về màn hình chính.
@@ -531,36 +509,6 @@ class MainActivity : AppCompatActivity() {
         return if (cleaned.isBlank()) "video_${System.currentTimeMillis()}" else cleaned
     }
 
-    // ---------- Cửa sổ nổi (Picture-in-Picture) khi phát video ----------
-
-    inner class PipStateBridge {
-        /** Video YouTube VỪA bắt đầu phát trên trang XEM video (watch/Shorts - không phải trang
-         *  chủ/feed nơi video chỉ là xem trước tự động khi lướt qua, xem isYoutubeWatchPage()) ->
-         *  TỰ ĐỘNG mở cửa sổ nổi (WebView riêng, xem showFloatingVideoPlayer()) phát đúng video
-         *  đó, đè lên trên nền YouTube. Đợi 150ms để lọc bỏ các lần play/pause chớp nhoáng lúc
-         *  đang tua/qua quảng cáo trước khi mở. */
-        @JavascriptInterface
-        fun setPlaying(playing: Boolean) {
-            val justStarted = playing && !isVideoPlaying
-            isVideoPlaying = playing
-            if (justStarted) {
-                runOnUiThread {
-                    val urlNow = webView.url
-                    if (floatWebView == null && YoutubeAdSkipper.isYoutubeWatchPage(urlNow)) {
-                        val check = Runnable {
-                            if (isVideoPlaying && floatWebView == null &&
-                                YoutubeAdSkipper.isYoutubeWatchPage(webView.url)
-                            ) {
-                                showFloatingVideoPlayer(webView.url)
-                            }
-                        }
-                        floatCheckHandler.postDelayed(check, 150)
-                    }
-                }
-            }
-        }
-    }
-
     inner class VideoDownloadBridge {
         @JavascriptInterface
         fun downloadVideo(url: String, title: String) {
@@ -620,7 +568,6 @@ class MainActivity : AppCompatActivity() {
         webView.settings.setGeolocationEnabled(true)
 
         webView.addJavascriptInterface(VideoDownloadBridge(), "AndroidDownloader")
-        webView.addJavascriptInterface(PipStateBridge(), "AndroidPip")
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
@@ -647,7 +594,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 customView = view
                 customViewCallback = callback
-                isVideoPlaying = true
                 refreshLayoutMode()
             }
 
@@ -804,19 +750,9 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                isVideoPlaying = false
                 edtUrl.setText(url)
-                // Điều hướng sang trang KHÔNG phải YouTube = "ra khỏi YouTube" -> đóng hẳn cửa
-                // sổ nổi (WebView riêng, độc lập hoàn toàn với trang chính - xem
-                // showFloatingVideoPlayer()). Còn nếu vẫn đang loanh quanh trong YouTube (kênh,
-                // tìm kiếm, video khác, trang chủ...) thì KHÔNG đụng gì tới cửa sổ nổi cả - nó cứ
-                // tiếp tục phát riêng, không phụ thuộc trang chính điều hướng đi đâu.
-                if (floatWebView != null && !YoutubeAdSkipper.isYoutube(url)) {
-                    closeFloatingVideoPlayer()
-                }
                 view?.evaluateJavascript(AdOverlayBlocker.JS, null)
                 view?.evaluateJavascript(VideoDownloadUI.JS, null)
-                view?.evaluateJavascript(VideoPlaybackTracker.JS, null)
                 if (YoutubeAdSkipper.isYoutube(url)) {
                     view?.evaluateJavascript(YoutubeAdSkipper.JS, null)
                 }
@@ -843,9 +779,7 @@ class MainActivity : AppCompatActivity() {
     // YouTube, hoặc về màn hình chính app).
     fun doBack() {
         // Đang ở fullscreen HTML5 THẬT (người dùng tự bấm nút fullscreen của YouTube, hoặc
-        // trang tự bật khi xoay ngang) -> Back chỉ thoát fullscreen bình thường. KHÔNG đụng gì
-        // tới cửa sổ nổi (WebView riêng, nếu đang có nó vẫn tiếp tục phát độc lập, không liên
-        // quan gì tới việc bật/tắt fullscreen của webView chính).
+        // trang tự bật khi xoay ngang) -> Back chỉ thoát fullscreen bình thường.
         if (customView != null) {
             webView.webChromeClient?.onHideCustomView()
             return
@@ -853,14 +787,6 @@ class MainActivity : AppCompatActivity() {
         val currentUrl = webView.url
         when {
             webView.canGoBack() && YoutubeAdSkipper.isYoutube(currentUrl) && !YoutubeAdSkipper.isYoutubeHome(currentUrl) -> {
-                // Đang xem video (cửa sổ nổi CÓ THỂ đã tự mở sẵn qua PipStateBridge - hoặc CHƯA
-                // kịp mở nếu vừa bấm Back ngay tức khắc sau khi bấm play) -> đảm bảo cửa sổ nổi
-                // đang hiển thị đúng video này TRƯỚC KHI điều hướng trang chính về trang chủ
-                // YouTube. Cửa sổ nổi là WebView RIÊNG BIỆT hoàn toàn nên việc điều hướng trang
-                // chính này KHÔNG ảnh hưởng gì tới nó (đúng yêu cầu "độc lập với trang YouTube").
-                if (isVideoPlaying) {
-                    showFloatingVideoPlayer(currentUrl)
-                }
                 programmaticLoad = true
                 webView.loadUrl("https://www.youtube.com")
             }
@@ -891,9 +817,6 @@ class MainActivity : AppCompatActivity() {
      *  YouTube ngay từ trang chủ app, chưa từng duyệt trang nào khác trước đó) -> không còn gì
      *  để lùi về nữa, coi như "ra khỏi YouTube" = về màn hình chính app. */
     private fun exitYoutube() {
-        // Thoát khỏi YouTube -> đóng hẳn cửa sổ nổi (nếu đang có) NGAY LẬP TỨC, không cần chờ
-        // trang đích load xong (đúng yêu cầu "back thêm 1 cái thoát YouTube thì nó mới mất").
-        if (floatWebView != null) closeFloatingVideoPlayer()
         val list = webView.copyBackForwardList()
         val currentIndex = list.currentIndex
         var targetIndex = -1
@@ -978,187 +901,8 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // ---------- Cửa sổ nổi trong app (mini-player kéo/di chuyển được, ĐỘC LẬP với trang chính) ----------
-
-    /** Lấy ID video YouTube từ URL (watch?v=, youtu.be/, /shorts/) - dùng để dựng link nhúng
-     *  (embed) tải vào WebView nổi riêng. */
-    private fun extractYoutubeVideoId(url: String?): String? {
-        if (url.isNullOrEmpty()) return null
-        return try {
-            val uri = Uri.parse(url)
-            when {
-                uri.host?.contains("youtu.be") == true -> uri.lastPathSegment
-                uri.path?.startsWith("/shorts/") == true ->
-                    uri.path?.removePrefix("/shorts/")?.substringBefore('/')
-                else -> uri.getQueryParameter("v")
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    /** Mở cửa sổ nổi phát ĐÚNG video đang xem, bằng 1 WebView HOÀN TOÀN RIÊNG (không phải
-     *  customView mượn từ trang chính - xem giải thích ở khai báo floatWebView phía trên) - nhờ
-     *  vậy trang chính (webView) muốn điều hướng/back đi đâu trong nội bộ YouTube cũng KHÔNG ảnh
-     *  hưởng gì tới video đang phát ở đây. CHỈ 1 cửa sổ nổi tồn tại tại 1 thời điểm - nếu đã có
-     *  sẵn 1 cửa sổ đang mở thì bỏ qua (giữ nguyên video đang phát, không tự thay bằng video mới).
-     *  Lấy tạm thời điểm đang xem dở ở trang chính (currentTime) để phát tiếp GẦN ĐÚNG chỗ đang
-     *  xem thay vì phát lại từ đầu (không thể liền mạch 100% vì đây là 1 phiên phát riêng, nhưng
-     *  đủ gần để không bị khó chịu). */
-    @SuppressLint("ClickableViewAccessibility")
-    private fun showFloatingVideoPlayer(watchUrl: String?) {
-        if (floatWebView != null) return
-        val videoId = extractYoutubeVideoId(watchUrl) ?: return
-
-        webView.evaluateJavascript(
-            "(function(){var v=document.querySelector('video');return v?Math.floor(v.currentTime):0;})();"
-        ) { result ->
-            val startSeconds = result?.toIntOrNull() ?: 0
-            createFloatingVideoWindow(videoId, startSeconds)
-        }
-    }
-
-    private fun createFloatingVideoWindow(videoId: String, startSeconds: Int) {
-        if (floatWebView != null) return
-        val root = findViewById<FrameLayout>(R.id.rootFrame)
-        val widthPx = dp(220)
-        val heightPx = dp(124) // tỉ lệ 16:9
-
-        val fWebView = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.mediaPlaybackRequiresUserGesture = false
-            settings.setSupportZoom(false)
-            // LỖI ĐÃ SỬA (bàn phím ảo không bật lên được, liên quan tới cửa sổ nổi phát video):
-            // WebView này được TỰ ĐỘNG tạo và add ngay vào CÙNG cửa sổ (window) với trang chính
-            // ngay khi video bắt đầu phát (xem PipStateBridge.setPlaying() - không chỉ lúc bấm
-            // Back), để video tiếp tục phát nền/nổi khi người dùng rời trang xem theo đúng yêu
-            // cầu "cho phép phát nền khi thoát app". WebView mặc định focusable/focusableInTouch-
-            // Mode = true - ngay khi Chromium nạp xong nội dung autoplay, nó có thể tự
-            // requestFocus() để nhận sự kiện của chính nó, CƯỚP MẤT view-focus đang giữ ở nơi
-            // khác (ô địa chỉ, hoặc 1 ô nhập ngay trên trang chính đang xem/đang gõ dở) -> bàn
-            // phím ảo (IME) đang hiện cho ô đó bị hệ thống tự ẩn theo vì view giữ nó không còn
-            // focus nữa. Đây CÙNG BẢN CHẤT lỗi đã sửa ở FloatingBackButton.kt (ở đó là 1 WINDOW
-            // riêng tranh giành WINDOW-focus; ở đây là 1 VIEW thường tranh giành VIEW-focus TRONG
-            // CÙNG 1 window) - cách sửa tương ứng: cấm hẳn WebView nổi này nhận focus. Không ảnh
-            // hưởng thao tác chạm (play/pause/tua, kéo tay cầm, bấm nút đóng) vì sự kiện chạm
-            // (MotionEvent) không phụ thuộc vào việc View có đang giữ focus hay không.
-            isFocusable = false
-            isFocusableInTouchMode = false
-            webViewClient = object : WebViewClient() {
-                override fun shouldInterceptRequest(
-                    view: WebView?, request: WebResourceRequest?
-                ): WebResourceResponse? {
-                    val host = request?.url?.host
-                    return if (AdBlocker.isAd(host)) AdBlocker.blockedResponse() else null
-                }
-            }
-            // Không cần bắt onShowCustomView ở đây - cửa sổ nổi không cho fullscreen riêng (đã
-            // đủ nhỏ gọn, fullscreen trong 1 khung 220dp không có ý nghĩa).
-            webChromeClient = WebChromeClient()
-            loadUrl(
-                "https://www.youtube.com/embed/$videoId?autoplay=1&playsinline=1&rel=0" +
-                    "&modestbranding=1&start=$startSeconds"
-            )
-        }
-
-        // Tay cầm kéo RIÊNG (không đè lên video) - để video vẫn bấm play/pause/tua được bình
-        // thường, chỉ khi chạm đúng vào tay cầm này mới kéo di chuyển cửa sổ.
-        val handle = TextView(this).apply {
-            text = "⠿"
-            textSize = 14f
-            setTextColor(android.graphics.Color.WHITE)
-            setBackgroundColor(0xAA000000.toInt())
-            gravity = Gravity.CENTER
-            layoutParams = FrameLayout.LayoutParams(dp(26), dp(26)).apply {
-                gravity = Gravity.TOP or Gravity.START
-            }
-        }
-
-        val btnClose = TextView(this).apply {
-            text = "✕"
-            textSize = 12f
-            setTextColor(android.graphics.Color.WHITE)
-            setBackgroundColor(0xAA000000.toInt())
-            setPadding(dp(6), dp(2), dp(6), dp(2))
-            isClickable = true
-            setOnClickListener { closeFloatingVideoPlayer() }
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { gravity = Gravity.TOP or Gravity.END }
-        }
-
-        val container = FrameLayout(this).apply {
-            setBackgroundColor(android.graphics.Color.BLACK)
-            elevation = dp(12).toFloat()
-            // Chặn CẢ container lẫn mọi view con (bao gồm fWebView ở trên, tay cầm, nút đóng)
-            // nhận focus - lớp bảo vệ thứ 2, phòng trường hợp 1 view con nào đó sau này lại tự
-            // ý gọi requestFocus() (xem giải thích chi tiết ở fWebView.isFocusable phía trên).
-            isFocusable = false
-            descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
-            layoutParams = FrameLayout.LayoutParams(widthPx, heightPx).apply {
-                // Mặc định neo gần CẠNH TRÊN màn hình (đúng yêu cầu "bình thường nó nằm ở cạnh
-                // trên"), lệch sang phải 1 chút. Kéo bằng tay cầm để dời đi bất kỳ đâu.
-                gravity = Gravity.TOP or Gravity.END
-                topMargin = dp(70)
-                marginEnd = dp(10)
-            }
-            addView(fWebView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-            addView(handle)
-            addView(btnClose)
-        }
-
-        // Kéo di chuyển tự do bằng ngón tay, CHỈ trên tay cầm (dùng translationX/Y - không đụng
-        // layoutParams gốc nên không giật/nhảy khi kéo).
-        var downX = 0f
-        var downY = 0f
-        var startTransX = 0f
-        var startTransY = 0f
-        handle.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = event.rawX
-                    downY = event.rawY
-                    startTransX = container.translationX
-                    startTransY = container.translationY
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    container.translationX = startTransX + (event.rawX - downX)
-                    container.translationY = startTransY + (event.rawY - downY)
-                    true
-                }
-                else -> false
-            }
-        }
-
-        root.addView(container)
-        floatContainer = container
-        floatWebView = fWebView
-
-        // Hiệu ứng mờ dần xuất hiện, không giật/nhảy khựng như cách làm cũ (không còn phải đi
-        // qua bước fullscreen gốc của trình duyệt nữa).
-        container.alpha = 0f
-        container.animate().alpha(1f).setDuration(220).start()
-    }
-
-    /** Đóng hẳn cửa sổ nổi (bấm ✕, hoặc thoát khỏi domain YouTube) - dừng và huỷ hẳn WebView
-     *  riêng đó (không chỉ ẩn) vì đây là 1 phiên phát video độc lập, không có lý do giữ chạy
-     *  ngầm khi người dùng đã không còn ở YouTube nữa. */
-    private fun closeFloatingVideoPlayer() {
-        floatContainer?.let { c -> (c.parent as? ViewGroup)?.removeView(c) }
-        floatWebView?.apply {
-            stopLoading()
-            loadUrl("about:blank")
-            destroy()
-        }
-        floatContainer = null
-        floatWebView = null
-    }
-
     // Thoát app -> xoá sạch mọi dấu vết phiên làm việc
     override fun onDestroy() {
-        closeFloatingVideoPlayer()
         clearAllSessionData()
         floatingBackButtonHandle?.detach()
         super.onDestroy()
@@ -1270,45 +1014,6 @@ object YoutubeAdSkipper {
         }
     }
 
-    /** Đang ở đúng trang XEM 1 video cụ thể (watch/shorts/youtu.be) - KHÔNG phải trang chủ/feed
-     *  (nơi video chỉ là xem trước tự động khi cuộn qua) - dùng để chỉ tự động tách video thành
-     *  cửa sổ nổi khi người dùng THỰC SỰ đang xem 1 video, không phải mọi video preview lướt qua. */
-    fun isYoutubeWatchPage(url: String?): Boolean {
-        if (url.isNullOrEmpty()) return false
-        if (!isYoutube(url)) return false
-        return url.contains("/watch") || url.contains("youtu.be/") || url.contains("/shorts/")
-    }
-}
-
-/**
- * Theo dõi mọi thẻ <video> trên trang (YouTube, các trang khác...) - báo về Android mỗi khi có
- * video BẮT ĐẦU/DỪNG phát qua cầu nối AndroidPip.setPlaying(), để MainActivity biết lúc nào cần
- * tự động vào Picture-in-Picture (xem onUserLeaveHint()). Dùng "capture" listener gắn ở document
- * để bắt được sự kiện play/pause/ended của TẤT CẢ video kể cả những video được trang tạo ra SAU
- * này (video YouTube được thay thế liên tục mỗi khi chuyển bài).
- */
-object VideoPlaybackTracker {
-    const val JS = """
-        (function() {
-            if (window.__pipTrackerRunning) return;
-            window.__pipTrackerRunning = true;
-            function report() {
-                try {
-                    var playing = false;
-                    var videos = document.querySelectorAll('video');
-                    for (var i = 0; i < videos.length; i++) {
-                        var v = videos[i];
-                        if (!v.paused && !v.ended && v.readyState > 2) { playing = true; break; }
-                    }
-                    if (window.AndroidPip) window.AndroidPip.setPlaying(playing);
-                } catch (e) {}
-            }
-            document.addEventListener('play', report, true);
-            document.addEventListener('pause', report, true);
-            document.addEventListener('ended', report, true);
-            setInterval(report, 1000);
-        })();
-    """
 }
 
 /**
