@@ -67,31 +67,13 @@ class HomeScreenManager(
     fun build(): FrameLayout {
         val root = FrameLayout(context)
 
-        // ── Nút Cài đặt góc trên-trái ──
-        val btnSettings = ImageView(context).apply {
-            setImageResource(R.drawable.ic_shortcut_settings)
-            layoutParams = FrameLayout.LayoutParams(dp(28), dp(28)).also {
-                it.gravity = Gravity.TOP or Gravity.START
-                it.topMargin = dp(40)
-                it.leftMargin = dp(16)
-            }
-            setPadding(dp(4), dp(4), dp(4), dp(4))
-            isClickable = true; isFocusable = true
-            background = android.util.TypedValue().let {
-                context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, it, true)
-                context.getDrawable(it.resourceId)
-            }
-            setOnClickListener { onOpenSettings() }
-        }
-        root.addView(btnSettings)
-
         // ── Toàn bộ nội dung cuộn dọc ──
         val scrollView = ScrollView(context).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
-            // Đẩy xuống tránh đè nút Settings
-            setPadding(0, dp(80), 0, dp(16))
+            // Chừa khoảng trống trên cùng tránh đè status bar
+            setPadding(0, dp(40), 0, dp(16))
         }
 
         val content = LinearLayout(context).apply {
