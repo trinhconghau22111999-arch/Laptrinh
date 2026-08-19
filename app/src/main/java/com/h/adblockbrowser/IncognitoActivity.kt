@@ -1,6 +1,8 @@
 package com.h.adblockbrowser
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -24,6 +26,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 /** Chế độ Ẩn danh - chạy ở TIẾN TRÌNH RIÊNG (xem android:process trong Manifest) nên dữ liệu
  *  (cookie, phiên đăng nhập, cache) hoàn toàn TÁCH BIỆT khỏi trình duyệt chính, không ảnh hưởng
@@ -314,13 +317,38 @@ class IncognitoActivity : AppCompatActivity() {
             }
             override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean = false
 
-            // Tự cấp quyền camera/mic cho WebView khi trang (YouTube tìm bằng giọng nói...)
-            // yêu cầu, vì quyền hệ thống đã được xin ở đầu app (MainActivity). THIẾU đoạn này
-            // là lý do nút mic ở tab Ẩn danh cứ đòi cấp quyền mãi: WebChromeClient mặc định
-            // KHÔNG trả lời PermissionRequest -> trang không bao giờ nhận phản hồi nên hiện
-            // lại y như chưa cấp quyền mỗi lần bấm.
+            // FIX (lý do "bấm mở mic là tắt liền"): trước đây CẤP LUÔN mọi quyền WebView yêu
+            // cầu mà không kiểm tra quyền HỆ THỐNG (RECORD_AUDIO/CAMERA) có thực sự đã được
+            // người dùng đồng ý hay chưa (xin ở MainActivity lúc mở app lần đầu) - nếu người
+            // dùng từng bấm "Từ chối" hoặc thu hồi quyền sau đó trong Cài đặt, WebView vẫn
+            // được báo "đã cấp" -> trang hiện UI ghi âm lên nhưng phần cứng mic bị hệ điều
+            // hành CHẶN THẬT NGAY LẬP TỨC vì thiếu quyền hệ thống -> luồng ghi âm kết thúc tức
+            // khắc, nhìn như "bấm mở là tắt liền". Giờ CHỈ cấp đúng resource nào có quyền hệ
+            // thống tương ứng đã thực sự được cấp; thiếu quyền nào thì từ chối riêng resource
+            // đó và báo cho người dùng biết.
             override fun onPermissionRequest(request: PermissionRequest?) {
-                request?.grant(request.resources)
+                if (request == null) return
+                val granted = request.resources.filter { resource ->
+                    when (resource) {
+                        PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                            ContextCompat.checkSelfPermission(this@IncognitoActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                        PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                            ContextCompat.checkSelfPermission(this@IncognitoActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                        else -> true
+                    }
+                }
+                if (granted.isNotEmpty()) {
+                    request.grant(granted.toTypedArray())
+                } else {
+                    request.deny()
+                }
+                if (granted.size < request.resources.size) {
+                    Toast.makeText(
+                        this@IncognitoActivity,
+                        "Chưa cấp quyền micro/camera cho ứng dụng - vào Cài đặt máy để cấp quyền",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
         webView.webViewClient = object : WebViewClient() {

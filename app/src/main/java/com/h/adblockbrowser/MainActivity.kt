@@ -649,10 +649,39 @@ class MainActivity : AppCompatActivity() {
                 refreshLayoutMode()
             }
 
-            // Tự cấp quyền camera/mic cho WebView khi trang (Meet/Zoom...) yêu cầu,
-            // vì quyền hệ thống đã được xin ở đầu app.
+            // FIX (lý do "bấm mở mic là tắt liền"): trước đây CẤP LUÔN mọi quyền WebView yêu
+            // cầu mà không kiểm tra quyền HỆ THỐNG (RECORD_AUDIO/CAMERA) có thực sự đã được
+            // người dùng đồng ý hay chưa - nếu người dùng từng bấm "Từ chối" ở hộp thoại xin
+            // quyền lúc mở app lần đầu (hoặc thu hồi quyền sau đó trong Cài đặt), WebView vẫn
+            // được báo "đã cấp" -> trang (YouTube tìm bằng giọng nói...) hiện UI ghi âm lên,
+            // nhưng phần cứng mic bị hệ điều hành CHẶN THẬT NGAY LẬP TỨC vì thiếu quyền hệ
+            // thống -> luồng ghi âm kết thúc tức khắc, nhìn như "bấm mở là tắt liền" dù giao
+            // diện tưởng đã được cấp quyền. Giờ CHỈ cấp đúng resource nào có quyền hệ thống
+            // tương ứng đã thực sự được cấp; thiếu quyền nào thì từ chối riêng resource đó và
+            // báo cho người dùng biết, thay vì cấp khống rồi để lỗi âm thầm khó hiểu.
             override fun onPermissionRequest(request: PermissionRequest?) {
-                request?.grant(request.resources)
+                if (request == null) return
+                val granted = request.resources.filter { resource ->
+                    when (resource) {
+                        PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                            ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                        PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                            ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                        else -> true
+                    }
+                }
+                if (granted.isNotEmpty()) {
+                    request.grant(granted.toTypedArray())
+                } else {
+                    request.deny()
+                }
+                if (granted.size < request.resources.size) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Chưa cấp quyền micro/camera cho ứng dụng - vào Cài đặt máy để cấp quyền",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
 
             // Tự cấp quyền VỊ TRÍ THẬT cho trang web (Google Maps...) khi trang yêu cầu qua
