@@ -112,6 +112,12 @@ class MainActivity : AppCompatActivity() {
     // bằng WebView (xem giải thích trong hội thoại) - giữ app đơn giản, ổn định hơn.
     private var floatingBackButtonHandle: FloatingBackButton.Handle? = null
 
+    // Nút "Off" nổi thứ 2, cùng kiểu nút tròn nổi kéo-thả với nút Back (xem FloatingBackButton),
+    // nhưng bấm vào sẽ phủ màn hình "giả tắt" (FakeScreenOff) thay vì lùi trang - dùng khi đang
+    // xem video (Youtube...) muốn "tắt màn hình" tạm thời (video/nhạc vẫn phát, chỉ chặn chạm
+    // nhầm) mà không phải tắt màn hình thật của máy (tắt thật thì Youtube tự dừng video).
+    private var floatingOffButtonHandle: FloatingBackButton.Handle? = null
+
     // Video/trang toàn màn hình HTML5 (xem onShowCustomView/onHideCustomView) - dùng chung với
     // logic chia 3 màn hình: khi đang ngang, customView (nếu có) sẽ là ô đầu tiên của chia 3
     // thay cho webView; khi đang dọc, customView hiện toàn màn hình bình thường trong
@@ -219,6 +225,7 @@ class MainActivity : AppCompatActivity() {
         // Đọc lại vị trí nút Back nổi mới nhất (có thể vừa bị kéo sang chỗ khác ở màn hình
         // khác trong lúc màn hình này ở nền) - xem giải thích đồng bộ ở FloatingBackButton.kt.
         floatingBackButtonHandle?.resync()
+        floatingOffButtonHandle?.resync()
     }
 
     private fun loadWallpaper() {
@@ -899,12 +906,28 @@ class MainActivity : AppCompatActivity() {
             onTap = { doBack() },
             onLongPress = { if (homeOverlay.visibility != View.VISIBLE) showHomeOverlay() }
         )
+
+        // Nút "Off" nổi - bấm để phủ màn hình giả tắt (xem FakeScreenOff). Icon "⏻" (nút nguồn)
+        // để phân biệt rõ với mũi tên "◁" của nút Back. Vị trí mặc định LẦN ĐẦU đặt bên cạnh
+        // TRÁI, hơi lệch phía trên giữa (yFraction 0.35) để không đè lên nút Back (mặc định bên
+        // phải, giữa màn hình) - sau đó người dùng kéo đi đâu tuỳ ý, tự nhớ vị trí riêng.
+        floatingOffButtonHandle = FloatingBackButton.attach(
+            activity = this,
+            root = root,
+            onTap = { FakeScreenOff.show(this) },
+            id = "off",
+            icon = "⏻",
+            defaultIsRight = false,
+            defaultYFraction = 0.35f
+        )
     }
 
     // Thoát app -> xoá sạch mọi dấu vết phiên làm việc
     override fun onDestroy() {
         clearAllSessionData()
         floatingBackButtonHandle?.detach()
+        floatingOffButtonHandle?.detach()
+        FakeScreenOff.hide()
         super.onDestroy()
     }
 }

@@ -49,8 +49,13 @@ import kotlin.math.abs
 object FloatingBackButton {
 
     private const val PREFS = "floating_back_btn_prefs"
-    private const val KEY_IS_RIGHT = "is_right"
-    private const val KEY_Y_FRACTION = "y_fraction"
+    // NHIỀU NÚT ĐỘC LẬP: mỗi nút (Back, Off...) có [id] riêng -> lưu vị trí riêng bằng key có
+    // hậu tố [id], để nút này kéo đi đâu không ảnh hưởng tới vị trí của nút kia. [id] mặc định
+    // "back" giữ NGUYÊN key cũ (không hậu tố) để tương thích ngược với vị trí đã lưu từ trước
+    // khi tính năng nhiều nút này chưa tồn tại (người dùng đang dùng bản cũ nâng cấp lên không
+    // bị mất vị trí nút Back đã kéo).
+    private fun keyIsRight(id: String) = if (id == "back") "is_right" else "is_right_$id"
+    private fun keyYFraction(id: String) = if (id == "back") "y_fraction" else "y_fraction_$id"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -60,22 +65,28 @@ object FloatingBackButton {
     // trợ thêm cho trường hợp cùng process (MainActivity/IncognitoActivity/AccountsActivity);
     // giữa các hồ sơ "Nhiều tài khoản" (khác process) thì bắt buộc phải đợi onResume đọc lại từ
     // SharedPreferences như mô tả ở trên vì bộ nhớ trong không dùng chung được giữa các process.
-    private val liveResyncCallbacks = mutableListOf<() -> Unit>()
+    // MỖI [id] có danh sách callback riêng để nút Back kéo không làm nút Off (khác id) bị gọi
+    // resync nhầm và ngược lại.
+    private val liveResyncCallbacks = mutableMapOf<String, MutableList<() -> Unit>>()
+    private fun callbacksFor(id: String) = liveResyncCallbacks.getOrPut(id) { mutableListOf() }
 
     // [excluding]: callback của chính nút vừa kéo, KHÔNG gọi lại nó ở đây - nút đó đang tự chạy
     // animation "hít cạnh" mượt riêng (animateSnapX), gọi resync đồng bộ ngay lúc này sẽ làm nó
     // bị "nhảy giật" tới đích tức thì thay vì trượt mượt. Chỉ các nút KHÁC (đang mở ở Activity
-    // khác cùng tiến trình) mới cần cập nhật ngay lập tức ở đây.
-    private fun savePosition(context: Context, isRight: Boolean, yFraction: Float, excluding: (() -> Unit)?) {
+    // khác cùng tiến trình, CÙNG [id]) mới cần cập nhật ngay lập tức ở đây.
+    private fun savePosition(context: Context, id: String, isRight: Boolean, yFraction: Float, excluding: (() -> Unit)?) {
         prefs(context).edit()
-            .putBoolean(KEY_IS_RIGHT, isRight)
-            .putFloat(KEY_Y_FRACTION, yFraction.coerceIn(0f, 1f))
+            .putBoolean(keyIsRight(id), isRight)
+            .putFloat(keyYFraction(id), yFraction.coerceIn(0f, 1f))
             .apply()
-        liveResyncCallbacks.toList().forEach { if (it !== excluding) it() }
+        callbacksFor(id).toList().forEach { if (it !== excluding) it() }
     }
 
     private fun applyPosition(
         context: Context,
+        id: String,
+        defaultIsRight: Boolean,
+        defaultYFraction: Float,
         btn: View,
         lp: WindowManager.LayoutParams,
         wm: WindowManager,
@@ -83,8 +94,8 @@ object FloatingBackButton {
     ) {
         if (root.width == 0 || root.height == 0) return
         val p = prefs(context)
-        val isRight = p.getBoolean(KEY_IS_RIGHT, true)
-        val yFraction = p.getFloat(KEY_Y_FRACTION, 0.5f)
+        val isRight = p.getBoolean(keyIsRight(id), defaultIsRight)
+        val yFraction = p.getFloat(keyYFraction(id), defaultYFraction)
         val btnSize = if (lp.width > 0) lp.width else btn.width
         lp.x = if (isRight) (root.width - btnSize).coerceAtLeast(0) else 0
         val maxY = (root.height - btnSize).coerceAtLeast(0)
@@ -103,6 +114,9 @@ object FloatingBackButton {
      *  khi Activity đóng. */
     class Handle internal constructor(
         private val context: Context,
+        private val id: String,
+        private val defaultIsRight: Boolean,
+        private val defaultYFraction: Float,
         private val wm: WindowManager,
         private val btn: View,
         private val lp: WindowManager.LayoutParams,
@@ -110,11 +124,11 @@ object FloatingBackButton {
         private val resyncCallback: () -> Unit
     ) {
         fun resync() {
-            applyPosition(context, btn, lp, wm, root)
+            applyPosition(context, id, defaultIsRight, defaultYFraction, btn, lp, wm, root)
         }
 
         fun detach() {
-            liveResyncCallbacks.remove(resyncCallback)
+            callbacksFor(id).remove(resyncCallback)
             try {
                 wm.removeViewImmediate(btn)
             } catch (e: Exception) {
@@ -127,13 +141,24 @@ object FloatingBackButton {
         activity: Activity,
         root: FrameLayout,
         onTap: () -> Unit,
-        onLongPress: (() -> Unit)? = null
+        onLongPress: (() -> Unit)? = null,
+        // [id]: định danh riêng cho từng nút nổi độc lập (vị trí lưu riêng, xem giải thích ở
+        // đầu object) - mặc định "back" để các chỗ gọi cũ (nút Back) không cần sửa gì, tự động
+        // giữ đúng key vị trí đã lưu từ trước. Nút mới (vd nút "Off" giả tắt màn hình) truyền
+        // id khác, ví dụ "off".
+        id: String = "back",
+        // Icon hiển thị trên nút - mặc định mũi tên lùi trang giống nút Back gốc.
+        icon: String = "◁",
+        // Vị trí mặc định LẦN ĐẦU (trước khi người dùng tự kéo đi chỗ khác) - cho nút mới xuất
+        // hiện ở 1 vị trí khác nút Back để 2 nút không đè lên nhau ngay từ đầu.
+        defaultIsRight: Boolean = true,
+        defaultYFraction: Float = 0.5f
     ): Handle {
         fun dp(v: Int) = (v * activity.resources.displayMetrics.density).toInt()
         val size = dp(56)
 
         val btn = TextView(activity).apply {
-            text = "◁"
+            text = icon
             textSize = 24f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
@@ -188,15 +213,15 @@ object FloatingBackButton {
 
         val resyncCallback = {
             ensureWindowAdded()
-            applyPosition(activity, btn, lp, wm, root)
+            applyPosition(activity, id, defaultIsRight, defaultYFraction, btn, lp, wm, root)
         }
-        liveResyncCallbacks.add(resyncCallback)
+        callbacksFor(id).add(resyncCallback)
 
         // Đợi layout xong (post) mới có windowToken hợp lệ (Activity đã thật sự attach vào cửa
         // sổ hệ thống) + kích thước root thật để tính vị trí ban đầu theo % đã lưu.
         root.post {
             ensureWindowAdded()
-            applyPosition(activity, btn, lp, wm, root)
+            applyPosition(activity, id, defaultIsRight, defaultYFraction, btn, lp, wm, root)
         }
 
         val longPressHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -276,7 +301,7 @@ object FloatingBackButton {
                         animateSnapX(lp.x, targetX)
                         val maxY = (root.height - lp.height).coerceAtLeast(1)
                         val yFraction = (lp.y.toFloat() / maxY).coerceIn(0f, 1f)
-                        savePosition(activity, isRight, yFraction, excluding = resyncCallback)
+                        savePosition(activity, id, isRight, yFraction, excluding = resyncCallback)
                     } else if (!longPressFired && event.actionMasked == MotionEvent.ACTION_UP) {
                         onTap()
                     }
@@ -286,6 +311,6 @@ object FloatingBackButton {
             }
         }
 
-        return Handle(activity, wm, btn, lp, root, resyncCallback)
+        return Handle(activity, id, defaultIsRight, defaultYFraction, wm, btn, lp, root, resyncCallback)
     }
 }
