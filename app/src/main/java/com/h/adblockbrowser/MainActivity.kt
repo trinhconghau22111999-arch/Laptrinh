@@ -914,7 +914,10 @@ class MainActivity : AppCompatActivity() {
         floatingOffButtonHandle = FloatingBackButton.attach(
             activity = this,
             root = root,
-            onTap = { FakeScreenOff.show(this) },
+            // Truyền [webView] để FakeScreenOff tự hạ chất lượng video xuống thấp nhất lúc bật
+            // (tiết kiệm CPU/GPU giải mã -> đỡ pin hơn khi không ai nhìn hình), và tự phục hồi
+            // đúng chất lượng cũ lúc tắt lớp phủ - xem giải thích chi tiết ở FakeScreenOff.kt.
+            onTap = { FakeScreenOff.show(this, webView) },
             id = "off",
             icon = "⏻",
             defaultIsRight = false,

@@ -12,6 +12,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.webkit.WebView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -22,6 +23,18 @@ import java.util.Calendar
  *  kiểu đồng hồ ở màn hình chính (xem MainActivity.buildDraggableClock) - nhìn như điện thoại
  *  đã tắt màn hình thật (kiểu màn khoá), NHƯNG video/nhạc phía dưới (WebView) vẫn tiếp tục phát
  *  bình thường vì đây chỉ là 1 lớp phủ hình ảnh, không thật sự tắt gì cả.
+ *
+ *  TIẾT KIỆM PIN (mới thêm): vì màn hình vật lý KHÔNG hề tắt thật và WebView vẫn giải mã video
+ *  bình thường phía sau lớp phủ đen (xem giải thích ở trên), lớp phủ đen tự nó không tiết kiệm
+ *  pin đáng kể - phần tốn pin nhất khi xem video là CPU/GPU giải mã hình ảnh độ phân giải cao.
+ *  Nên NGAY LÚC hiện lớp phủ, tự động ra lệnh cho trình phát Youtube trong WebView (qua
+ *  Youtube IFrame/Player API có sẵn trên trang, không cần biết cấu trúc DOM cụ thể) HẠ chất
+ *  lượng video xuống THẤP NHẤT hiện có - vẫn nghe được tiếng bình thường, chỉ hình vẽ nhỏ hơn
+ *  nhiều nên tốn ít CPU/GPU giải mã hơn hẳn, tiết kiệm pin thật sự trong lúc "màn hình" đang
+ *  "tắt" (không ai nhìn hình lúc này nên hạ chất lượng không ảnh hưởng gì). Chất lượng TRƯỚC
+ *  ĐÓ được lưu lại vào 1 biến toàn cục trên chính trang web (window.__abbPrevQuality) - lúc
+ *  [hide] gọi lại, đọc biến này ra và đặt lại ĐÚNG chất lượng cũ, tự động phục hồi như trước,
+ *  không cần người dùng chỉnh tay lại.
  *
  *  CHẶN CHẠM: lớp phủ này chặn TOÀN BỘ sự kiện chạm (return true ở mọi nơi trừ vùng đồng hồ) để
  *  không vô tình bấm trúng nút trên trang web/app phía dưới trong lúc "màn hình" đang "tắt".
@@ -43,10 +56,69 @@ object FakeScreenOff {
     private var clockHandler: Handler? = null
     private var clockRunnable: Runnable? = null
 
+    // WebView đang hiển thị lúc bật lớp phủ - giữ lại để [hide] biết gọi JS phục hồi chất lượng
+    // vào đúng WebView nào (không lưu context/activity để tránh leak, chỉ cần WebView).
+    private var pendingWebView: WebView? = null
+
+    // JS hạ chất lượng video Youtube xuống THẤP NHẤT hiện có, dùng Youtube Player API có sẵn
+    // trên trang (biến toàn cục "movie_player" - Youtube tự expose, không phải hack riêng của
+    // app). Lưu chất lượng hiện tại vào window.__abbPrevQuality trước khi đổi để [JS_RESTORE_
+    // QUALITY] có gì để phục hồi lại. An toàn nếu trang KHÔNG phải Youtube hoặc player chưa kịp
+    // load (mọi bước đều bọc try/catch, không có gì thì thôi, không throw ra ngoài).
+    private const val JS_LOWER_QUALITY = """
+        (function(){
+            try {
+                var p = document.getElementById('movie_player');
+                if (!p) return;
+                if (typeof p.getPlaybackQuality === 'function') {
+                    window.__abbPrevQuality = p.getPlaybackQuality();
+                }
+                if (typeof p.getAvailableQualityLevels === 'function') {
+                    var levels = p.getAvailableQualityLevels();
+                    var lowest = (levels && levels.length) ? levels[levels.length - 1] : 'tiny';
+                    if (typeof p.setPlaybackQualityRange === 'function') {
+                        p.setPlaybackQualityRange(lowest, lowest);
+                    }
+                    if (typeof p.setPlaybackQuality === 'function') {
+                        p.setPlaybackQuality(lowest);
+                    }
+                }
+            } catch (e) {}
+        })();
+    """
+
+    // JS phục hồi lại đúng chất lượng đã lưu trước đó - trước tiên GỠ giới hạn khoảng chất
+    // lượng ép ở trên (setPlaybackQualityRange('default','highres') = cho phép chọn tự do lại
+    // từ thấp tới cao nhất, không còn bị khoá cứng ở mức thấp nhất nữa), rồi mới set lại đúng
+    // mức đã lưu - thiếu bước gỡ giới hạn này thì dù setPlaybackQuality gọi lại mức cũ, video
+    // vẫn bị Youtube tự ép về mức thấp do khoảng giới hạn (range) cũ vẫn còn hiệu lực.
+    private const val JS_RESTORE_QUALITY = """
+        (function(){
+            try {
+                var p = document.getElementById('movie_player');
+                if (!p) return;
+                var prev = window.__abbPrevQuality || 'default';
+                if (typeof p.setPlaybackQualityRange === 'function') {
+                    p.setPlaybackQualityRange('default', 'highres');
+                }
+                if (typeof p.setPlaybackQuality === 'function') {
+                    p.setPlaybackQuality(prev);
+                }
+                window.__abbPrevQuality = null;
+            } catch (e) {}
+        })();
+    """
+
     fun isShowing(): Boolean = overlay != null
 
-    fun show(activity: Activity) {
+    /** [webView]: truyền WebView đang hiển thị (có thể null nếu không cần hạ chất lượng, ví dụ
+     *  gọi từ màn hình không có WebView) - nếu có, tự động hạ chất lượng video xuống thấp nhất
+     *  ngay khi lớp phủ hiện lên, và tự phục hồi khi [hide] được gọi. */
+    fun show(activity: Activity, webView: WebView? = null) {
         if (overlay != null) return // đang hiện rồi thì thôi, tránh add trùng window
+
+        pendingWebView = webView
+        webView?.evaluateJavascript(JS_LOWER_QUALITY, null)
 
         fun dp(v: Int) = (v * activity.resources.displayMetrics.density).toInt()
 
@@ -159,7 +231,8 @@ object FakeScreenOff {
     }
 
     /** Tắt lớp phủ, quay lại đúng trang đang xem (video Youtube... vẫn đang phát y nguyên vì
-     *  suốt lúc "tắt" WebView phía dưới chưa từng bị pause). */
+     *  suốt lúc "tắt" WebView phía dưới chưa từng bị pause) - VÀ tự động trả chất lượng video
+     *  về đúng mức trước khi bật lớp phủ (xem JS_RESTORE_QUALITY ở trên). */
     fun hide() {
         clockRunnable?.let { clockHandler?.removeCallbacks(it) }
         clockHandler = null
@@ -171,5 +244,8 @@ object FakeScreenOff {
             }
         }
         overlay = null
+
+        pendingWebView?.evaluateJavascript(JS_RESTORE_QUALITY, null)
+        pendingWebView = null
     }
 }
