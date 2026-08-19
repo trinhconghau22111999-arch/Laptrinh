@@ -16,13 +16,18 @@ import android.widget.TextView
 import kotlin.math.abs
 
 /** Nút Back nổi hình TRÒN, kiểu nút Home vật lý của iPhone đời cũ - LUÔN hiện sẵn trên màn
- *  hình (không ẩn ngoài mép/không cần vuốt để hiện như bản cũ), KÉO được tới bất kỳ đâu bằng
- *  ngón tay, thả tay ra tự "hít" (snap) về cạnh trái/phải gần nhất cho gọn, không che nội dung
- *  giữa màn hình. Chạm nhanh (không kéo) = [onTap] (mặc định dùng cho hành động Back). Giữ tay
+ *  hình. Chạm nhanh (không kéo) = [onTap] (mặc định dùng cho hành động Back). Giữ tay
  *  (long-press, không kéo) = [onLongPress] (dùng cho hành động Home/thoát) - mô phỏng đúng kiểu
  *  1 nút vật lý làm được nhiều việc của iPhone đời cũ, thay vì 2 nút Back+Home tách rời như
  *  trước. Dùng chung cho MainActivity / AccountBrowserActivity / IncognitoActivity / Accounts-
  *  Activity để khỏi lặp code nhiều lần.
+ *
+ *  2 CHẾ ĐỘ VỊ TRÍ (tham số [attach.fixed]):
+ *  - fixed = false (mặc định, hành vi CŨ): KÉO được tới bất kỳ đâu bằng ngón tay, thả tay ra tự
+ *    "hít" (snap) về cạnh trái/phải gần nhất cho gọn, không che nội dung giữa màn hình.
+ *  - fixed = true (MỚI): nút CỐ ĐỊNH hẳn ở góc DƯỚI trái hoặc phải (theo [attach.defaultIsRight]),
+ *    không kéo-thả được nữa, không đổi vị trí dù xoay ngang/dọc màn hình - xem chi tiết ở
+ *    [applyFixedPosition] và tham số [attach.fixed].
  *
  *  ĐỒNG BỘ VỊ TRÍ GIỮA CÁC MÀN HÌNH (đúng như 1 nút duy nhất): vị trí (cạnh trái/phải + %
  *  chiều cao) được LƯU VÀO SharedPreferences DÙNG CHUNG (đọc từ file chung, không phải bộ nhớ
@@ -108,27 +113,51 @@ object FloatingBackButton {
         }
     }
 
+    /** Tính vị trí GÓC DƯỚI trái/phải (theo [isRight]) cách mép [marginPx] - dùng cho nút CỐ
+     *  ĐỊNH ([fixed] = true ở [attach]): không đọc/ghi SharedPreferences như [applyPosition]
+     *  (nút kéo-thả) vì vị trí không đổi theo thao tác người dùng, LUÔN ở đúng góc dưới đã chọn.
+     *  Hàm này được gọi lại mỗi khi kích thước [root] đổi (ví dụ xoay ngang/dọc màn hình) để nút
+     *  luôn bám đúng góc đó, không bị lệch hay giữ nguyên toạ độ pixel cũ của chiều trước. */
+    private fun applyFixedPosition(
+        isRight: Boolean,
+        btn: View,
+        lp: WindowManager.LayoutParams,
+        wm: WindowManager,
+        root: ViewGroup,
+        marginPx: Int
+    ) {
+        if (root.width == 0 || root.height == 0) return
+        val btnSize = if (lp.width > 0) lp.width else btn.width
+        lp.x = if (isRight) (root.width - btnSize - marginPx).coerceAtLeast(0) else marginPx
+        lp.y = (root.height - btnSize - marginPx).coerceAtLeast(0)
+        try {
+            wm.updateViewLayout(btn, lp)
+        } catch (e: Exception) {
+            // Xem giải thích ở applyPosition - bỏ qua an toàn, sẽ được gọi lại sau.
+        }
+    }
+
     /** Handle đại diện cho 1 nút đang gắn trên 1 Activity cụ thể - Activity đó PHẢI gọi
      *  [resync] lại ở onResume() để luôn khớp vị trí mới nhất (xem giải thích ở đầu file), và
      *  NÊN gọi [detach] ở onDestroy() để gỡ view khỏi WindowManager, tránh rò rỉ (leak) window
      *  khi Activity đóng. */
     class Handle internal constructor(
-        private val context: Context,
         private val id: String,
-        private val defaultIsRight: Boolean,
-        private val defaultYFraction: Float,
         private val wm: WindowManager,
         private val btn: View,
         private val lp: WindowManager.LayoutParams,
         private val root: ViewGroup,
-        private val resyncCallback: () -> Unit
+        private val resyncCallback: () -> Unit,
+        // [fixed]: true = nút cố định, không đăng ký vào callbacksFor(id) (nút cố định không
+        // bao giờ kéo-thả nên không cần đẩy vị trí sang các Activity khác cùng tiến trình).
+        private val fixed: Boolean
     ) {
         fun resync() {
-            applyPosition(context, id, defaultIsRight, defaultYFraction, btn, lp, wm, root)
+            resyncCallback()
         }
 
         fun detach() {
-            callbacksFor(id).remove(resyncCallback)
+            if (!fixed) callbacksFor(id).remove(resyncCallback)
             try {
                 wm.removeViewImmediate(btn)
             } catch (e: Exception) {
@@ -149,13 +178,25 @@ object FloatingBackButton {
         id: String = "back",
         // Icon hiển thị trên nút - mặc định mũi tên lùi trang giống nút Back gốc.
         icon: String = "◁",
-        // Vị trí mặc định LẦN ĐẦU (trước khi người dùng tự kéo đi chỗ khác) - cho nút mới xuất
-        // hiện ở 1 vị trí khác nút Back để 2 nút không đè lên nhau ngay từ đầu.
+        // Vị trí mặc định LẦN ĐẦU (trước khi người dùng tự kéo đi chỗ khác, chỉ áp dụng khi
+        // [fixed] = false) - cho nút mới xuất hiện ở 1 vị trí khác nút Back để 2 nút không đè
+        // lên nhau ngay từ đầu. Khi [fixed] = true, [defaultIsRight] quyết định LUÔN LUÔN là
+        // góc trái hay phải (không còn ý nghĩa "mặc định lần đầu" nữa vì không kéo được).
         defaultIsRight: Boolean = true,
-        defaultYFraction: Float = 0.5f
+        defaultYFraction: Float = 0.5f,
+        // [fixed]: true = nút CỐ ĐỊNH ở góc DƯỚI trái/phải (theo [defaultIsRight]) - không kéo-
+        // thả được nữa (bỏ toàn bộ logic kéo/snap/lưu SharedPreferences ở dưới), luôn nằm đúng
+        // góc đó kể cả khi xoay ngang/dọc màn hình. Cần tự cập nhật lại vị trí mỗi khi kích
+        // thước [root] đổi (xem addOnLayoutChangeListener bên dưới) vì các Activity dùng nút
+        // này khai báo android:configChanges="orientation|..." trong Manifest nên KHÔNG bị huỷ/
+        // tạo lại lúc xoay máy - chỉ trông chờ [Handle.resync] ở onResume() là không đủ, vì
+        // xoay máy không tự gọi lại onResume. false (mặc định) = giữ nguyên hành vi kéo-thả +
+        // tự nhớ vị trí đã kéo như trước.
+        fixed: Boolean = false
     ): Handle {
         fun dp(v: Int) = (v * activity.resources.displayMetrics.density).toInt()
         val size = dp(56)
+        val fixedMargin = dp(12)
 
         val btn = TextView(activity).apply {
             text = icon
@@ -213,15 +254,29 @@ object FloatingBackButton {
 
         val resyncCallback = {
             ensureWindowAdded()
-            applyPosition(activity, id, defaultIsRight, defaultYFraction, btn, lp, wm, root)
+            if (fixed) {
+                applyFixedPosition(defaultIsRight, btn, lp, wm, root, fixedMargin)
+            } else {
+                applyPosition(activity, id, defaultIsRight, defaultYFraction, btn, lp, wm, root)
+            }
         }
-        callbacksFor(id).add(resyncCallback)
+        if (!fixed) callbacksFor(id).add(resyncCallback)
 
         // Đợi layout xong (post) mới có windowToken hợp lệ (Activity đã thật sự attach vào cửa
-        // sổ hệ thống) + kích thước root thật để tính vị trí ban đầu theo % đã lưu.
-        root.post {
-            ensureWindowAdded()
-            applyPosition(activity, id, defaultIsRight, defaultYFraction, btn, lp, wm, root)
+        // sổ hệ thống) + kích thước root thật để tính vị trí ban đầu theo % đã lưu (hoặc góc cố
+        // định, nếu [fixed]).
+        root.post { resyncCallback() }
+
+        if (fixed) {
+            // Nút cố định: KHÔNG được huỷ/tạo lại Activity lúc xoay máy (xem giải thích ở tham
+            // số [fixed]), nên phải tự lắng nghe root đổi kích thước (xảy ra ngay khi xoay máy,
+            // dù Activity không recreate) để tính lại đúng góc dưới trái/phải theo kích thước
+            // MỚI - nếu không, nút sẽ đứng yên ở toạ độ pixel cũ của chiều trước, nhìn như bị
+            // "trôi" ra giữa màn hình hoặc lệch khỏi góc sau khi xoay.
+            root.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                val sizeChanged = (right - left) != (oldRight - oldLeft) || (bottom - top) != (oldBottom - oldTop)
+                if (sizeChanged) resyncCallback()
+            }
         }
 
         val longPressHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -248,69 +303,86 @@ object FloatingBackButton {
             animator.start()
         }
 
-        btn.setOnTouchListener { v, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downRawX = event.rawX
-                    downRawY = event.rawY
-                    startLpX = lp.x
-                    startLpY = lp.y
-                    isDragging = false
-                    longPressFired = false
-                    if (onLongPress != null) {
-                        val r = Runnable {
-                            longPressFired = true
-                            v.animate().scaleX(1.15f).scaleY(1.15f).setDuration(80)
-                                .withEndAction { v.animate().scaleX(1f).scaleY(1f).setDuration(80).start() }
-                                .start()
-                            onLongPress()
-                        }
-                        longPressRunnable = r
-                        longPressHandler.postDelayed(r, longPressDelay)
-                    }
+        if (fixed) {
+            // Nút cố định: không kéo-thả, chỉ cần chạm nhanh = [onTap] và (nếu có) giữ tay =
+            // [onLongPress] - dùng thẳng OnClickListener/OnLongClickListener chuẩn của View
+            // thay vì tự bắt MotionEvent như nút kéo-thả, đơn giản và đủ dùng vì không cần theo
+            // dõi toạ độ ngón tay để tính kéo nữa.
+            btn.setOnClickListener { onTap() }
+            if (onLongPress != null) {
+                btn.setOnLongClickListener {
+                    it.animate().scaleX(1.15f).scaleY(1.15f).setDuration(80)
+                        .withEndAction { it.animate().scaleX(1f).scaleY(1f).setDuration(80).start() }
+                        .start()
+                    onLongPress()
                     true
                 }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = event.rawX - downRawX
-                    val dy = event.rawY - downRawY
-                    if (!isDragging && (abs(dx) > dragSlop || abs(dy) > dragSlop)) {
-                        isDragging = true
+            }
+        } else {
+            btn.setOnTouchListener { v, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downRawX = event.rawX
+                        downRawY = event.rawY
+                        startLpX = lp.x
+                        startLpY = lp.y
+                        isDragging = false
+                        longPressFired = false
+                        if (onLongPress != null) {
+                            val r = Runnable {
+                                longPressFired = true
+                                v.animate().scaleX(1.15f).scaleY(1.15f).setDuration(80)
+                                    .withEndAction { v.animate().scaleX(1f).scaleY(1f).setDuration(80).start() }
+                                    .start()
+                                onLongPress()
+                            }
+                            longPressRunnable = r
+                            longPressHandler.postDelayed(r, longPressDelay)
+                        }
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = event.rawX - downRawX
+                        val dy = event.rawY - downRawY
+                        if (!isDragging && (abs(dx) > dragSlop || abs(dy) > dragSlop)) {
+                            isDragging = true
+                            longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
+                        }
+                        if (isDragging) {
+                            val maxX = (root.width - lp.width).coerceAtLeast(0)
+                            val maxY = (root.height - lp.height).coerceAtLeast(0)
+                            lp.x = (startLpX + dx.toInt()).coerceIn(0, maxX)
+                            lp.y = (startLpY + dy.toInt()).coerceIn(0, maxY)
+                            try {
+                                wm.updateViewLayout(v, lp)
+                            } catch (e: Exception) {
+                            }
+                        }
+                        true
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
-                    }
-                    if (isDragging) {
-                        val maxX = (root.width - lp.width).coerceAtLeast(0)
-                        val maxY = (root.height - lp.height).coerceAtLeast(0)
-                        lp.x = (startLpX + dx.toInt()).coerceIn(0, maxX)
-                        lp.y = (startLpY + dy.toInt()).coerceIn(0, maxY)
-                        try {
-                            wm.updateViewLayout(v, lp)
-                        } catch (e: Exception) {
+                        if (isDragging) {
+                            // Thả tay -> "hít" về cạnh trái/phải gần nhất, giữ nguyên độ cao - và
+                            // LƯU LẠI vị trí này để các màn hình khác đồng bộ theo (đọc lại lúc
+                            // resync() ở onResume, hoặc ngay lập tức nếu cùng tiến trình).
+                            val maxX = (root.width - lp.width).coerceAtLeast(0)
+                            val isRight = lp.x + lp.width / 2 >= root.width / 2
+                            val targetX = if (isRight) maxX else 0
+                            animateSnapX(lp.x, targetX)
+                            val maxY = (root.height - lp.height).coerceAtLeast(1)
+                            val yFraction = (lp.y.toFloat() / maxY).coerceIn(0f, 1f)
+                            savePosition(activity, id, isRight, yFraction, excluding = resyncCallback)
+                        } else if (!longPressFired && event.actionMasked == MotionEvent.ACTION_UP) {
+                            onTap()
                         }
+                        true
                     }
-                    true
+                    else -> false
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
-                    if (isDragging) {
-                        // Thả tay -> "hít" về cạnh trái/phải gần nhất, giữ nguyên độ cao - và
-                        // LƯU LẠI vị trí này để các màn hình khác đồng bộ theo (đọc lại lúc
-                        // resync() ở onResume, hoặc ngay lập tức nếu cùng tiến trình).
-                        val maxX = (root.width - lp.width).coerceAtLeast(0)
-                        val isRight = lp.x + lp.width / 2 >= root.width / 2
-                        val targetX = if (isRight) maxX else 0
-                        animateSnapX(lp.x, targetX)
-                        val maxY = (root.height - lp.height).coerceAtLeast(1)
-                        val yFraction = (lp.y.toFloat() / maxY).coerceIn(0f, 1f)
-                        savePosition(activity, id, isRight, yFraction, excluding = resyncCallback)
-                    } else if (!longPressFired && event.actionMasked == MotionEvent.ACTION_UP) {
-                        onTap()
-                    }
-                    true
-                }
-                else -> false
             }
         }
 
-        return Handle(activity, id, defaultIsRight, defaultYFraction, wm, btn, lp, root, resyncCallback)
+        return Handle(id, wm, btn, lp, root, resyncCallback, fixed)
     }
 }
