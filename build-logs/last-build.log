@@ -14,41 +14,41 @@ Daemon will be stopped at the end of the build
 > Task :app:preDebugBuild UP-TO-DATE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
 > Task :app:checkKotlinGradlePluginConfigurationErrors
-> Task :app:generateDebugResValues
 > Task :app:dataBindingMergeDependencyArtifactsDebug
+> Task :app:generateDebugResValues
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
-> Task :app:mergeDebugResources
 > Task :app:parseDebugLocalResources
-> Task :app:checkDebugAarMetadata
-> Task :app:dataBindingGenBaseClassesDebug
 > Task :app:mapDebugSourceSetPaths
 > Task :app:createDebugCompatibleScreenManifests
+> Task :app:checkDebugAarMetadata
 > Task :app:extractDeepLinksDebug
+> Task :app:mergeDebugResources
 > Task :app:processDebugMainManifest
+> Task :app:dataBindingGenBaseClassesDebug
 > Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:processDebugManifestForPackage
-> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
-> Task :app:mergeDebugStartupProfile
-> Task :app:mergeDebugJniLibFolders
-> Task :app:checkDebugDuplicateClasses
-> Task :app:mergeDebugNativeLibs
+> Task :app:compressDebugAssets
 > Task :app:processDebugResources
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugStartupProfile
+> Task :app:compileDebugKotlin
 > Task :app:mergeExtDexDebug
+> Task :app:mergeDebugJniLibFolders
 > Task :app:mergeLibDexDebug
-
-> Task :app:stripDebugDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libimage_processing_util_jni.so.
-
+> Task :app:mergeDebugNativeLibs
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libimage_processing_util_jni.so.
 
 > Task :app:compileDebugKotlin
 w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:404:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
@@ -94,5 +94,5 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 1m 47s
+BUILD SUCCESSFUL in 1m 44s
 40 actionable tasks: 40 executed
