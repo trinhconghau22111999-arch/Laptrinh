@@ -78,7 +78,7 @@ class IncognitoActivity : AppCompatActivity() {
             setPadding(dp(10), dp(4), dp(10), dp(6))
         }
         edtUrl = EditText(this).apply {
-            hint = "Nhập địa chỉ web..."
+            hint = "Hỏi google"
             setHintTextColor(0xFF888888.toInt())
             setTextColor(0xFFFFFFFF.toInt())
             setBackgroundColor(0xFF1A1A1A.toInt())
@@ -154,6 +154,23 @@ class IncognitoActivity : AppCompatActivity() {
             insets
         }
         addFloatingBackHomeButtons(outer)
+
+        // ── Thông báo giải thích vì sao KHÔNG cho chạm 1 lần vào link để chuyển trang ──
+        // (xem thêm logic chặn thật ở shouldOverrideUrlLoading() bên dưới). Hiện MỖI LẦN mở Ẩn
+        // danh (không lưu cờ "đã xem" - đúng tinh thần Ẩn danh không lưu lại gì), để người dùng
+        // luôn được nhắc, tránh tưởng app bị lỗi khi bấm link không thấy chuyển trang.
+        AlertDialog.Builder(this)
+            .setTitle("Vì sao chạm vào link không chuyển trang?")
+            .setMessage(
+                "Vì mục đích của app là chặn quảng cáo, để tránh các quảng cáo ngầm trên " +
+                "màn hình - khi người dùng chạm phải nó kéo qua trang khác không mong muốn - " +
+                "nên nhà phát triển quyết định không cho phép chạm 1 lần để chuyển trang.\n\n" +
+                "Nếu bạn muốn mở trang mới hoặc thêm tab, hãy nhấn giữ vào link rồi chọn " +
+                "\"Mở trong tab mới\" nhé."
+            )
+            .setPositiveButton("Đã hiểu", null)
+            .setCancelable(true)
+            .show()
 
         // ĐÚNG NGHĨA Ẩn danh: KHÔNG khôi phục tab của lần trước nữa - mỗi lần mở Ẩn danh luôn
         // bắt đầu từ đầu (trống), và khi thoát (onDestroy) sẽ xoá sạch mọi tab đang mở, không

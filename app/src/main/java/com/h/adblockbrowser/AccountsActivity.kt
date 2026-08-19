@@ -53,7 +53,7 @@ class AccountsActivity : AppCompatActivity() {
             setTextColor(Color.WHITE)
         })
         root.addView(TextView(this).apply {
-            text = "Mỗi hồ sơ có cookie & phiên đăng nhập riêng, hoàn toàn tách biệt - có thể\nđăng nhập nhiều tài khoản Google khác nhau cùng lúc."
+            text = "Mỗi hồ sơ là 1 phiên đăng nhập riêng, hoàn toàn tách biệt (cookie & dữ liệu\nkhông chung nhau). Bạn có thể tạo nhiều hồ sơ để đăng nhập nhiều tài\nkhoản khác nhau cùng lúc - mỗi tài khoản tương ứng với 1 hồ sơ riêng."
             textSize = 12f
             setTextColor(0xFF999999.toInt())
             setPadding(0, dp(6), 0, dp(20))
