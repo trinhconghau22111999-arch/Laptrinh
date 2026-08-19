@@ -1029,6 +1029,22 @@ class MainActivity : AppCompatActivity() {
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
             settings.setSupportZoom(false)
+            // LỖI ĐÃ SỬA (bàn phím ảo không bật lên được, liên quan tới cửa sổ nổi phát video):
+            // WebView này được TỰ ĐỘNG tạo và add ngay vào CÙNG cửa sổ (window) với trang chính
+            // ngay khi video bắt đầu phát (xem PipStateBridge.setPlaying() - không chỉ lúc bấm
+            // Back), để video tiếp tục phát nền/nổi khi người dùng rời trang xem theo đúng yêu
+            // cầu "cho phép phát nền khi thoát app". WebView mặc định focusable/focusableInTouch-
+            // Mode = true - ngay khi Chromium nạp xong nội dung autoplay, nó có thể tự
+            // requestFocus() để nhận sự kiện của chính nó, CƯỚP MẤT view-focus đang giữ ở nơi
+            // khác (ô địa chỉ, hoặc 1 ô nhập ngay trên trang chính đang xem/đang gõ dở) -> bàn
+            // phím ảo (IME) đang hiện cho ô đó bị hệ thống tự ẩn theo vì view giữ nó không còn
+            // focus nữa. Đây CÙNG BẢN CHẤT lỗi đã sửa ở FloatingBackButton.kt (ở đó là 1 WINDOW
+            // riêng tranh giành WINDOW-focus; ở đây là 1 VIEW thường tranh giành VIEW-focus TRONG
+            // CÙNG 1 window) - cách sửa tương ứng: cấm hẳn WebView nổi này nhận focus. Không ảnh
+            // hưởng thao tác chạm (play/pause/tua, kéo tay cầm, bấm nút đóng) vì sự kiện chạm
+            // (MotionEvent) không phụ thuộc vào việc View có đang giữ focus hay không.
+            isFocusable = false
+            isFocusableInTouchMode = false
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(
                     view: WebView?, request: WebResourceRequest?
@@ -1075,6 +1091,11 @@ class MainActivity : AppCompatActivity() {
         val container = FrameLayout(this).apply {
             setBackgroundColor(android.graphics.Color.BLACK)
             elevation = dp(12).toFloat()
+            // Chặn CẢ container lẫn mọi view con (bao gồm fWebView ở trên, tay cầm, nút đóng)
+            // nhận focus - lớp bảo vệ thứ 2, phòng trường hợp 1 view con nào đó sau này lại tự
+            // ý gọi requestFocus() (xem giải thích chi tiết ở fWebView.isFocusable phía trên).
+            isFocusable = false
+            descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
             layoutParams = FrameLayout.LayoutParams(widthPx, heightPx).apply {
                 // Mặc định neo gần CẠNH TRÊN màn hình (đúng yêu cầu "bình thường nó nằm ở cạnh
                 // trên"), lệch sang phải 1 chút. Kéo bằng tay cầm để dời đi bất kỳ đâu.
