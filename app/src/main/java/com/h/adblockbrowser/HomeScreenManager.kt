@@ -44,6 +44,12 @@ object ShortcutsRepository {
         ),
         "files" to ShortcutItem(
             "files", "Quản lý tệp", ShortcutType.ACTIVITY, "FilesActivity", R.drawable.ic_shortcut_files
+        ),
+        "calendar" to ShortcutItem(
+            "calendar", "Lịch", ShortcutType.ACTIVITY, "CalendarActivity", R.drawable.ic_shortcut_calendar
+        ),
+        "calculator" to ShortcutItem(
+            "calculator", "Máy tính", ShortcutType.ACTIVITY, "CalculatorActivity", R.drawable.ic_shortcut_calculator
         )
     )
 }
@@ -95,7 +101,7 @@ class HomeScreenManager(
             gravity = Gravity.CENTER
             setPadding(0, dp(8), 0, dp(16))
         }
-        listOf("youtube", "incognito", "accounts", "files").forEach { key ->
+        listOf("youtube", "incognito", "accounts", "files", "calendar", "calculator").forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
                 shortcutRow.addView(buildIconCell(
                     label = item.label,

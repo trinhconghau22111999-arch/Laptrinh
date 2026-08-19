@@ -497,6 +497,8 @@ class MainActivity : AppCompatActivity() {
                 "AccountsActivity" -> AccountsActivity::class.java
                 "AppLockSetupActivity" -> AppLockSetupActivity::class.java
                 "FilesActivity" -> FilesActivity::class.java
+                "CalendarActivity" -> CalendarActivity::class.java
+                "CalculatorActivity" -> CalculatorActivity::class.java
                 else -> null
             }
             if (activityClass != null) {
