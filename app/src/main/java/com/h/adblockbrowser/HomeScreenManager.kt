@@ -15,8 +15,11 @@ import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
 
 /** Loại 1 mục trên trang chủ: mở thẳng 1 trang web (WEB) hay mở 1 Activity trong app (ACTIVITY). */
 enum class ShortcutType { WEB, ACTIVITY }
@@ -58,111 +61,54 @@ object ShortcutsRepository {
     )
 }
 
-/** Trang chủ kiểu MÀN HÌNH START của Windows Phone / Windows 10 Mobile:
- *   1) Phía trên: lưới "Live Tile" vuông, phẳng, mỗi ô 1 màu accent riêng (xoay vòng bảng màu
- *      gốc của WP) chứa icon trắng đơn sắc + nhãn ở góc dưới trái - giống hệt các ô ghim
- *      (pinned tile) trên Start Screen thật, xếp 3 cột kiểu tile cỡ vừa (medium tile).
- *   2) Phía dưới: DANH SÁCH TOÀN BỘ ỨNG DỤNG đã cài, xếp thành danh sách dọc theo thứ tự
- *      A-Z với tiêu đề chữ cái lớn màu accent đứng riêng từng nhóm - đúng kiểu "App list" khi
- *      vuốt Start Screen của WP sang phải, KHÔNG phải lưới icon tròn kiểu iOS như bản cũ. */
+/** Trang chủ kiểu PIVOT/HUB 2 TRANG của Windows Phone / Windows 10 Mobile - vuốt ngang để
+ *  chuyển giữa 2 trang riêng biệt, đúng cảm giác Start Screen thật:
+ *   1) TRANG "start" (bên trái, hiện ra đầu tiên): widget giờ/ngày + lưới "Live Tile" vuông -
+ *      gồm các ô CỐ ĐỊNH (YouTube, Ẩn danh...) VÀ các app người dùng tự "Ghim vào start".
+ *   2) TRANG "ứng dụng" (bên phải, vuốt sang mới thấy): DANH SÁCH TOÀN BỘ ỨNG DỤNG đã cài, xếp
+ *      A-Z. NHẤN GIỮ (long-press) 1 app trong danh sách này sẽ hiện menu "Ghim vào start" -
+ *      chọn xong app đó xuất hiện thành tile ngay trên trang "start", đúng kiểu Windows Phone.
+ *      NHẤN GIỮ tile vừa ghim đó trên trang "start" sẽ hiện menu "Bỏ ghim khỏi start". */
 class HomeScreenManager(
     private val context: Context,
     private val onOpenShortcut: (ShortcutItem) -> Unit,
     private val onOpenSettings: () -> Unit
 ) {
     /** Bảng màu Live Tile - dùng chung [ThemePrefs.PALETTE] (đúng 20 màu Accent/Live Tile gốc
-     *  của Windows Phone) để đồng bộ với lưới chọn màu ở Cài đặt > Giao diện, thay vì trang chủ
-     *  tự có 1 bảng 8 màu rút gọn riêng như trước - xoay vòng cho từng ô ghim để mỗi tile 1 màu
-     *  khác nhau, đúng cảm giác Start Screen thật (không phải app nào cũng cùng 1 màu). */
+     *  của Windows Phone) để đồng bộ với lưới chọn màu ở Cài đặt > Giao diện - xoay vòng cho
+     *  từng ô ghim để mỗi tile 1 màu khác nhau, đúng cảm giác Start Screen thật. */
     private val tilePalette = ThemePrefs.PALETTE
 
+    /** Giữ lại tham chiếu để [refreshPages] có thể dựng lại nội dung 2 trang ngay khi người
+     *  dùng ghim/bỏ ghim 1 app, mà KHÔNG cần thoát vào lại trang chủ mới thấy cập nhật. */
+    private var pageAdapterRef: PageAdapter? = null
+    private var clockWidgetRef: View? = null
+
     /** [clockWidget]: widget giờ/ngày (nếu có) được chèn làm mục ĐẦU TIÊN trong nội dung cuộn
-     *  dọc, NẰM NGAY TRONG LUỒNG LAYOUT (không phải overlay nổi tự do như trước) - nhờ vậy nó
-     *  "dính" liền phía trên lưới tile, và khi người dùng chụm/dãn tay phóng to widget này ra,
-     *  chiều cao của nó tăng lên sẽ tự động ĐẨY lưới tile + danh sách app bên dưới xuống theo. */
+     *  dọc của TRANG "start", NẰM NGAY TRONG LUỒNG LAYOUT (không phải overlay nổi tự do) - nhờ
+     *  vậy nó "dính" liền phía trên lưới tile, và khi người dùng chụm/dãn tay phóng to widget
+     *  này ra, chiều cao của nó tăng lên sẽ tự động ĐẨY lưới tile bên dưới xuống theo. */
     fun build(clockWidget: View? = null): FrameLayout {
+        clockWidgetRef = clockWidget
         val root = FrameLayout(context).apply {
             setBackgroundColor(Color.TRANSPARENT)
         }
 
-        // ── Toàn bộ nội dung cuộn dọc ──
-        val scrollView = ScrollView(context).apply {
+        // ── ViewPager2: 2 TRANG Pivot vuốt ngang - trang 0 "start", trang 1 "ứng dụng" ──
+        val pages = mutableListOf(buildStartPage(clockWidget), buildAppListPage())
+        val adapter = PageAdapter(pages)
+        pageAdapterRef = adapter
+        val pager = ViewPager2(context).apply {
+            id = View.generateViewId()
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setPadding(dp(20), dp(40), dp(20), dp(24))
-            overScrollMode = View.OVER_SCROLL_NEVER
+            this.adapter = adapter
+            offscreenPageLimit = 1
         }
+        root.addView(pager)
 
-        val content = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        // ── Widget giờ/ngày (nếu có) - luôn ở trên cùng, dính liền phía trên lưới tile ──
-        if (clockWidget != null) {
-            content.addView(clockWidget, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = dp(12) })
-        }
-
-        // ── Tiêu đề "start" kiểu Hub/Pivot header của WP: chữ thường, mảnh, rất to ──
-        content.addView(sectionHeader("start"))
-
-        // ── Lưới Live Tile - 3 cột, ô vuông sát nhau (khe hở 2dp) ──
-        val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "calendar", "calculator", "clock", "app_lock")
-        val tileCols = 3
-        val tileGrid = GridLayout(context).apply {
-            columnCount = tileCols
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).also { it.bottomMargin = dp(28) }
-        }
-        pinnedKeys.forEachIndexed { index, key ->
-            ShortcutsRepository.ALL[key]?.let { item ->
-                val tileColor = tilePalette[index % tilePalette.size]
-                val lp = GridLayout.LayoutParams().apply {
-                    width = 0
-                    height = dp(96)
-                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1, 1f)
-                    setMargins(dp(1), dp(1), dp(1), dp(1))
-                }
-                tileGrid.addView(buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }, lp)
-            }
-        }
-        content.addView(tileGrid)
-
-        // ── Tiêu đề "danh sách ứng dụng" kiểu Hub/Pivot header ──
-        content.addView(sectionHeader("ứng dụng"))
-
-        // ── Danh sách toàn bộ app đã cài, xếp A-Z, có tiêu đề chữ cái từng nhóm ──
-        val apps = installedApps()
-        var lastLetter: String? = null
-        apps.forEach { info ->
-            val pm = context.packageManager
-            val label = info.loadLabel(pm).toString()
-            val icon = info.loadIcon(pm)
-            val pkgName = info.activityInfo.packageName
-            val firstLetter = label.trim().take(1).uppercase().ifEmpty { "#" }
-            if (firstLetter != lastLetter) {
-                content.addView(alphabetHeader(firstLetter))
-                lastLetter = firstLetter
-            }
-            content.addView(buildAppListRow(label, icon) {
-                val launch = pm.getLaunchIntentForPackage(pkgName)
-                if (launch != null) {
-                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(launch)
-                }
-            })
-        }
-
-        scrollView.addView(content)
-        root.addView(scrollView)
-
-        // ── Nút Cài đặt (bánh răng) - CỐ ĐỊNH ở góc trên-phải, nổi trên nội dung cuộn, LUÔN
-        //    hiện sẵn kể cả khi cuộn xuống. TRƯỚC ĐÂY [onOpenSettings] được truyền vào nhưng
-        //    KHÔNG có nút nào gọi tới nó trong toàn bộ HomeScreenManager - nghĩa là màn Cài đặt
-        //    không có cách nào mở được từ trang chủ. Thêm nút này để sửa lỗi đó. */
+        // ── Nút Cài đặt (bánh răng) - CỐ ĐỊNH ở góc trên-phải, nổi trên CẢ 2 trang. ──
         val btnSettings = ImageView(context).apply {
             setImageResource(R.drawable.ic_shortcut_settings)
             setColorFilter(Color.WHITE)
@@ -179,6 +125,178 @@ class HomeScreenManager(
         })
 
         return root
+    }
+
+    /** Dựng lại nội dung CẢ 2 trang và báo cho ViewPager2 refresh - gọi ngay sau khi người dùng
+     *  ghim hoặc bỏ ghim 1 app, để tile mới hiện/mất trên trang "start" NGAY LẬP TỨC. */
+    private fun refreshPages() {
+        val adapter = pageAdapterRef ?: return
+        adapter.pages[0] = buildStartPage(clockWidgetRef)
+        adapter.pages[1] = buildAppListPage()
+        adapter.notifyDataSetChanged()
+    }
+
+    /** Dựng TRANG "start" (trang trái - hiện mặc định): widget giờ/ngày + tiêu đề "start" +
+     *  lưới Live Tile 3 cột, gồm các ô cố định VÀ các app người dùng đã ghim thêm. */
+    private fun buildStartPage(clockWidget: View?): View {
+        val scrollView = ScrollView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setPadding(dp(20), dp(40), dp(20), dp(24))
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        // ── Widget giờ/ngày (nếu có) - luôn ở trên cùng của trang "start" ──
+        if (clockWidget != null) {
+            (clockWidget.parent as? ViewGroup)?.removeView(clockWidget)
+            content.addView(clockWidget, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = dp(12) })
+        }
+
+        // ── Tiêu đề "start" kiểu Hub/Pivot header của WP: chữ thường, mảnh, rất to ──
+        content.addView(sectionHeader("start"))
+
+        // ── Lưới Live Tile - 3 cột, ô vuông sát nhau (khe hở 2dp) ──
+        val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "calendar", "calculator", "clock", "app_lock")
+        val tileCols = 3
+        val tileGrid = GridLayout(context).apply {
+            columnCount = tileCols
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        var colorIndex = 0
+        fun nextTileLp(): GridLayout.LayoutParams = GridLayout.LayoutParams().apply {
+            width = 0
+            height = dp(96)
+            columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1, 1f)
+            setMargins(dp(1), dp(1), dp(1), dp(1))
+        }
+
+        // Các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản, ...)
+        pinnedKeys.forEach { key ->
+            ShortcutsRepository.ALL[key]?.let { item ->
+                val tileColor = tilePalette[colorIndex % tilePalette.size]; colorIndex++
+                tileGrid.addView(buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }, nextTileLp())
+            }
+        }
+
+        // ── Các app người dùng đã NHẤN GIỮ trong trang "ứng dụng" rồi chọn "Ghim vào start" ──
+        val pm = context.packageManager
+        PinnedAppsStore.getAll(context).forEach { pkgName ->
+            val appIcon = try { pm.getApplicationIcon(pkgName) } catch (e: Exception) { null }
+            val appLabel = try { pm.getApplicationInfo(pkgName, 0).loadLabel(pm).toString() } catch (e: Exception) { null }
+            if (appIcon != null && appLabel != null) {
+                val tileColor = tilePalette[colorIndex % tilePalette.size]; colorIndex++
+                val tile = buildAppTile(appLabel, appIcon, tileColor,
+                    onClick = {
+                        val launch = pm.getLaunchIntentForPackage(pkgName)
+                        if (launch != null) {
+                            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(launch)
+                        }
+                    },
+                    onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
+                )
+                tileGrid.addView(tile, nextTileLp())
+            }
+        }
+
+        content.addView(tileGrid)
+
+        scrollView.addView(content)
+        return scrollView
+    }
+
+    /** Dựng TRANG "ứng dụng" (trang phải - vuốt sang mới thấy): DANH SÁCH TOÀN BỘ app đã cài,
+     *  xếp A-Z. Mỗi dòng hỗ trợ NHẤN GIỮ để hiện menu ghim/bỏ ghim vào "start". */
+    private fun buildAppListPage(): View {
+        val scrollView = ScrollView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setPadding(dp(20), dp(40), dp(20), dp(24))
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        content.addView(sectionHeader("ứng dụng"))
+
+        val apps = installedApps()
+        var lastLetter: String? = null
+        apps.forEach { info ->
+            val pm = context.packageManager
+            val label = info.loadLabel(pm).toString()
+            val icon = info.loadIcon(pm)
+            val pkgName = info.activityInfo.packageName
+            val firstLetter = label.trim().take(1).uppercase().ifEmpty { "#" }
+            if (firstLetter != lastLetter) {
+                content.addView(alphabetHeader(firstLetter))
+                lastLetter = firstLetter
+            }
+            content.addView(buildAppListRow(
+                label, icon,
+                onClick = {
+                    val launch = pm.getLaunchIntentForPackage(pkgName)
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(launch)
+                    }
+                },
+                onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
+            ))
+        }
+
+        scrollView.addView(content)
+        return scrollView
+    }
+
+    /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
+     *  "start") - tự đổi nhãn "Ghim vào start" / "Bỏ ghim khỏi start" tuỳ trạng thái hiện tại,
+     *  rồi dựng lại 2 trang ngay để tile mới hiện/mất tức thì. */
+    private fun showPinContextMenu(anchor: View, pkgName: String) {
+        val pinned = PinnedAppsStore.isPinned(context, pkgName)
+        val popup = PopupMenu(context, anchor)
+        val title = if (pinned) "Bỏ ghim khỏi start" else "Ghim vào start"
+        popup.menu.add(0, 0, 0, title)
+        popup.setOnMenuItemClickListener {
+            if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
+            refreshPages()
+            true
+        }
+        popup.show()
+    }
+
+    /** Adapter tối giản cho ViewPager2: 2 trang (có thể được [refreshPages] dựng lại), bọc mỗi
+     *  View có sẵn vào 1 FrameLayout chứa cho từng vị trí. */
+    private class PageAdapter(val pages: MutableList<View>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val container = FrameLayout(parent.context).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+            return object : RecyclerView.ViewHolder(container) {}
+        }
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            val container = holder.itemView as FrameLayout
+            container.removeAllViews()
+            val page = pages[position]
+            (page.parent as? ViewGroup)?.removeView(page)
+            container.addView(page)
+        }
+
+        override fun getItemCount(): Int = pages.size
     }
 
     /** Tiêu đề lớn kiểu Pivot/Hub header của WP: chữ thường, cực mảnh, cỡ lớn, màu trắng. */
@@ -200,8 +318,8 @@ class HomeScreenManager(
         setPadding(dp(4), dp(14), dp(4), dp(4))
     }
 
-    /** 1 ô "Live Tile" vuông kiểu WP: nền màu accent phẳng (KHÔNG bo góc, KHÔNG đổ bóng),
-     *  icon trắng đơn sắc ở góc trên-trái, nhãn chữ ở góc dưới-trái - đúng bố cục tile chuẩn. */
+    /** 1 ô "Live Tile" vuông kiểu WP cho các mục CỐ ĐỊNH (dùng icon vector có sẵn trong app):
+     *  nền màu accent phẳng, icon trắng đơn sắc góc trên-trái, nhãn ở góc dưới-trái. */
     private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
         val tile = FrameLayout(context).apply {
             background = GradientDrawable().apply {
@@ -221,20 +339,7 @@ class HomeScreenManager(
             }
         }
 
-        val labelView = TextView(context).apply {
-            text = label
-            textSize = 13f
-            setTextColor(Color.WHITE)
-            maxLines = 2
-            ellipsize = TextUtils.TruncateAt.END
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).also {
-                it.gravity = Gravity.BOTTOM or Gravity.START
-                it.leftMargin = dp(8); it.bottomMargin = dp(6); it.rightMargin = dp(8)
-            }
-        }
+        val labelView = buildTileLabel(label)
 
         tile.addView(icon)
         tile.addView(labelView)
@@ -242,15 +347,68 @@ class HomeScreenManager(
         return tile
     }
 
+    /** 1 ô "Live Tile" cho app NGƯỜI DÙNG TỰ GHIM (dùng icon thật của app, không phải icon
+     *  vector đơn sắc) - bố cục giống [buildLiveTile], thêm NHẤN GIỮ để mở menu bỏ ghim. */
+    private fun buildAppTile(
+        label: String, icon: Drawable, tileColor: Int,
+        onClick: () -> Unit, onLongPress: (View) -> Unit
+    ): View {
+        val tile = FrameLayout(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(tileColor)
+            }
+            isClickable = true
+            isFocusable = true
+            isLongClickable = true
+            foreground = pressedOverlay()
+        }
+
+        val iconView = ImageView(context).apply {
+            setImageDrawable(icon)
+            layoutParams = FrameLayout.LayoutParams(dp(28), dp(28)).also {
+                it.gravity = Gravity.TOP or Gravity.START
+                it.leftMargin = dp(10); it.topMargin = dp(10)
+            }
+        }
+
+        val labelView = buildTileLabel(label)
+
+        tile.addView(iconView)
+        tile.addView(labelView)
+        tile.setOnClickListener { onClick() }
+        tile.setOnLongClickListener { anchor -> onLongPress(anchor); true }
+        return tile
+    }
+
+    private fun buildTileLabel(label: String): TextView = TextView(context).apply {
+        text = label
+        textSize = 13f
+        setTextColor(Color.WHITE)
+        maxLines = 2
+        ellipsize = TextUtils.TruncateAt.END
+        typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ).also {
+            it.gravity = Gravity.BOTTOM or Gravity.START
+            it.leftMargin = dp(8); it.bottomMargin = dp(6); it.rightMargin = dp(8)
+        }
+    }
+
     /** 1 dòng trong danh sách app kiểu WP App List: icon nhỏ bên trái + tên app, không nền,
-     *  không viền, không bo góc - chỉ cách nhau bằng khoảng trắng, tối giản tuyệt đối. */
-    private fun buildAppListRow(label: String, iconDrawable: Drawable, onClick: () -> Unit): View {
+     *  không viền, không bo góc. NHẤN GIỮ (long-press) để mở menu ghim/bỏ ghim vào "start". */
+    private fun buildAppListRow(
+        label: String, iconDrawable: Drawable,
+        onClick: () -> Unit, onLongPress: (View) -> Unit
+    ): View {
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(4), dp(9), dp(4), dp(9))
             isClickable = true
             isFocusable = true
+            isLongClickable = true
             foreground = pressedOverlay()
         }
         val icon = ImageView(context).apply {
@@ -268,6 +426,7 @@ class HomeScreenManager(
         row.addView(icon)
         row.addView(text)
         row.setOnClickListener { onClick() }
+        row.setOnLongClickListener { anchor -> onLongPress(anchor); true }
         return row
     }
 
