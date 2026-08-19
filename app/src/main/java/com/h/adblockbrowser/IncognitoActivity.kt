@@ -451,7 +451,9 @@ class IncognitoActivity : AppCompatActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
+        // FIX (giống MainActivity): không ép ẩn thanh hệ thống khi đang có EditText (ô địa chỉ)
+        // giữ focus, nếu không bàn phím ảo sẽ bị huỷ ngay giữa lúc đang hiện lên.
+        if (hasFocus && currentFocus !is EditText) {
             val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
             insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
         }

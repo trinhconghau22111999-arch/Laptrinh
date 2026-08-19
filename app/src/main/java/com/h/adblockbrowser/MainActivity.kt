@@ -249,15 +249,20 @@ class MainActivity : AppCompatActivity() {
         pauseAllVideos()
     }
 
-    /** Dừng phát TẤT CẢ thẻ <video> đang có trên trang hiện tại trong WebView (kể cả video
-     *  YouTube dạng bình thường, chưa fullscreen) - dùng mỗi khi người dùng rời khỏi trang/rời
-     *  khỏi app để tiếng không tiếp tục phát ngầm ngoài ý muốn. */
+    /** Dừng phát TẤT CẢ thẻ <video> VÀ <audio> đang có trên trang hiện tại trong WebView (kể cả
+     *  video YouTube dạng bình thường chưa fullscreen, và các trang nghe nhạc dùng thẻ <audio>
+     *  như Zing MP3, SoundCloud, NhacCuaTui...) - dùng mỗi khi người dùng rời khỏi trang/rời
+     *  khỏi app để tiếng không tiếp tục phát ngầm ngoài ý muốn.
+     *  FIX (lỗi #5): trước đây chỉ pause thẻ <video>, bỏ sót thẻ <audio> - nên các trang nghe
+     *  nhạc (phát qua <audio>, không phải <video>) vẫn tiếp tục phát bình thường kể cả khi tắt
+     *  màn hình hoặc thoát hẳn ra khỏi app (miễn không bị vuốt dọn khỏi Recents). Cũng gọi
+     *  webView.onPause() kèm theo ở nơi gọi hàm này để dừng luôn timer/JS liên quan. */
     private fun pauseAllVideos() {
         if (!::webView.isInitialized) return
         webView.evaluateJavascript(
             "(function(){" +
-                "var vs=document.querySelectorAll('video');" +
-                "for(var i=0;i<vs.length;i++){try{vs[i].pause();}catch(e){}}" +
+                "var els=document.querySelectorAll('video,audio');" +
+                "for(var i=0;i<els.length;i++){try{els[i].pause();}catch(e){}}" +
                 "})();",
             null
         )
