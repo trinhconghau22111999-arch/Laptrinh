@@ -59,7 +59,7 @@ class FilesActivity : AppCompatActivity() {
             visibility = android.view.View.GONE
         }
         val title = TextView(this).apply {
-            text = "📁 Trang Tệp"
+            text = "Trang Tệp"
             textSize = 20f
             setTextColor(ThemePrefs.accent(this@FilesActivity))
             setPadding(12, 0, 0, 0)
@@ -105,7 +105,7 @@ class FilesActivity : AppCompatActivity() {
             setOnClickListener { selectAll() }
         }
         val btnDelete = TextView(this).apply {
-            text = "🗑 Xoá"
+            text = "Xoá"
             setTextColor(0xFFFF6B6B.toInt())
             setPadding(dp(12), dp(6), dp(12), dp(6))
             isClickable = true
@@ -168,7 +168,7 @@ class FilesActivity : AppCompatActivity() {
     private fun checkAllFilesAccess() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             if (!android.os.Environment.isExternalStorageManager()) {
-                AlertDialog.Builder(this)
+                AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
                     .setTitle("Cần quyền truy cập tệp")
                     .setMessage("Để xem/xoá/chia sẻ được mọi tệp trên máy, hãy cấp quyền \"Truy cập mọi tệp\" cho ứng dụng này ở Cài đặt hệ thống.")
                     .setPositiveButton("Mở Cài đặt") { _, _ ->
@@ -281,7 +281,7 @@ class FilesActivity : AppCompatActivity() {
 
     private fun confirmDeleteSelected() {
         val count = selected.size
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Xoá $count mục?")
             .setMessage("Các tệp/thư mục đã chọn sẽ bị xoá vĩnh viễn.")
             .setPositiveButton("Xoá") { _, _ ->

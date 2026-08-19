@@ -3,7 +3,6 @@ package com.h.adblockbrowser
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
-import android.app.AlertDialog
 import android.app.DownloadManager
 import android.content.Intent
 import android.content.pm.PackageManager

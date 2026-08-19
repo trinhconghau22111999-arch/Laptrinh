@@ -175,7 +175,7 @@ class ClockActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val alarmTitle = TextView(this).apply {
-            text = "⏰ Báo thức"
+            text = "Báo thức"
             textSize = 16f
             setTextColor(ThemePrefs.accent(this@ClockActivity))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -453,7 +453,7 @@ class ClockActivity : AppCompatActivity() {
         container.addView(input)
         container.addView(tvSound)
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Thêm báo thức")
             .setView(container)
             .setPositiveButton("Lưu") { _, _ ->

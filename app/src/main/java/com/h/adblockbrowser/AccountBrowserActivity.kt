@@ -455,7 +455,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     }
 
     private fun showOpenInNewTabDialog(targetUrl: String) {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle(targetUrl.take(60))
             .setItems(arrayOf("Mở trong tab mới", "Huỷ")) { _, which ->
                 if (which == 0) newTab(targetUrl)

@@ -211,7 +211,7 @@ class AccountsActivity : AppCompatActivity() {
             setPadding(dp(20), dp(10), dp(20), 0)
             addView(input)
         }
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Thêm tài khoản mới")
             .setView(container)
             .setPositiveButton("Thêm") { _, _ ->
@@ -229,7 +229,7 @@ class AccountsActivity : AppCompatActivity() {
     }
 
     private fun showProfileOptions(profile: AccountProfileStore.Profile) {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle(profile.name)
             .setItems(arrayOf("Đổi tên", "Xoá hồ sơ", "Huỷ")) { _, which ->
                 when (which) {
@@ -249,7 +249,7 @@ class AccountsActivity : AppCompatActivity() {
             setPadding(dp(20), dp(10), dp(20), 0)
             addView(input)
         }
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Đổi tên hồ sơ")
             .setView(container)
             .setPositiveButton("Lưu") { _, _ ->
@@ -264,7 +264,7 @@ class AccountsActivity : AppCompatActivity() {
     }
 
     private fun showDeleteConfirm(profile: AccountProfileStore.Profile) {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Xoá hồ sơ \"${profile.name}\"?")
             .setMessage("Danh sách tab đã lưu của hồ sơ này sẽ bị xoá khỏi app.")
             .setPositiveButton("Xoá") { _, _ ->

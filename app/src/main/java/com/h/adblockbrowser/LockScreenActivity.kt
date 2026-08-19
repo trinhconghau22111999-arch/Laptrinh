@@ -30,10 +30,13 @@ class LockScreenActivity : AppCompatActivity() {
         }
 
         val title = TextView(this).apply {
-            text = "🔒 Nhập khoá để mở app"
+            text = "Nhập khoá để mở app"
             textSize = 18f
             setTextColor(ThemePrefs.accent(this@LockScreenActivity))
             gravity = Gravity.CENTER
+            // Font mảnh (sans-serif-light) khớp toàn app - trước đây bỏ trống nên dùng font hệ
+            // thống mặc định (Roboto đậm hơn), lạc tông so với mọi màn hình khác.
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             setPadding(0, 0, 0, dp(24))
         }
         root.addView(title)

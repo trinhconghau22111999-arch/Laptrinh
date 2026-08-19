@@ -169,7 +169,7 @@ class IncognitoActivity : AppCompatActivity() {
         // (xem thêm logic chặn thật ở shouldOverrideUrlLoading() bên dưới). Hiện MỖI LẦN mở Ẩn
         // danh (không lưu cờ "đã xem" - đúng tinh thần Ẩn danh không lưu lại gì), để người dùng
         // luôn được nhắc, tránh tưởng app bị lỗi khi bấm link không thấy chuyển trang.
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Vì sao chạm vào link không chuyển trang?")
             .setMessage(
                 "Vì mục đích của app là chặn quảng cáo, để tránh các quảng cáo ngầm trên " +
@@ -290,7 +290,7 @@ class IncognitoActivity : AppCompatActivity() {
     }
 
     private fun showOpenInNewTabDialog(targetUrl: String) {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle(targetUrl.take(60))
             .setItems(arrayOf("Mở trong tab mới", "Huỷ")) { _, which ->
                 if (which == 0) newTab(targetUrl)

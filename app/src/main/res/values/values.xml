@@ -67,4 +67,21 @@
         <!-- Bỏ hiệu ứng đổ bóng Material (elevation) - Metro là thiết kế PHẲNG tuyệt đối -->
         <item name="elevationOverlayEnabled">false</item>
     </style>
+
+    <!-- Giao diện hộp thoại PHẲNG kiểu Windows Phone: nền đen tuyệt đối, KHÔNG bo góc, chữ nút
+         bấm màu accent - dùng cho MỌI AlertDialog trong app qua AlertDialog.Builder(this,
+         R.style.Theme_WP_Dialog) thay vì để hộp thoại tự vẽ theo style HỆ THỐNG mặc định (đa số
+         máy ra nền trắng bo góc + nút xanh Google, phá vỡ hoàn toàn phong cách WP ngay khi có
+         hộp thoại hiện lên - lỗi này trước đây có ở CalendarActivity, ClockActivity,
+         FilesActivity vì dùng nhầm android.app.AlertDialog gốc thay vì bản có theme riêng). -->
+    <style name="Theme.WP.Dialog" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:windowBackground">@color/wp_black</item>
+        <item name="android:textColor">@color/pure_white</item>
+        <item name="android:textColorPrimary">@color/pure_white</item>
+        <item name="android:textColorSecondary">@color/wp_gray_light</item>
+        <item name="colorAccent">@color/wp_accent</item>
+        <item name="android:colorAccent">@color/wp_accent</item>
+        <item name="android:windowMinWidthMajor">85%</item>
+        <item name="android:windowMinWidthMinor">85%</item>
+    </style>
 </resources>

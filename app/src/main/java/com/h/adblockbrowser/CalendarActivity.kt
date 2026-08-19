@@ -342,7 +342,7 @@ class CalendarActivity : AppCompatActivity() {
         container.addView(cbRemind)
         container.addView(tvTime)
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Thêm ghi chú")
             .setView(container)
             .setPositiveButton("Lưu") { _, _ ->
