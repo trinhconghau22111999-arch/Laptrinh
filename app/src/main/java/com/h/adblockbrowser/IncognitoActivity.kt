@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -303,6 +304,15 @@ class IncognitoActivity : AppCompatActivity() {
                 }
             }
             override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean = false
+
+            // Tự cấp quyền camera/mic cho WebView khi trang (YouTube tìm bằng giọng nói...)
+            // yêu cầu, vì quyền hệ thống đã được xin ở đầu app (MainActivity). THIẾU đoạn này
+            // là lý do nút mic ở tab Ẩn danh cứ đòi cấp quyền mãi: WebChromeClient mặc định
+            // KHÔNG trả lời PermissionRequest -> trang không bao giờ nhận phản hồi nên hiện
+            // lại y như chưa cấp quyền mỗi lần bấm.
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                request?.grant(request.resources)
+            }
         }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {

@@ -14,6 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
+import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -468,6 +469,15 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                 }
             }
             override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?): Boolean = false
+
+            // Tự cấp quyền camera/mic cho WebView khi trang (YouTube tìm bằng giọng nói,
+            // Meet/Zoom...) yêu cầu, vì quyền hệ thống đã được xin ở đầu app (MainActivity).
+            // THIẾU đoạn này là lý do nút mic trong tab tài khoản cứ đòi cấp quyền mãi:
+            // WebChromeClient mặc định KHÔNG trả lời PermissionRequest -> trang không bao giờ
+            // nhận được phản hồi nên hiện lại y như chưa cấp quyền mỗi lần bấm.
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                request?.grant(request.resources)
+            }
 
             // ── Video/trang toàn màn hình (nút phóng to của YouTube, trình phát HTML5...) ──
             // Tự động MỞ TO NHẤT (che hết toolbar/tab-bar) và XOAY NGANG, khôi phục lại khi
