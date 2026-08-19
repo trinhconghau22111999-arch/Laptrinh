@@ -157,6 +157,13 @@ object FloatingBackButton {
             resyncCallback()
         }
 
+        /** Ẩn/hiện nút nổi này (ví dụ nút "Off" chỉ hiện khi đang ở trang YouTube). Vẫn giữ
+         *  nguyên trong WindowManager (không remove/add lại) - chỉ đổi visibility của View, nên
+         *  khi hiện lại vị trí vẫn y nguyên chỗ cũ, không bị "nhảy" hay tính lại từ đầu. */
+        fun setVisible(visible: Boolean) {
+            btn.visibility = if (visible) View.VISIBLE else View.GONE
+        }
+
         fun detach() {
             if (!fixed) callbacksFor(id).remove(resyncCallback)
             try {

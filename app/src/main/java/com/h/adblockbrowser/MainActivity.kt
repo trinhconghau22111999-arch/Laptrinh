@@ -245,6 +245,8 @@ class MainActivity : AppCompatActivity() {
         // homeOverlay và tiếp tục chạy -> tiếng vẫn phát dù đã "thoát" về màn hình chính.
         // Dừng hẳn mọi video đang phát trên trang hiện tại mỗi khi rời về màn hình chính.
         pauseAllVideos()
+        // Về trang chủ = không còn ở YouTube -> ẩn nút "Off" giả tắt màn hình luôn.
+        floatingOffButtonHandle?.setVisible(false)
     }
 
     private val pauseRetryHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -761,6 +763,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 edtUrl.setText(url)
+                updateOffButtonVisibility(url)
                 view?.evaluateJavascript(AdOverlayBlocker.JS, null)
                 if (YoutubeAdSkipper.isYoutube(url)) {
                     // AdOverlayBlocker KHÔNG chạy trên YouTube - nó dùng querySelectorAll('body *')
@@ -927,6 +930,11 @@ class MainActivity : AppCompatActivity() {
         // để phân biệt rõ với mũi tên "◁" của nút Back. fixed = true: CỐ ĐỊNH ở góc DƯỚI-TRÁI
         // (defaultIsRight = false), đối xứng với nút Back ở góc dưới-phải, không kéo-thả được
         // và không đổi vị trí dù xoay màn hình.
+        //
+        // CHỈ HIỆN KHI ĐANG Ở TRANG YOUTUBE: nút này dùng để giả tắt màn hình lúc nghe video/
+        // nhạc YouTube chạy nền, không có ý nghĩa gì ở các trang khác -> ẩn đi (setVisible(false)
+        // ngay sau khi attach) để đỡ chiếm chỗ/gây rối màn hình chính và các trang web khác.
+        // updateOffButtonVisibility() (gọi ở onPageFinished) sẽ tự hiện lại đúng lúc vào YouTube.
         floatingOffButtonHandle = FloatingBackButton.attach(
             activity = this,
             root = root,
@@ -940,6 +948,13 @@ class MainActivity : AppCompatActivity() {
             fixed = true,
             doubleTapOnly = true
         )
+        floatingOffButtonHandle?.setVisible(false)
+    }
+
+    /** Hiện nút "Off" giả tắt màn hình CHỈ khi đang ở trang YouTube, ẩn đi ở mọi trang khác.
+     *  Gọi mỗi khi trang tải xong (onPageFinished) để luôn khớp đúng trang hiện tại. */
+    private fun updateOffButtonVisibility(url: String?) {
+        floatingOffButtonHandle?.setVisible(YoutubeAdSkipper.isYoutube(url))
     }
 
     // Thoát app -> xoá sạch mọi dấu vết phiên làm việc
