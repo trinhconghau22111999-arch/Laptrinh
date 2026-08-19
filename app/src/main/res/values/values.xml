@@ -44,7 +44,7 @@
     <!-- Bo góc = 0 khắp nơi (Metro/Flat Design không có bo góc), áp cho MỌI component
          Material (nút, hộp thoại, thẻ...) trong toàn app chỉ bằng 3 dòng này. -->
     <style name="ShapeAppearance.WP.Flat" parent="ShapeAppearance.MaterialComponents.SmallComponent">
-        <item name="cornerFamily">rounded</item>
+        <item name="cornerFamily">cut</item>
         <item name="cornerSize">0dp</item>
     </style>
 

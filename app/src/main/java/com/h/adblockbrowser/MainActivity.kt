@@ -47,6 +47,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
+    /** Nền ô địa chỉ kiểu Windows Phone: nền đen phẳng + 1 gạch chân màu NHẤN ở đáy (đặc trưng
+     *  của TextBox trên WP/Windows 10 Mobile) - vẽ bằng code (thay vì @drawable/edit_url_bg cố
+     *  định trong XML) để luôn dùng đúng màu nhấn người dùng vừa chọn ở Cài đặt, không cần build
+     *  lại app mỗi lần đổi màu. */
+    private fun buildUrlBarBackground(): android.graphics.drawable.Drawable {
+        val bg = android.graphics.drawable.GradientDrawable().apply {
+            setColor(android.graphics.Color.BLACK)
+        }
+        val underline = android.graphics.drawable.GradientDrawable().apply {
+            setColor(ThemePrefs.accent(this@MainActivity))
+        }
+        return android.graphics.drawable.LayerDrawable(arrayOf(bg, underline)).apply {
+            setLayerGravity(1, Gravity.BOTTOM)
+            setLayerHeight(1, dp(2))
+        }
+    }
+
     private fun enableImmersiveMode() {
         // CHỈ ẩn thanh trạng thái (giờ/mạng/pin) để có thêm không gian màn hình. Thanh điều
         // hướng hệ thống (3 phím Back/Home/Recent hoặc gesture bar) được GIỮ NGUYÊN, LUÔN HIỆN
@@ -161,6 +178,10 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webView)
         webView.setBackgroundColor(android.graphics.Color.BLACK) // tránh WebView chớp trắng lúc mới vào/đang tải trang (bề mặt render riêng của WebView mặc định trắng, đặt màu nền XML không đủ)
         edtUrl = findViewById(R.id.edtUrl)
+        // Gạch chân màu nhấn của ô địa chỉ trước đây cố định trong edit_url_bg.xml (không đổi
+        // được lúc chạy) - giờ vẽ lại bằng code theo đúng màu nhấn người dùng đã chọn ở Cài đặt
+        // > Giao diện, để đổi màu ở đó là ô địa chỉ lên màu mới ngay từ lần mở app kế tiếp.
+        edtUrl.background = buildUrlBarBackground()
         toolbarUrl = findViewById(R.id.toolbarUrl)
         progressBar = null  // đã xoá khỏi layout
         homeOverlay = findViewById(R.id.homeOverlay)

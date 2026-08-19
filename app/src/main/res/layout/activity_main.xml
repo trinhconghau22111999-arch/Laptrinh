@@ -4,7 +4,7 @@
     android:id="@+id/rootFrame"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF">
+    android:background="@color/wp_black">
 
 
     <WebView
@@ -25,7 +25,7 @@
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
             android:src="@drawable/default_wallpaper"
-            android:background="#FFFFFF" />
+            android:background="@color/wp_black" />
 
     </FrameLayout>
 

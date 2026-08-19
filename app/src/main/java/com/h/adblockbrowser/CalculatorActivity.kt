@@ -72,7 +72,7 @@ class CalculatorActivity : AppCompatActivity() {
             val btn = Button(this).apply {
                 text = label
                 textSize = 26f
-                setTextColor(if (label in listOf("÷", "×", "−", "+", "=")) 0xFF0078D7.toInt() else 0xFFFFFFFF.toInt())
+                setTextColor(if (label in listOf("÷", "×", "−", "+", "=")) ThemePrefs.accent(this@CalculatorActivity) else 0xFFFFFFFF.toInt())
                 setBackgroundColor(0xFF0D0D0D.toInt())
                 val lp = GridLayout.LayoutParams(
                     GridLayout.spec(GridLayout.UNDEFINED, 1f),

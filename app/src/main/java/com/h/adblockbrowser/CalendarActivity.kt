@@ -92,7 +92,7 @@ class CalendarActivity : AppCompatActivity() {
 
         selectedLabel = TextView(this).apply {
             textSize = 15f
-            setTextColor(0xFF0078D7.toInt())
+            setTextColor(ThemePrefs.accent(this@CalendarActivity))
             setPadding(dp(20), dp(16), dp(20), dp(4))
         }
 
@@ -104,7 +104,7 @@ class CalendarActivity : AppCompatActivity() {
         val btnAdd = Button(this).apply {
             text = "+  Thêm ghi chú / nhắc nhở"
             setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0xFF0078D7.toInt())
+            setBackgroundColor(ThemePrefs.accent(this@CalendarActivity))
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.setMargins(dp(20), dp(8), dp(20), dp(24))
             layoutParams = lp
@@ -192,9 +192,9 @@ class CalendarActivity : AppCompatActivity() {
             isClickable = true
             isFocusable = true
             if (isSelected) {
-                setBackgroundColor(0x330078D7)
+                setBackgroundColor(ThemePrefs.accentWithAlpha(this@CalendarActivity, 0x33))
             } else if (isToday) {
-                setBackgroundColor(0x1A0078D7)
+                setBackgroundColor(ThemePrefs.accentWithAlpha(this@CalendarActivity, 0x1A))
             }
             setOnClickListener { selectDay(day, viewMonth, viewYear) }
         }
@@ -209,7 +209,7 @@ class CalendarActivity : AppCompatActivity() {
             text = day.toString()
             textSize = 15f
             gravity = Gravity.CENTER
-            setTextColor(if (isToday) 0xFF0078D7.toInt() else 0xFFFFFFFF.toInt())
+            setTextColor(if (isToday) ThemePrefs.accent(this@CalendarActivity) else 0xFFFFFFFF.toInt())
         })
         // Ngày âm lịch - chữ tím neon nhỏ phía dưới số ngày dương. Mùng 1 âm hiện kèm tháng âm
         // cho dễ nhận biết đầu tháng âm, giống các app lịch âm phổ biến.
@@ -218,14 +218,14 @@ class CalendarActivity : AppCompatActivity() {
             textSize = 9f
             gravity = Gravity.CENTER
             setTextColor(0xFFE38CFF.toInt())
-            setShadowLayer(6f, 0f, 0f, 0xFF0078D7.toInt())
+            setShadowLayer(6f, 0f, 0f, ThemePrefs.accent(this@CalendarActivity))
         })
         if (hasNote) {
             cell.addView(View(this).apply {
                 val dotLp = LinearLayout.LayoutParams(dp(4), dp(4))
                 dotLp.topMargin = dp(1)
                 layoutParams = dotLp
-                setBackgroundColor(0xFF0078D7.toInt())
+                setBackgroundColor(ThemePrefs.accent(this@CalendarActivity))
             })
         }
         return cell
@@ -275,7 +275,7 @@ class CalendarActivity : AppCompatActivity() {
             if (note.timeMinutes >= 0) {
                 textCol.addView(TextView(this).apply {
                     text = "⏰ %02d:%02d".format(note.timeMinutes / 60, note.timeMinutes % 60)
-                    setTextColor(0xFF0078D7.toInt())
+                    setTextColor(ThemePrefs.accent(this@CalendarActivity))
                     textSize = 12f
                 })
             }
@@ -311,11 +311,11 @@ class CalendarActivity : AppCompatActivity() {
         val cbRemind = CheckBox(this).apply {
             text = "Hẹn giờ nhắc"
             setTextColor(0xFFFFFFFF.toInt())
-            buttonTintList = ColorStateList.valueOf(0xFF0078D7.toInt())
+            buttonTintList = ColorStateList.valueOf(ThemePrefs.accent(this@CalendarActivity))
         }
         val tvTime = TextView(this).apply {
             text = "Giờ nhắc: %02d:%02d".format(hour, minute)
-            setTextColor(0xFF0078D7.toInt())
+            setTextColor(ThemePrefs.accent(this@CalendarActivity))
             visibility = View.GONE
             setPadding(0, dp(8), 0, 0)
             isClickable = true

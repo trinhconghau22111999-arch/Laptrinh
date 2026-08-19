@@ -70,18 +70,11 @@ class HomeScreenManager(
     private val onOpenShortcut: (ShortcutItem) -> Unit,
     private val onOpenSettings: () -> Unit
 ) {
-    /** Bảng màu Live Tile gốc của Windows Phone - xoay vòng cho từng ô ghim để mỗi tile 1 màu
+    /** Bảng màu Live Tile - dùng chung [ThemePrefs.PALETTE] (đúng 20 màu Accent/Live Tile gốc
+     *  của Windows Phone) để đồng bộ với lưới chọn màu ở Cài đặt > Giao diện, thay vì trang chủ
+     *  tự có 1 bảng 8 màu rút gọn riêng như trước - xoay vòng cho từng ô ghim để mỗi tile 1 màu
      *  khác nhau, đúng cảm giác Start Screen thật (không phải app nào cũng cùng 1 màu). */
-    private val tilePalette = intArrayOf(
-        Color.parseColor("#0050EF"), // Cobalt
-        Color.parseColor("#00ABA9"), // Teal
-        Color.parseColor("#A20025"), // Crimson
-        Color.parseColor("#008A00"), // Emerald
-        Color.parseColor("#FA6800"), // Orange
-        Color.parseColor("#6A00FF"), // Indigo
-        Color.parseColor("#647687"), // Steel
-        Color.parseColor("#A4C400")  // Lime
-    )
+    private val tilePalette = ThemePrefs.PALETTE
 
     /** [clockWidget]: widget giờ/ngày (nếu có) được chèn làm mục ĐẦU TIÊN trong nội dung cuộn
      *  dọc, NẰM NGAY TRONG LUỒNG LAYOUT (không phải overlay nổi tự do như trước) - nhờ vậy nó
@@ -166,6 +159,25 @@ class HomeScreenManager(
         scrollView.addView(content)
         root.addView(scrollView)
 
+        // ── Nút Cài đặt (bánh răng) - CỐ ĐỊNH ở góc trên-phải, nổi trên nội dung cuộn, LUÔN
+        //    hiện sẵn kể cả khi cuộn xuống. TRƯỚC ĐÂY [onOpenSettings] được truyền vào nhưng
+        //    KHÔNG có nút nào gọi tới nó trong toàn bộ HomeScreenManager - nghĩa là màn Cài đặt
+        //    không có cách nào mở được từ trang chủ. Thêm nút này để sửa lỗi đó. */
+        val btnSettings = ImageView(context).apply {
+            setImageResource(R.drawable.ic_shortcut_settings)
+            setColorFilter(Color.WHITE)
+            setPadding(dp(9), dp(9), dp(9), dp(9))
+            background = pressedOverlay()
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Cài đặt"
+            setOnClickListener { onOpenSettings() }
+        }
+        root.addView(btnSettings, FrameLayout.LayoutParams(dp(40), dp(40)).also {
+            it.gravity = Gravity.TOP or Gravity.END
+            it.topMargin = dp(12); it.rightMargin = dp(12)
+        })
+
         return root
     }
 
@@ -183,7 +195,7 @@ class HomeScreenManager(
     private fun alphabetHeader(letter: String): View = TextView(context).apply {
         text = letter.lowercase()
         textSize = 22f
-        setTextColor(Color.parseColor("#0078D7"))
+        setTextColor(ThemePrefs.accent(context))
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         setPadding(dp(4), dp(14), dp(4), dp(4))
     }

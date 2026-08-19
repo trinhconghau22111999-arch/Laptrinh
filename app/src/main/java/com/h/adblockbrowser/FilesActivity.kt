@@ -52,7 +52,7 @@ class FilesActivity : AppCompatActivity() {
         val title = TextView(this).apply {
             text = "📁 Trang Tệp"
             textSize = 20f
-            setTextColor(0xFF0078D7.toInt())
+            setTextColor(ThemePrefs.accent(this@FilesActivity))
             setPadding(12, 0, 0, 0)
         }
         // Nút back: nếu đang chọn nhiều thì thoát chế độ chọn trước; nếu không thì đi lên 1 cấp
@@ -90,7 +90,7 @@ class FilesActivity : AppCompatActivity() {
         }
         val btnShare = TextView(this).apply {
             text = "☑ Tất cả"
-            setTextColor(0xFF0078D7.toInt())
+            setTextColor(ThemePrefs.accent(this@FilesActivity))
             setPadding(dp(12), dp(6), dp(12), dp(6))
             isClickable = true
             setOnClickListener { selectAll() }
