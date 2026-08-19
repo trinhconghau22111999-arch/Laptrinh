@@ -939,6 +939,9 @@ class MainActivity : AppCompatActivity() {
         // nhạc YouTube chạy nền, không có ý nghĩa gì ở các trang khác -> ẩn đi (setVisible(false)
         // ngay sau khi attach) để đỡ chiếm chỗ/gây rối màn hình chính và các trang web khác.
         // updateOffButtonVisibility() (gọi ở onPageFinished) sẽ tự hiện lại đúng lúc vào YouTube.
+        //
+        // doubleTapOnly = false: chỉ cần CHẠM 1 LẦN là kích hoạt ngay (không cần double-tap như
+        // nút Back) - vì nút Off chỉ hiện đúng lúc đang ở YouTube nên ít nguy cơ chạm nhầm hơn.
         floatingOffButtonHandle = FloatingBackButton.attach(
             activity = this,
             root = root,
@@ -951,7 +954,7 @@ class MainActivity : AppCompatActivity() {
             defaultIsRight = false,
             defaultYFraction = 0.7f,
             fixed = false,
-            doubleTapOnly = true
+            doubleTapOnly = false
         )
         floatingOffButtonHandle?.setVisible(false)
     }
