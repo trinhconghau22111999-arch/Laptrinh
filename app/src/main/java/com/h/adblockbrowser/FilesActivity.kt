@@ -2,6 +2,7 @@ package com.h.adblockbrowser
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -272,9 +273,21 @@ class FilesActivity : AppCompatActivity() {
             .setPositiveButton("Xoá") { _, _ ->
                 val toDelete = selected.mapNotNull { entries.getOrNull(it) }
                 var okCount = 0
+                val deletedPaths = ArrayList<String>()
                 for (f in toDelete) {
+                    val path = f.absolutePath
                     val ok = if (f.isDirectory) f.deleteRecursively() else f.delete()
-                    if (ok) okCount++
+                    if (ok) {
+                        okCount++
+                        deletedPaths.add(path)
+                    }
+                }
+                // Xoá xong trên ổ đĩa vẫn chưa đủ - phải báo cho MediaStore biết, nếu không các
+                // app khác (Thư viện ảnh, quản lý tệp khác, kết nối USB với máy tính...) vẫn
+                // hiển thị tệp cũ do đọc từ cache MediaStore, khiến người dùng tưởng "xoá rồi
+                // mà vẫn còn". scanFile() ép hệ thống cập nhật lại MediaStore ngay lập tức.
+                if (deletedPaths.isNotEmpty()) {
+                    MediaScannerConnection.scanFile(this, deletedPaths.toTypedArray(), null, null)
                 }
                 Toast.makeText(this, "Đã xoá $okCount/${toDelete.size} mục", Toast.LENGTH_SHORT).show()
                 openDir(currentDir)
