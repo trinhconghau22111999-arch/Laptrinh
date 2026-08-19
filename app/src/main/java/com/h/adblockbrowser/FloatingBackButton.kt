@@ -148,7 +148,23 @@ object FloatingBackButton {
         val lp = WindowManager.LayoutParams(
             size, size,
             WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
+            // LỖI ĐÃ SỬA (nguyên nhân THẬT SỰ khiến bàn phím không bật lên khi gõ vào trang web):
+            // panel này là 1 WINDOW RIÊNG (add bằng WindowManager, xem giải thích ở đầu file),
+            // LUÔN hiện sẵn trên mọi màn hình/mọi trang. Trước đây KHÔNG có cờ FLAG_NOT_FOCUSABLE
+            // -> panel này được phép NHẬN INPUT FOCUS của cửa sổ (window focus), tranh giành với
+            // window chính của Activity (nơi chứa WebView/EditText). Ô địa chỉ (EditText gốc) ít
+            // bị lộ ra ngoài vì Android có cơ chế TỰ ĐỘNG hiện lại bàn phím khi window chính lấy
+            // lại focus và view đang giữ focus là 1 EditText - nhưng ô nhập liệu BÊN TRONG trang
+            // web (do Chromium/WebView tự quản lý, không qua cơ chế "tự hiện lại" đó của Android)
+            // thì không có cơ chế tự phục hồi này, nên hễ panel nổi giành mất window focus dù chỉ
+            // trong chốc lát là yêu cầu hiện IME của WebView bị bỏ luôn, không tự thử lại - kết
+            // quả đúng như user báo cáo: gõ vào trang web không bao giờ bật được bàn phím, trong
+            // khi gõ vào ô địa chỉ vẫn bình thường. Thêm FLAG_NOT_FOCUSABLE để panel này CHỈ nhận
+            // sự kiện chạm (kéo thả nút) mà KHÔNG BAO GIỜ được nhận input/window focus - focus
+            // luôn thuộc về window chính của Activity, giống hệt cách 1 overlay nổi (nút chat
+            // Messenger, nút Home iPhone ảo...) không bao giờ được phép chiếm bàn phím.
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT

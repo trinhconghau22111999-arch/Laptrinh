@@ -451,14 +451,19 @@ class IncognitoActivity : AppCompatActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // FIX (giống MainActivity, đã sửa thêm cả trường hợp ô nhập liệu NẰM TRONG trang web -
-        // xem giải thích chi tiết ở MainActivity.onWindowFocusChanged()): không ép ẩn thanh hệ
-        // thống khi đang có EditText (ô địa chỉ) HOẶC chính WebView (ô nhập liệu trên trang web,
-        // vd. ô tìm kiếm/đăng nhập) giữ focus, nếu không bàn phím ảo sẽ bị huỷ ngay giữa lúc
-        // đang hiện lên.
-        if (hasFocus && currentFocus !is EditText && currentFocus !is WebView) {
-            val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-            insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        // FIX (giống MainActivity - xem giải thích đầy đủ 3 lần sửa ở
+        // MainActivity.onWindowFocusChanged()): nguyên nhân gốc là nút Back nổi (FloatingBackButton,
+        // đã sửa tận gốc bằng FLAG_NOT_FOCUSABLE) từng tranh giành input focus. Ở đây thêm lớp
+        // bảo vệ đáng tin cậy hơn việc đoán qua loại View: hỏi thẳng hệ thống bàn phím có đang
+        // hiển thị không, đúng cho mọi loại ô nhập (EditText, ô nhập trong WebView...).
+        if (hasFocus) {
+            val imeVisible = androidx.core.view.ViewCompat
+                .getRootWindowInsets(window.decorView)
+                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+            if (!imeVisible) {
+                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
 

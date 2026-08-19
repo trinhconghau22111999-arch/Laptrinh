@@ -65,21 +65,28 @@ class MainActivity : AppCompatActivity() {
         // lại... - áp dụng lại mỗi lần cửa sổ được lấy focus để luôn giữ đúng trạng thái ẩn.
         //
         // LỖI ĐÃ SỬA (lần 1): bấm vào ô địa chỉ (edtUrl) để gõ chữ thì bàn phím ảo KHÔNG bật lên
-        // được. Nguyên nhân: ngay lúc EditText nhận focus và hệ thống chuẩn bị hiện bàn phím, cửa
-        // sổ app cũng nhận lại window-focus (hasFocus = true) trên rất nhiều máy/Android - callback
-        // này lập tức gọi enableImmersiveMode() -> controller.hide(systemBars()) NGAY GIỮA lúc
-        // bàn phím đang hiện lên, khiến yêu cầu hiện IME bị huỷ/chớp tắt rồi biến mất.
+        // được, vì enableImmersiveMode() bị gọi lại đúng lúc IME đang hiện lên -> huỷ mất.
+        // Sửa lần 1 bằng cách loại trừ theo LOẠI VIEW đang giữ focus (currentFocus !is EditText).
         //
-        // LỖI ĐÃ SỬA (lần 2 - QUAN TRỌNG, đây mới là lỗi user thường gặp nhất): bấm vào 1 ô nhập
-        // liệu NGAY TRÊN TRANG WEB (ô tìm kiếm, form đăng nhập...) cũng bị y hệt lỗi trên, dù đã
-        // sửa lần 1. Nguyên nhân: ô nhập liệu đó không phải 1 View Android riêng - nó nằm BÊN
-        // TRONG WebView, nên currentFocus lúc đó trả về chính đối tượng WebView (không phải
-        // EditText) -> điều kiện "currentFocus !is EditText" ở trên vẫn đúng -> vẫn gọi
-        // enableImmersiveMode() giữa lúc bàn phím đang hiện lên cho ô nhập trên trang web -> bàn
-        // phím vẫn bị huỷ y như cũ. Sửa bằng cách CŨNG không ép ẩn thanh hệ thống khi view đang
-        // giữ focus là WebView (webView chính, hoặc floatWebView/fWebView video nổi) - vì rất có
-        // thể người dùng vừa chạm vào 1 ô nhập liệu bên trong trang, bàn phím đang cần hiện lên.
-        if (hasFocus && currentFocus !is EditText && currentFocus !is WebView) enableImmersiveMode()
+        // LỖI ĐÃ SỬA (lần 2): cách loại trừ theo loại View ở lần 1 không bắt được trường hợp ô
+        // nhập liệu NẰM TRONG WebView (currentFocus lúc đó là WebView, không phải EditText) ->
+        // vẫn bị gọi enableImmersiveMode() giữa lúc bàn phím đang hiện cho web -> vẫn lỗi.
+        //
+        // LỖI ĐÃ SỬA (lần 3 - NGUYÊN NHÂN GỐC, đây mới là lý do lần 2 sửa xong vẫn không hết
+        // lỗi): đoán qua LOẠI VIEW (currentFocus) là cách không đáng tin - còn có nút Back nổi
+        // (FloatingBackButton, xem file đó) là 1 WINDOW RIÊNG luôn hiện sẵn, trước đây tranh
+        // giành input focus với window chính, khiến chính bản thân hasFocus/currentFocus báo cáo
+        // sai lệch. Đã sửa tận gốc ở FloatingBackButton.kt (thêm FLAG_NOT_FOCUSABLE). Ở ĐÂY sửa
+        // thêm lớp bảo vệ thứ 2, ĐÁNG TIN CẬY HƠN NHIỀU: hỏi THẲNG hệ thống "bàn phím ảo (IME) có
+        // đang thật sự hiển thị không" qua WindowInsetsCompat, thay vì đoán qua loại View đang
+        // giữ focus - cách này đúng với MỌI trường hợp (EditText, ô nhập trong WebView, hay bất
+        // kỳ ô nhập nào khác sau này), không cần liệt kê từng loại View một nữa.
+        if (hasFocus) {
+            val imeVisible = androidx.core.view.ViewCompat
+                .getRootWindowInsets(window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            if (!imeVisible) enableImmersiveMode()
+        }
     }
 
     private lateinit var webView: WebView
