@@ -140,6 +140,17 @@ class FilesActivity : AppCompatActivity() {
         openDir(currentDir)
     }
 
+    /** Gọi lại [hideStatusBar] mỗi khi cửa sổ THẬT SỰ được lấy focus - chỉ gọi 1 lần trong
+     *  onCreate() KHÔNG đủ tin cậy vì lúc đó cửa sổ có thể chưa được hệ thống vẽ/lấy focus xong,
+     *  nên yêu cầu ẩn status bar dễ bị bỏ qua hoặc bị hệ thống tự hiện lại ngay sau đó (đây chính
+     *  là lý do "ẩn không được" dù đã gọi hideStatusBar() ở onCreate). Áp dụng lại ở đây đảm bảo
+     *  luôn ẩn đúng, kể cả sau khi quay lại màn này từ 1 màn khác - giống cách MainActivity xử lý
+     *  ở enableImmersiveMode()/onWindowFocusChanged(). */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideStatusBar()
+    }
+
     /** Android 11+ (API 30+) chặn app đọc/ghi/xoá file NGOÀI thư mục riêng của app trừ khi được
      *  cấp quyền "Truy cập mọi tệp" (MANAGE_EXTERNAL_STORAGE) - quyền này KHÔNG xin được qua hộp
      *  thoại quyền thông thường, phải mở đúng màn Cài đặt hệ thống để người dùng tự bật. Thiếu
