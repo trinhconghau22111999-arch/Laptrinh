@@ -93,12 +93,11 @@ class MainActivity : AppCompatActivity() {
     // Bấm nút "🖥 Bản máy tính" nổi -> ép trang HIỆN TẠI sang UA máy tính tới khi tắt lại.
     private var forceDesktop = false
 
-    // ── Cửa sổ nổi (Picture-in-Picture) khi đang phát video ──
     // true khi trang hiện có video HTML5 đang phát (cập nhật qua JS -> JavascriptInterface bên
-    // dưới, xem VideoPlaybackTracker.JS). Dùng trong onUserLeaveHint() để tự động thu nhỏ thành
-    // cửa sổ nổi NGAY KHI người dùng rời app (bấm Home / chuyển app khác) trong lúc video đang
-    // chạy - đúng hành vi PiP chuẩn của Android, và vì PiP chỉ có DUY NHẤT 1 cửa sổ cho cả hệ
-    // thống nên tự động đảm bảo "tối đa 1 cái" như yêu cầu.
+    // dưới, xem VideoPlaybackTracker.JS). Dùng để: (1) quyết định có mở cửa sổ nổi TRONG APP
+    // (mini-player kéo được, xem showFloatingVideoPlayer()) khi back ra khỏi trang xem YouTube
+    // hay không; (2) KHÔNG còn dùng để tự vào Picture-in-Picture hệ thống khi rời app nữa - tính
+    // năng đó đã bị bỏ vì không đáng tin cậy trên nhiều máy, xem giải thích ở onUserLeaveHint().
     private var isVideoPlaying = false
 
     // ── Cửa sổ nổi TRONG APP (mini-player kéo/di chuyển được) - khác với PiP hệ thống ở trên:
@@ -249,23 +248,28 @@ class MainActivity : AppCompatActivity() {
         pauseAllVideos()
     }
 
+    private val pauseRetryHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
     /** Dừng phát TẤT CẢ thẻ <video> VÀ <audio> đang có trên trang hiện tại trong WebView (kể cả
      *  video YouTube dạng bình thường chưa fullscreen, và các trang nghe nhạc dùng thẻ <audio>
      *  như Zing MP3, SoundCloud, NhacCuaTui...) - dùng mỗi khi người dùng rời khỏi trang/rời
      *  khỏi app để tiếng không tiếp tục phát ngầm ngoài ý muốn.
-     *  FIX (lỗi #5): trước đây chỉ pause thẻ <video>, bỏ sót thẻ <audio> - nên các trang nghe
-     *  nhạc (phát qua <audio>, không phải <video>) vẫn tiếp tục phát bình thường kể cả khi tắt
-     *  màn hình hoặc thoát hẳn ra khỏi app (miễn không bị vuốt dọn khỏi Recents). Cũng gọi
-     *  webView.onPause() kèm theo ở nơi gọi hàm này để dừng luôn timer/JS liên quan. */
+     *  FIX (lỗi #5): trước đây chỉ pause thẻ <video>, bỏ sót thẻ <audio>.
+     *  FIX (YouTube vẫn phát sau khi rời app): evaluateJavascript() ở đây là lệnh "bắn rồi
+     *  thôi" (bất đồng bộ) - nếu webView.onPause() được gọi ngay sau đó (ở onPause()/
+     *  onUserLeaveHint()) làm WebView tạm ngưng xử lý ĐÚNG lúc lệnh JS này chưa kịp chạy tới,
+     *  video/nhạc có thể lỡ không bị dừng dù code trông như đã gọi pause(). Gọi lại 1 lần nữa
+     *  sau 150ms (khi WebView chắc chắn đã xử lý xong lượt đầu) để đảm bảo chắc chắn dừng hẳn. */
     private fun pauseAllVideos() {
         if (!::webView.isInitialized) return
-        webView.evaluateJavascript(
-            "(function(){" +
-                "var els=document.querySelectorAll('video,audio');" +
-                "for(var i=0;i<els.length;i++){try{els[i].pause();}catch(e){}}" +
-                "})();",
-            null
-        )
+        val js = "(function(){" +
+            "var els=document.querySelectorAll('video,audio');" +
+            "for(var i=0;i<els.length;i++){try{els[i].pause();}catch(e){}}" +
+            "})();"
+        webView.evaluateJavascript(js, null)
+        pauseRetryHandler.postDelayed({
+            if (::webView.isInitialized) webView.evaluateJavascript(js, null)
+        }, 150)
     }
 
     private fun hideHomeOverlay() {
@@ -901,44 +905,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Gọi TỰ ĐỘNG bởi Android ngay trước khi Activity bị đưa xuống nền do HÀNH ĐỘNG CỦA NGƯỜI
-    // DÙNG (bấm nút Home, vuốt sang app khác, mở Recents...) - KHÔNG gọi khi bị xoay màn hình,
-    // hiện hộp thoại hệ thống, hay bị hệ thống tự thu hồi bộ nhớ. Đây đúng là thời điểm chuẩn để
-    // tự vào Picture-in-Picture: chỉ khi người dùng CHỦ ĐỘNG rời app trong lúc video đang phát.
+    // DÙNG (bấm nút Home, vuốt sang app khác, mở Recents...).
+    //
+    // Ý ĐỊNH: nhạc/video đang phát PHẢI tiếp tục chạy nền như 1 app nghe nhạc bình thường khi
+    // rời app (tắt màn hình, bấm Home, chuyển app khác) - CHỈ dừng khi người dùng tự bấm dừng
+    // trên trang, hoặc khi tiến trình app bị dọn hẳn (vuốt xoá khỏi Recents). Vì vậy KHÔNG gọi
+    // pauseAllVideos()/webView.onPause() ở đây - để mặc WebView tiếp tục xử lý JS/video/audio
+    // bình thường dù activity không còn hiển thị.
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (isVideoPlaying && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build())
-            } catch (e: Exception) {
-                // Máy/ROM không hỗ trợ PiP -> KHÔNG vào được cửa sổ nổi thật, nên phải tự dừng
-                // video ngay tại đây (nếu không, video/tiếng sẽ tiếp tục phát ngầm vô hạn ở nền
-                // mà không có cửa sổ nào hiển thị cả - đúng lỗi "thoát app vẫn hát bình thường").
-                pauseAllVideos()
-            }
-        }
     }
 
     // Gọi khi Activity bị đưa xuống nền vì BẤT KỲ lý do gì (Home, chuyển app khác, tắt màn
-    // hình, mở app khác đè lên...). FIX: trước đây không có onPause()/onStop() nào dừng
-    // WebView/video cả, nên hễ thoát khỏi app (mà không vào được đúng cửa sổ nổi PiP hệ thống)
-    // là video/tiếng vẫn chạy tiếp trong nền như chưa hề thoát. Chỉ GIỮ tiếng phát khi đang ở
-    // ĐÚNG chế độ Picture-in-Picture hệ thống thật (cửa sổ nổi thật sự đang hiển thị) - còn lại
-    // mọi trường hợp khác coi như đã rời app -> dừng video ngay.
+    // hình, mở app khác đè lên...). KHÔNG dừng video/audio ở đây (xem giải thích ở
+    // onUserLeaveHint() phía trên) - để nhạc/video tiếp tục phát nền đúng như yêu cầu.
     override fun onPause() {
         super.onPause()
-        val inRealSystemPip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode
-        if (!inRealSystemPip) {
-            pauseAllVideos()
-            if (::webView.isInitialized) webView.onPause()
-        }
     }
 
     override fun onStop() {
         super.onStop()
-        val inRealSystemPip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode
-        if (!inRealSystemPip) {
-            pauseAllVideos()
-        }
     }
 
     /** Bố cục "ô đầu tiên" (pane1) LUÔN LUÔN là customView (video HTML5 đang toàn màn hình,
