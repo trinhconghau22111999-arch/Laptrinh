@@ -6,26 +6,12 @@
     <color name="pure_black">#000000</color>
     <color name="pure_white">#FFFFFF</color>
 
-    <!-- Màu semantic - light mode -->
-    <color name="bg_primary">#FFFFFF</color>
-    <color name="bg_secondary">#F2F2F2</color>
-    <color name="bg_actionbar">#E8E8E8</color>
-    <color name="bg_list">#F8F8F8</color>
-    <color name="text_primary">#111111</color>
-    <color name="text_secondary">#666666</color>
-    <color name="text_accent">#C724FF</color>
-    <color name="text_danger">#D32F2F</color>
-    <color name="status_bar">#FFFFFF</color>
-    <color name="tab_active_bg">#C8E6FF</color>
-    <color name="tab_active_bg_incognito">#EDD5FF</color>
-
     <style name="Theme.AdBlockBrowser" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="colorPrimary">@color/neon_purple</item>
-        <item name="colorPrimaryDark">@color/status_bar</item>
+        <item name="colorPrimary">@color/pure_black</item>
+        <item name="colorPrimaryDark">@color/pure_black</item>
         <item name="colorAccent">@color/neon_purple</item>
-        <item name="android:windowBackground">@color/bg_primary</item>
-        <item name="android:textColorPrimary">@color/text_primary</item>
-        <item name="android:statusBarColor">@color/status_bar</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">@color/pure_white</item>
+        <item name="android:textColorPrimary">@color/pure_white</item>
+        <item name="android:statusBarColor">@color/pure_black</item>
     </style>
 </resources>

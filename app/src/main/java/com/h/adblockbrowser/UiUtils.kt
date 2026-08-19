@@ -2,12 +2,8 @@ package com.h.adblockbrowser
 
 import android.app.Activity
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 
 fun Activity.dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
-/** Lấy màu từ resource - tự động chọn light/dark theo hệ thống. */
-fun Activity.themeColor(resId: Int): Int = ContextCompat.getColor(this, resId)
 
 /** Lấy chiều cao status bar thật (px) để tránh nội dung bị che.
  *  QUAN TRỌNG: resource "status_bar_height" là resource ẩn của hệ thống, KHÔNG đảm bảo đúng
@@ -29,9 +25,9 @@ fun Activity.buildBackArrow(onBack: () -> Unit = { finish() }): TextView =
     TextView(this).apply {
         text = "◀"
         textSize = 32f
-        setTextColor(themeColor(R.color.text_primary))
+        setTextColor(0xFFFFFFFF.toInt())
         setPadding(dp(16), dp(10), dp(16), dp(10))
-        setBackgroundColor(0x33000000)
+        setBackgroundColor(0x66000000)
         isClickable = true
         isFocusable = true
         typeface = android.graphics.Typeface.DEFAULT_BOLD

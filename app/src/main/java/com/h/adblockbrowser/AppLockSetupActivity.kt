@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 
 class AppLockSetupActivity : AppCompatActivity() {
 
@@ -22,7 +21,7 @@ class AppLockSetupActivity : AppCompatActivity() {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(themeColor(R.color.bg_primary))
+            setBackgroundColor(0xFF000000.toInt())
             setPadding(dp(32), dp(40), dp(32), dp(32))
         }
         setContentView(root)
@@ -52,8 +51,8 @@ class AppLockSetupActivity : AppCompatActivity() {
 
     private fun menuButton(label: String, onClick: () -> Unit) = Button(this).apply {
         text = label
-        setTextColor(themeColor(R.color.text_primary))
-        setBackgroundColor(themeColor(R.color.bg_actionbar))
+        setTextColor(0xFFFFFFFF.toInt())
+        setBackgroundColor(0xFF1A1A1A.toInt())
         val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         lp.topMargin = dp(8)
         layoutParams = lp
@@ -67,7 +66,7 @@ class AppLockSetupActivity : AppCompatActivity() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             textSize = 22f
             gravity = Gravity.CENTER
-            setTextColor(themeColor(R.color.text_primary))
+            setTextColor(0xFFFFFFFF.toInt())
             layoutParams = LinearLayout.LayoutParams(dp(200), ViewGroup.LayoutParams.WRAP_CONTENT)
         }
         root.addView(input)

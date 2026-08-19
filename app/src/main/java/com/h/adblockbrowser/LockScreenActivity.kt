@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 
 /** Màn khoá app - hiện MỖI LẦN mở app nếu đã đặt PIN hoặc Hình ở Cài đặt. Nhập đúng mới vào được
  *  màn chính; bấm back chỉ đưa app xuống nền (không cho vượt qua bằng cách back ra). */
@@ -26,7 +25,7 @@ class LockScreenActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(themeColor(R.color.bg_primary))
+            setBackgroundColor(0xFF000000.toInt())
             setPadding(dp(32), dp(32), dp(32), dp(32))
         }
 
@@ -42,7 +41,7 @@ class LockScreenActivity : AppCompatActivity() {
         if (type == "pattern") {
             tvHint = TextView(this).apply {
                 text = "Vẽ hình mở khoá"
-                setTextColor(themeColor(R.color.text_secondary))
+                setTextColor(0xFF888888.toInt())
                 gravity = Gravity.CENTER
                 setPadding(0, 0, 0, dp(16))
             }
@@ -58,7 +57,7 @@ class LockScreenActivity : AppCompatActivity() {
                 inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
                 textSize = 22f
                 gravity = Gravity.CENTER
-                setTextColor(themeColor(R.color.text_primary))
+                setTextColor(0xFFFFFFFF.toInt())
                 hint = "Nhập mã PIN"
                 setHintTextColor(0xFF666666.toInt())
                 layoutParams = LinearLayout.LayoutParams(dp(200), ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -83,7 +82,7 @@ class LockScreenActivity : AppCompatActivity() {
             })
             val btnOk = Button(this).apply {
                 text = "Mở khoá"
-                setTextColor(themeColor(R.color.text_primary))
+                setTextColor(0xFFFFFFFF.toInt())
                 setBackgroundColor(0xFFC724FF.toInt())
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 lp.topMargin = dp(16)
