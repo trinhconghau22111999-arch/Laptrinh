@@ -64,15 +64,22 @@ class MainActivity : AppCompatActivity() {
         // Chế độ ẩn toàn màn hình có thể bị huỷ khi bàn phím hiện lên, chuyển app đi rồi quay
         // lại... - áp dụng lại mỗi lần cửa sổ được lấy focus để luôn giữ đúng trạng thái ẩn.
         //
-        // LỖI ĐÃ SỬA: bấm vào ô địa chỉ (edtUrl) để gõ chữ thì bàn phím ảo KHÔNG bật lên được.
-        // Nguyên nhân: ngay lúc EditText nhận focus và hệ thống chuẩn bị hiện bàn phím, cửa sổ
-        // app cũng nhận lại window-focus (hasFocus = true) trên rất nhiều máy/Android - callback
+        // LỖI ĐÃ SỬA (lần 1): bấm vào ô địa chỉ (edtUrl) để gõ chữ thì bàn phím ảo KHÔNG bật lên
+        // được. Nguyên nhân: ngay lúc EditText nhận focus và hệ thống chuẩn bị hiện bàn phím, cửa
+        // sổ app cũng nhận lại window-focus (hasFocus = true) trên rất nhiều máy/Android - callback
         // này lập tức gọi enableImmersiveMode() -> controller.hide(systemBars()) NGAY GIỮA lúc
-        // bàn phím đang hiện lên, khiến yêu cầu hiện IME bị huỷ/chớp tắt rồi biến mất. Sửa bằng
-        // cách KHÔNG ép ẩn thanh hệ thống nếu view đang giữ focus là 1 ô nhập liệu (nghĩa là bàn
-        // phím đang cần hiện) - để yên cho bàn phím hiện lên bình thường, chỉ áp dụng lại chế độ
-        // ẩn toàn màn hình khi không có ô nhập liệu nào đang được focus.
-        if (hasFocus && currentFocus !is EditText) enableImmersiveMode()
+        // bàn phím đang hiện lên, khiến yêu cầu hiện IME bị huỷ/chớp tắt rồi biến mất.
+        //
+        // LỖI ĐÃ SỬA (lần 2 - QUAN TRỌNG, đây mới là lỗi user thường gặp nhất): bấm vào 1 ô nhập
+        // liệu NGAY TRÊN TRANG WEB (ô tìm kiếm, form đăng nhập...) cũng bị y hệt lỗi trên, dù đã
+        // sửa lần 1. Nguyên nhân: ô nhập liệu đó không phải 1 View Android riêng - nó nằm BÊN
+        // TRONG WebView, nên currentFocus lúc đó trả về chính đối tượng WebView (không phải
+        // EditText) -> điều kiện "currentFocus !is EditText" ở trên vẫn đúng -> vẫn gọi
+        // enableImmersiveMode() giữa lúc bàn phím đang hiện lên cho ô nhập trên trang web -> bàn
+        // phím vẫn bị huỷ y như cũ. Sửa bằng cách CŨNG không ép ẩn thanh hệ thống khi view đang
+        // giữ focus là WebView (webView chính, hoặc floatWebView/fWebView video nổi) - vì rất có
+        // thể người dùng vừa chạm vào 1 ô nhập liệu bên trong trang, bàn phím đang cần hiện lên.
+        if (hasFocus && currentFocus !is EditText && currentFocus !is WebView) enableImmersiveMode()
     }
 
     private lateinit var webView: WebView
