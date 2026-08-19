@@ -760,6 +760,9 @@ class MainActivity : AppCompatActivity() {
                 edtUrl.setText(url)
                 view?.evaluateJavascript(AdOverlayBlocker.JS, null)
                 if (YoutubeAdSkipper.isYoutube(url)) {
+                    // AdOverlayBlocker KHÔNG chạy trên YouTube - nó dùng querySelectorAll('body *')
+                    // quét toàn bộ DOM mỗi 700ms, YouTube có hàng nghìn element -> gây lag nặng.
+                    // YoutubeAdSkipper đã xử lý overlay quảng cáo YouTube rồi, không cần thêm.
                     view?.evaluateJavascript(YoutubeAdSkipper.JS, null)
                 } else {
                     // Nút "Tải về" (VideoDownloadUI) KHÔNG chèn trên YouTube - vì YouTube mã
@@ -1028,7 +1031,7 @@ object YoutubeAdSkipper {
                     );
                     overlays.forEach(function(el) { el.style.display = 'none'; });
                 } catch (e) {}
-            }, 300);
+            }, 500);
         })();
     """
 
@@ -1106,7 +1109,7 @@ object AdOverlayBlocker {
                     }
                 } catch (e) {}
             }
-            setInterval(killOverlays, 700);
+            setInterval(killOverlays, 2000);
         })();
     """
 }
@@ -1163,7 +1166,7 @@ object VideoDownloadUI {
                         btn.style.display = 'none';
                     }
                 } catch (e) {}
-            }, 800);
+            }, 2000);
         })();
     """
 }
