@@ -28,11 +28,11 @@ Daemon will be stopped at the end of the build
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
 > Task :app:javaPreCompileDebug
-> Task :app:processDebugManifestForPackage
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
+> Task :app:processDebugManifestForPackage
 > Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
 > Task :app:processDebugResources
@@ -40,9 +40,14 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugStartupProfile
 > Task :app:compileDebugKotlin
 > Task :app:mergeExtDexDebug
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeLibDexDebug
 
 > Task :app:compileDebugKotlin FAILED
 e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:249:97 Unresolved reference: @AccountBrowserActivity
+
+> Task :app:mergeDebugNativeLibs
+> Task :app:validateSigningDebug
 
 FAILURE: Build failed with an exception.
 
@@ -252,4 +257,4 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 
 
 BUILD FAILED in 1m 44s
-25 actionable tasks: 25 executed
+29 actionable tasks: 29 executed
