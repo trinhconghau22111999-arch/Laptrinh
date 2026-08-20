@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -31,7 +32,12 @@ import android.widget.TextView
  *  "..." để thu gọn về lại chỉ còn hàng icon. */
 object WpAppBar {
 
-    data class ActionItem(val icon: String, val label: String, val action: () -> Unit)
+    /** [icon]: dự phòng bằng glyph chữ (dùng cho hàng chữ mở rộng, ít quan trọng về mặt hình
+     *  ảnh vì đã có [label] đi kèm). [iconRes]: icon vector đơn sắc thật (0 = không có, dùng
+     *  [icon] chữ thay thế) - LUÔN ưu tiên dùng cho 4 nút chính ở hàng dưới, vì đó là hàng CHỈ
+     *  CÓ ICON không có chữ, nên icon vector chuẩn (không lệch tuỳ font emoji từng máy) quan
+     *  trọng hơn nhiều so với hàng chữ mở rộng. */
+    data class ActionItem(val icon: String, val label: String, val action: () -> Unit, val iconRes: Int = 0)
 
     class Handle internal constructor(
         private val wm: WindowManager,
@@ -76,18 +82,33 @@ object WpAppBar {
             gravity = Gravity.CENTER_VERTICAL
         }
         primaryActions.take(4).forEach { item ->
-            iconRow.addView(TextView(activity).apply {
-                text = item.icon
-                textSize = 18f
-                gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+            // Icon vector đơn sắc thật (đúng kiểu App Bar WP: icon trắng phẳng trong khung tròn
+            // ẩn/hiện theo trạng thái bấm) khi có iconRes; nếu không, dự phòng bằng glyph chữ.
+            val actionView: View = if (item.iconRes != 0) {
+                ImageView(activity).apply {
+                    setImageResource(item.iconRes)
+                    setColorFilter(Color.WHITE)
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                    val pad = dp(13)
+                    setPadding(pad, pad, pad, pad)
+                }
+            } else {
+                TextView(activity).apply {
+                    text = item.icon
+                    textSize = 18f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                }
+            }
+            actionView.apply {
                 background = pressedBg()
                 isClickable = true
                 isFocusable = true
                 contentDescription = item.label
                 layoutParams = LinearLayout.LayoutParams(dp(52), ViewGroup.LayoutParams.MATCH_PARENT)
                 setOnClickListener { item.action() }
-            })
+            }
+            iconRow.addView(actionView)
         }
 
         // ── Nút "..." (dấu ba chấm mở rộng) - bên phải hàng icon ──
@@ -98,7 +119,8 @@ object WpAppBar {
         fun setExpanded(value: Boolean) {
             expanded = value
             expandedPanel.visibility = if (expanded) View.VISIBLE else View.GONE
-            ellipsisBtn.text = if (expanded) "︙" else "···"
+            // WP thật: dấu "..." GIỮ NGUYÊN dạng ngang dù bung hay thu gọn (không tự xoay dọc
+            // thành "⋮" như trước) - chỉ có bảng chữ phía trên hiện/ẩn.
         }
 
         ellipsisBtn = TextView(activity).apply {

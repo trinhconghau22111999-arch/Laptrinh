@@ -359,12 +359,14 @@ class MainActivity : AppCompatActivity() {
             activity = this,
             root = root,
             primaryActions = listOf(
-                WpAppBar.ActionItem("↻", "Tải lại trang") { webView.reload() },
+                WpAppBar.ActionItem("↻", "Tải lại trang", { webView.reload() }, R.drawable.ic_wp_refresh),
                 WpAppBar.ActionItem(
                     if (forceDesktop) "📱" else "🖥",
-                    if (forceDesktop) "Bản di động" else "Bản máy tính"
-                ) { toggleDesktopSite() },
-                WpAppBar.ActionItem("⇧", "Chia sẻ trang") { shareCurrentPage() }
+                    if (forceDesktop) "Bản di động" else "Bản máy tính",
+                    { toggleDesktopSite() },
+                    if (forceDesktop) R.drawable.ic_wp_mobile_flat else R.drawable.ic_wp_desktop_flat
+                ),
+                WpAppBar.ActionItem("⇧", "Chia sẻ trang", { shareCurrentPage() }, R.drawable.ic_wp_share)
             ),
             secondaryActions = listOf(
                 WpAppBar.ActionItem("⚙", "cài đặt") { startActivityWp(Intent(this, SettingsActivity::class.java)) },

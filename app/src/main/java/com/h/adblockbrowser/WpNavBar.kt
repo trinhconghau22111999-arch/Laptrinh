@@ -5,20 +5,26 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 
 /** Thanh điều hướng 3 NÚT CỐ ĐỊNH kiểu Windows Phone / Windows 10 Mobile thật: ◁ Back / ⊞ Start
- *  / 🔍 Search, LUÔN nằm giữa cạnh dưới màn hình - đúng đúng 3 nút cứng/cảm ứng vật lý của điện
- *  thoại WP thật, thay cho [FloatingBackButton] (1 nút tròn nổi kéo-thả tự do khắp màn hình,
- *  vốn mô phỏng nút Home vật lý của iPhone đời cũ - SAI hẳn ẩn dụ điều hướng của WP).
+ *  / 🔍 Search, thay cho [FloatingBackButton] (1 nút tròn nổi kéo-thả tự do khắp màn hình, vốn
+ *  mô phỏng nút Home vật lý của iPhone đời cũ - SAI hẳn ẩn dụ điều hướng của WP).
+ *
+ *  SỬA ĐỂ ĐÚNG WP THẬT (khác bản trước): thanh nút phần mềm on-screen của Windows 10 Mobile trải
+ *  dài HẾT CHIỀU NGANG màn hình, 3 nút chia đều theo tỉ lệ 1/3 - 1/3 - 1/3 (Back luôn ở SÁT MÉP
+ *  TRÁI, Search luôn ở SÁT MÉP PHẢI, Start ở giữa) - KHÔNG phải 1 cụm nhỏ 3 nút dính sát nhau nổi
+ *  giữa màn hình như trước (nhìn giống 1 "viên thuốc" nổi kiểu iOS/gesture-pill hơn là 3 nút
+ *  cứng thật của WP). Icon cũng đổi từ glyph Unicode (◁ ⊞ 🔍 - hiển thị lệch cỡ/kiểu, có màu tuỳ
+ *  bộ font emoji từng máy) sang vector đơn sắc trắng phẳng (xem ic_wp_back/start/search.xml) để
+ *  luôn đúng 1 kiểu, mọi máy như nhau, đúng tinh thần "flat design" của Metro UI.
  *
  *  [onSearch] = null -> chỉ hiện 2 nút Back/Start (WP cũng cho phép cấu hình thiếu nút Search ở
  *  vài máy/thiết lập, nên bỏ bớt 1 nút không hỏng cảm giác chung).
@@ -58,16 +64,21 @@ object WpNavBar {
     ): Handle {
         fun dp(v: Int) = (v * activity.resources.displayMetrics.density).toInt()
 
-        fun navButton(icon: String, desc: String, action: () -> Unit): TextView = TextView(activity).apply {
-            text = icon
-            textSize = 20f
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        // Icon vector 24dp đơn sắc trắng, thay cho glyph Unicode - căn giữa trong ô 1/3 chiều
+        // rộng của mỗi nút bằng layout_weight=1f để 3 nút LUÔN chia đều bất kể màn hình rộng
+        // bao nhiêu (đúng cách thanh nút phần mềm on-screen thật của WP tự giãn theo màn hình).
+        fun navButton(iconRes: Int, desc: String, action: () -> Unit): ImageView = ImageView(activity).apply {
+            setImageResource(iconRes)
+            setColorFilter(Color.WHITE)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            val pad = dp(13)
+            setPadding(pad, pad, pad, pad)
             contentDescription = desc
             isClickable = true
             isFocusable = true
-            layoutParams = LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.MATCH_PARENT)
+            layoutParams = LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT
+            ).also { it.weight = 1f }
             // Chạm tối nhẹ hình chữ nhật khi bấm - đúng cảm giác "bấm phẳng" Metro, không ripple
             // tròn Material mặc định (xem lý giải tương tự ở HomeScreenManager.pressedOverlay).
             val pressed = GradientDrawable().apply { setColor(0x33FFFFFF) }
@@ -84,12 +95,16 @@ object WpNavBar {
             gravity = Gravity.CENTER
             background = GradientDrawable().apply { setColor(0xCC000000.toInt()) }
         }
-        bar.addView(navButton("◁", "Quay lại", onBack))
-        bar.addView(navButton("⊞", "Start", onStart))
-        if (onSearch != null) bar.addView(navButton("🔍", "Tìm kiếm", onSearch))
+        bar.addView(navButton(R.drawable.ic_wp_back, "Quay lại", onBack))
+        bar.addView(navButton(R.drawable.ic_wp_start, "Start", onStart))
+        if (onSearch != null) bar.addView(navButton(R.drawable.ic_wp_search, "Tìm kiếm", onSearch))
 
         val barHeight = dp(48)
-        val barWidth = dp(64) * (if (onSearch != null) 3 else 2)
+        // Trải HẾT CHIỀU NGANG màn hình (không còn là 1 cụm nhỏ nổi giữa) - đúng thanh nút phần
+        // mềm on-screen thật của Windows 10 Mobile. Đặt tạm = chiều rộng root lúc khởi tạo,
+        // resyncCallback bên dưới sẽ cập nhật lại đúng theo thực tế mỗi khi màn hình đổi kích
+        // thước (xoay máy).
+        var barWidth = root.width.takeIf { it > 0 } ?: activity.resources.displayMetrics.widthPixels
 
         val wm = activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val lp = WindowManager.LayoutParams(
@@ -120,12 +135,15 @@ object WpNavBar {
             }
         }
 
-        // Luôn ở CHÍNH GIỮA cạnh dưới màn hình - không kéo-thả (đúng vị trí cố định của 3 nút
-        // cứng/cảm ứng WP thật), tự tính lại mỗi khi kích thước root đổi (xoay máy).
+        // Luôn TRẢI HẾT CHIỀU NGANG, sát cạnh dưới màn hình - không kéo-thả (đúng vị trí cố định
+        // của thanh nút phần mềm on-screen WP thật), tự tính lại mỗi khi kích thước root đổi
+        // (xoay máy) để 3 nút luôn chia đều theo đúng bề ngang MỚI.
         val resyncCallback = {
             ensureWindowAdded()
             if (root.width > 0 && root.height > 0) {
-                lp.x = ((root.width - barWidth) / 2).coerceAtLeast(0)
+                barWidth = root.width
+                lp.width = barWidth
+                lp.x = 0
                 lp.y = (root.height - barHeight).coerceAtLeast(0)
                 try {
                     wm.updateViewLayout(bar, lp)
