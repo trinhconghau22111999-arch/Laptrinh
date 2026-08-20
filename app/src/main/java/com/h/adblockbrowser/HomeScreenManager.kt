@@ -142,7 +142,11 @@ class HomeScreenManager(
             orientation = LinearLayout.VERTICAL
         }
 
-        // ── Widget giờ/ngày (nếu có) - luôn ở trên cùng của trang "start" ──
+        // ── Tiêu đề "start" kiểu Hub/Pivot header của WP: chữ thường, mảnh, rất to - ĐẶT LÊN
+        // TRÊN CÙNG (trước đây widget giờ/ngày nằm trên tiêu đề, giờ đảo lại theo yêu cầu). ──
+        content.addView(sectionHeader("start"))
+
+        // ── Widget giờ/ngày (nếu có) - NẰM DƯỚI tiêu đề "start" ──
         // MATCH_PARENT (thay vì WRAP_CONTENT + căn giữa trước đây) để khung nền của widget trải
         // hết bề ngang, đúng như các ô Live Tile bên dưới - xem [MainActivity.buildClockWidget].
         if (clockWidget != null) {
@@ -151,9 +155,6 @@ class HomeScreenManager(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ).also { it.bottomMargin = dp(12) })
         }
-
-        // ── Tiêu đề "start" kiểu Hub/Pivot header của WP: chữ thường, mảnh, rất to ──
-        content.addView(sectionHeader("start"))
 
         // ── Lưới Live Tile - ĐÚNG kiểu Start Screen WP thật: TRỘN cỡ vuông (1 đơn vị) và
         // "wide" hình chữ nhật dài (2 đơn vị, gấp đôi bề ngang) trong lưới ngang 3 cột, thay vì

@@ -461,7 +461,9 @@ class MainActivity : AppCompatActivity() {
 
         // Cỡ chữ MẶC ĐỊNH = cỡ NHỎ NHẤT được phép (đúng như yêu cầu "nhỏ nhất là như hiện tại").
         val baseTimeSize = 48f
-        val baseDateSize = 14f
+        // Chữ thứ/ngày/tháng/năm TĂNG THÊM 20% so với trước (14 -> 16.8) theo yêu cầu, dễ đọc
+        // hơn mà không đổi tỉ lệ phóng to/thu nhỏ (scale) hiện có.
+        val baseDateSize = 14f * 1.2f
         val minScale = 1f
         val maxScale = 3f
         var scale = prefs.getFloat("scale", minScale).coerceIn(minScale, maxScale)
