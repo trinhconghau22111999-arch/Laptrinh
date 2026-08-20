@@ -587,6 +587,29 @@ class HomeScreenManager(
 
     /** 1 ô "Live Tile" vuông kiểu WP cho các mục CỐ ĐỊNH (dùng icon vector có sẵn trong app):
      *  nền màu accent phẳng, icon trắng đơn sắc góc trên-trái, nhãn ở góc dưới-trái. */
+    /** Hiệu ứng "bóp nhẹ" (squish) khi CHẠM vào 1 Live Tile - co lại còn ~92% rồi bật về 100%
+     *  ngay khi thả tay, kèm hiệu ứng sáng nhẹ [pressedOverlay] - đây là phản hồi chạm ĐẶC
+     *  TRƯNG, dễ nhận ra nhất của Windows Phone/Windows 10 Mobile thật khi mở 1 app từ Start
+     *  (khác hẳn ripple lan toả tròn của Material Design hay hiệu ứng mờ dần của iOS). Dùng
+     *  animate() (scaleX/scaleY) thay vì StateListAnimator - hoạt động đồng nhất trên mọi
+     *  phiên bản Android app hỗ trợ (kể cả bản cũ trước Lollipop không có StateListAnimator).
+     *  onTouchListener CHỈ vẽ hiệu ứng, KHÔNG return true (không "nuốt" sự kiện chạm) để
+     *  OnClickListener/OnLongClickListener của view vẫn hoạt động bình thường như trước. */
+    private fun applyWpTilePressAnim(view: View) {
+        view.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    v.animate().scaleX(0.92f).scaleY(0.92f).setDuration(90).start()
+                }
+                android.view.MotionEvent.ACTION_UP,
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+                }
+            }
+            false
+        }
+    }
+
     private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
         val tile = FrameLayout(context).apply {
             background = GradientDrawable().apply {
@@ -597,6 +620,7 @@ class HomeScreenManager(
             isFocusable = true
             foreground = pressedOverlay()
         }
+        applyWpTilePressAnim(tile)
 
         val icon = ImageView(context).apply {
             setImageResource(iconRes)
@@ -631,6 +655,7 @@ class HomeScreenManager(
             isLongClickable = true
             foreground = pressedOverlay()
         }
+        applyWpTilePressAnim(tile)
 
         val iconView = ImageView(context).apply {
             setImageDrawable(icon)
