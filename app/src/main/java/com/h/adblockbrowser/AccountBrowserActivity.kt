@@ -562,7 +562,13 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                 browserRoot.visibility = View.GONE
                 fullscreenContainer.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                fullscreenContainer.addView(buildSwipeRevealZone(), FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(40)).also { it.gravity = Gravity.BOTTOM })
                 fullscreenContainer.visibility = View.VISIBLE
+                // ẨN thanh Back/Start/Đa nhiệm khi xem video toàn màn hình - thanh này là 1 CỬA
+                // SỔ HỆ THỐNG riêng luôn nổi trên cùng (xem WpNavBar.kt) nên nếu không ẩn sẽ đè
+                // lên góc video suốt lúc xem. Vuốt lên từ mép đáy (xem buildSwipeRevealZone())
+                // sẽ hiện lại thoáng qua rồi tự ẩn lại sau vài giây.
+                floatingBackButtonHandle?.hide()
             }
 
             override fun onHideCustomView() {
@@ -746,6 +752,40 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         requestedOrientation = orientationBeforeFullscreen
         customViewCallback?.onCustomViewHidden()
         customView = null
+        // Thoát video toàn màn hình -> hiện lại thanh Back/Start/Đa nhiệm bình thường (đã ẩn khi
+        // vào toàn màn hình - xem onShowCustomView()).
+        floatingBackButtonHandle?.show()
+    }
+
+    /** Dải trong suốt cao 40dp áp SÁT MÉP ĐÁY màn hình, CHỈ dùng để bắt cử chỉ vuốt LÊN trong
+     *  lúc xem video toàn màn hình - KHÔNG phủ hết video (sẽ chặn mất các nút tua/play của
+     *  trình phát) mà chỉ nằm ở dải mép đáy, giống đúng cách Windows 10 Mobile lẫn YouTube thật
+     *  cho vuốt từ mép để gọi lại thanh điều hướng đang ẩn. Vuốt lên đủ xa (>24dp) trong dải này
+     *  -> hiện thanh NavBar thoáng qua rồi tự ẩn lại sau 3 giây nếu người dùng không vuốt tiếp. */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun buildSwipeRevealZone(): View {
+        val autoHide = Runnable { if (customView != null) floatingBackButtonHandle?.hide() }
+        var downY = 0f
+        return View(this).apply {
+            setOnTouchListener { v, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downY = event.rawY
+                        false // không tiêu thụ ACTION_DOWN - để sự kiện vẫn truyền được xuống
+                        // video bên dưới nếu người dùng chỉ chạm/tua chứ không vuốt lên thật sự.
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (downY - event.rawY > dp(24)) {
+                            v.removeCallbacks(autoHide)
+                            floatingBackButtonHandle?.show()
+                            v.postDelayed(autoHide, 3000)
+                        }
+                        false
+                    }
+                    else -> false
+                }
+            }
+        }
     }
 
     override fun onBackPressed() {
