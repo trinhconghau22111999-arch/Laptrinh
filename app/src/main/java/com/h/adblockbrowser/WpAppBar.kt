@@ -17,34 +17,35 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** "App Bar" kiểu Windows Phone / Windows 10 Mobile thật: thanh phẳng bán trong suốt nằm sát
- *  đáy màn hình (ngay TRÊN 3 nút Back/Start/Search của [WpNavBar]) chứa TỐI ĐA 4 icon hành động
- *  của TRANG HIỆN TẠI (tải lại, đổi bản máy tính/di động, chia sẻ...) + 1 nút "..." bên phải.
+/**
+ * THAY ĐỔI SO VỚI BẢN CŨ (để giống Win10 Mobile hơn):
  *
- *  Đây là mảnh còn thiếu so với WP thật: hầu hết app WP (kể cả Internet Explorer/Edge) đều có
- *  thanh này để chứa các thao tác theo NGỮ CẢNH TRANG đang xem, tách biệt hẳn với 3 nút phần
- *  cứng cố định (Back/Start/Search) vốn KHÔNG đổi theo trang. Trước đây app chỉ có 3 nút cứng
- *  nên phải giấu bớt chức năng (nút đổi bản máy tính/di động bị ẩn hẳn, xem MainActivity) vì
- *  không có chỗ nào đúng kiểu WP để đặt.
+ * 1. NỀN ĐEN ĐẶC: App Bar trên Win10 Mobile (IE/Edge Mobile, Internet Explorer Mobile) có
+ *    nền ĐEN ĐẶC (0xFF000000), không phải bán trong suốt (0xCC000000). Thanh App Bar là
+ *    phần kéo dài của thanh điều hướng, cùng màu nền.
  *
- *  Hành vi ĐÚNG WP: bấm "..." -> thanh App Bar "bung" (mở rộng) LÊN TRÊN, hiện thêm danh sách
- *  chữ (icon nhỏ bên trái + tên hành động) cho các lệnh ít dùng hơn - bấm ra ngoài hoặc bấm lại
- *  "..." để thu gọn về lại chỉ còn hàng icon. */
+ * 2. CHIỀU CAO ĐÚng: 64dp (tăng từ 48dp). App Bar của IE/Edge Mobile trên WP cao hơn
+ *    thanh điều hướng để icon có đủ không gian hiển thị thoải mái.
+ *
+ * 3. ICON LỚN HƠN: icon trong App Bar WP thật to hơn so với bản cũ - tăng từ 52dp lên
+ *    64dp mỗi icon để chiều rộng icon đồng đều với chiều cao App Bar.
+ *
+ * 4. NÚT "···" ĐẦY ĐỦ 3 CHẤM ĐỨNG (⋮) - Win10 Mobile IE/Edge dùng dấu 3 chấm ĐỨNG (⋮),
+ *    không phải 3 chấm ngang (···). Sửa ký tự và tăng cỡ chữ.
+ *
+ * 5. PANEL MỞ RỘNG NỀN ĐEN ĐẶC: panel chữ khi bung "⋮" cũng dùng đen đặc (0xFF000000)
+ *    thay vì 0xF0000000.
+ *
+ * 6. FONT CHỮ panel mở rộng: dòng chữ menu dùng "sans-serif" thường (không phải light)
+ *    để dễ đọc hơn, đúng kiểu text trên WP App Bar expanded.
+ *
+ * 7. OFFSET ĐÚNG: App Bar nằm NGAY TRÊN NavBar, tính theo HEIGHT_DP mới của WpNavBar (54dp).
+ *
+ * 8. SEPARATOR: thêm đường kẻ mỏng (1dp) màu xám nhạt giữa panel mở rộng và hàng icon,
+ *    đúng như IE Mobile trên WP thật.
+ */
 object WpAppBar {
 
-    /** [icon]: dự phòng bằng glyph chữ (dùng cho hàng chữ mở rộng, ít quan trọng về mặt hình
-     *  ảnh vì đã có [label] đi kèm). [iconRes]: icon vector đơn sắc thật (0 = không có, dùng
-     *  [icon] chữ thay thế) - LUÔN ưu tiên dùng cho 4 nút chính ở hàng dưới, vì đó là hàng CHỈ
-     *  CÓ ICON không có chữ, nên icon vector chuẩn (không lệch tuỳ font emoji từng máy) quan
-     *  trọng hơn nhiều so với hàng chữ mở rộng.
-     *
-     *  [action] CỐ Ý đặt là THAM SỐ CUỐI CÙNG (sau [iconRes] dù [iconRes] có giá trị mặc định) -
-     *  để các lệnh gọi kiểu "trailing lambda" ĐANG CÓ SẴN trong MainActivity (vd.
-     *  `ActionItem("⚙", "cài đặt") { ... }`) tiếp tục biên dịch đúng: Kotlin luôn gán lambda
-     *  cuối cùng viết ngoài dấu ngoặc () cho ĐÚNG THAM SỐ CUỐI trong khai báo, bất kể tham số đó
-     *  tên gì - đặt [action] ở giữa (trước [iconRes]) như bản sửa trước đã LÀM VỠ BUILD ở toàn bộ
-     *  chỗ gọi kiểu này (lambda bị gán nhầm cho iconRes: Int -> lỗi "Type mismatch: inferred
-     *  type is () -> Unit but Int was expected"). */
     data class ActionItem(val icon: String, val label: String, val iconRes: Int = 0, val action: () -> Unit)
 
     class Handle internal constructor(
@@ -66,9 +67,7 @@ object WpAppBar {
     fun attach(
         activity: Activity,
         root: FrameLayout,
-        /** Tối đa 4 nút icon LUÔN hiện ở hàng dưới (đúng giới hạn 4 icon của App Bar WP thật). */
         primaryActions: List<ActionItem>,
-        /** Các dòng chữ hiện thêm khi bung "..." - không giới hạn số lượng, cuộn nếu quá dài. */
         secondaryActions: List<ActionItem>
     ): Handle {
         fun dp(v: Int) = (v * activity.resources.displayMetrics.density).toInt()
@@ -84,26 +83,25 @@ object WpAppBar {
 
         var expanded = false
 
-        // ── Hàng icon (luôn hiện khi App Bar đang hiển thị) ──
+        // ── Hàng icon chính (luôn hiện) - chiều cao 64dp ──
         val iconRow = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
+
         primaryActions.take(4).forEach { item ->
-            // Icon vector đơn sắc thật (đúng kiểu App Bar WP: icon trắng phẳng trong khung tròn
-            // ẩn/hiện theo trạng thái bấm) khi có iconRes; nếu không, dự phòng bằng glyph chữ.
             val actionView: View = if (item.iconRes != 0) {
                 ImageView(activity).apply {
                     setImageResource(item.iconRes)
                     setColorFilter(Color.WHITE)
                     scaleType = ImageView.ScaleType.CENTER_INSIDE
-                    val pad = dp(13)
+                    val pad = dp(18) // tăng padding so với bản cũ (13dp)
                     setPadding(pad, pad, pad, pad)
                 }
             } else {
                 TextView(activity).apply {
                     text = item.icon
-                    textSize = 18f
+                    textSize = 20f // tăng từ 18f
                     gravity = Gravity.CENTER
                     setTextColor(Color.WHITE)
                 }
@@ -113,13 +111,14 @@ object WpAppBar {
                 isClickable = true
                 isFocusable = true
                 contentDescription = item.label
-                layoutParams = LinearLayout.LayoutParams(dp(52), ViewGroup.LayoutParams.MATCH_PARENT)
+                // Icon rộng 64dp (tăng từ 52dp) để khớp với chiều cao 64dp của App Bar
+                layoutParams = LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.MATCH_PARENT)
                 setOnClickListener { item.action() }
             }
             iconRow.addView(actionView)
         }
 
-        // ── Nút "..." (dấu ba chấm mở rộng) - bên phải hàng icon ──
+        // ── Nút "⋮" (3 chấm ĐỨNG - đúng Win10 Mobile IE/Edge) ──
         lateinit var ellipsisBtn: TextView
         lateinit var expandedPanel: LinearLayout
         lateinit var barContainer: LinearLayout
@@ -127,35 +126,41 @@ object WpAppBar {
         fun setExpanded(value: Boolean) {
             expanded = value
             expandedPanel.visibility = if (expanded) View.VISIBLE else View.GONE
-            // WP thật: dấu "..." GIỮ NGUYÊN dạng ngang dù bung hay thu gọn (không tự xoay dọc
-            // thành "⋮" như trước) - chỉ có bảng chữ phía trên hiện/ẩn.
         }
 
         ellipsisBtn = TextView(activity).apply {
-            text = "···"
-            textSize = 16f
+            text = "⋮" // 3 CHẤM ĐỨNG (U+22EE) thay vì 3 chấm ngang (···)
+            textSize = 22f // to hơn để dễ nhìn
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             background = pressedBg()
             isClickable = true
             isFocusable = true
             contentDescription = "Thêm"
-            layoutParams = LinearLayout.LayoutParams(dp(52), ViewGroup.LayoutParams.MATCH_PARENT)
+            layoutParams = LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.MATCH_PARENT)
             setOnClickListener { setExpanded(!expanded) }
         }
         iconRow.addView(ellipsisBtn)
 
-        // ── Panel chữ mở rộng (ẩn mặc định) - nằm PHÍA TRÊN hàng icon, nền đen đặc hơn ──
+        // ── Đường kẻ ngăn cách giữa panel mở rộng và hàng icon ──
+        val separator = View(activity).apply {
+            setBackgroundColor(0x44FFFFFF) // xám nhạt mờ
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+            visibility = View.GONE
+        }
+
+        // ── Panel chữ mở rộng (ẩn mặc định) ──
         expandedPanel = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xF0000000.toInt())
+            // Nền đen ĐẶC như bản cũ - nhưng đặt qua setBackgroundColor thay vì GradientDrawable
+            setBackgroundColor(0xFF000000.toInt())
             visibility = View.GONE
         }
         secondaryActions.forEach { item ->
             expandedPanel.addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(20), dp(12), dp(20), dp(12))
+                setPadding(dp(20), dp(14), dp(20), dp(14))
                 background = pressedBg()
                 isClickable = true
                 isFocusable = true
@@ -164,15 +169,16 @@ object WpAppBar {
                 )
                 addView(TextView(activity).apply {
                     text = item.icon
-                    textSize = 16f
+                    textSize = 18f
                     setTextColor(Color.WHITE)
                     layoutParams = LinearLayout.LayoutParams(dp(36), ViewGroup.LayoutParams.WRAP_CONTENT)
                 })
                 addView(TextView(activity).apply {
                     text = item.label.lowercase()
-                    textSize = 16f
+                    textSize = 17f // tăng từ 16f
                     setTextColor(Color.WHITE)
-                    typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+                    // "sans-serif" thường thay vì light - dễ đọc hơn, đúng kiểu WP App Bar text
+                    typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                 })
                 setOnClickListener {
                     setExpanded(false)
@@ -183,16 +189,26 @@ object WpAppBar {
 
         barContainer = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(0xCC000000.toInt()) }
+            // NỀN ĐEN ĐẶC - đúng App Bar của IE/Edge Mobile trên Win10 Mobile thật
+            setBackgroundColor(0xFF000000.toInt())
         }
         barContainer.addView(expandedPanel, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ))
+        // Đường kẻ separator giữa panel và hàng icon
+        barContainer.addView(separator)
         barContainer.addView(iconRow, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(48)
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(64) // 64dp thay vì 48dp
         ))
 
-        val collapsedHeight = dp(48)
+        // Ẩn/hiện separator cùng với panel mở rộng
+        val originalSetExpanded = ::setExpanded
+        expandedPanel.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            separator.visibility = if (expanded) View.VISIBLE else View.GONE
+        }
+
+        val collapsedHeight = dp(64)
+        val navBarHeight = dp(WpNavBar.HEIGHT_DP) // 54dp (dùng hằng số từ WpNavBar)
 
         val wm = activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val lp = WindowManager.LayoutParams(
@@ -207,7 +223,6 @@ object WpAppBar {
 
         var windowAdded = false
         var isVisible = false
-        val navBarHeight = dp(48) // chiều cao của WpNavBar phía dưới - App Bar phải nằm NGAY TRÊN nó
 
         fun ensureWindowAdded() {
             if (windowAdded) return
@@ -237,8 +252,6 @@ object WpAppBar {
             root.post { resyncCallback() }
         }
 
-        // Bung panel làm đổi chiều cao cả thanh -> phải tính lại vị trí (y) mỗi lần bung/thu gọn
-        // để App Bar luôn "dính" sát trên nút Back/Start/Search, không đè hay hở ra.
         expandedPanel.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> root.post { resyncCallback() } }
 
         barContainer.visibility = View.GONE
