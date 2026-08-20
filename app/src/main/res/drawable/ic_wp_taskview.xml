@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Icon "Đa nhiệm" (Task View) đúng kiểu Windows 10 Mobile thật: 2 ô vuông chồng lên nhau
+         lệch góc - ô SAU (trên-trái) chỉ có viền, ô TRƯỚC (dưới-phải) tô đặc. Khác hẳn 4 ô
+         vuông rời của icon Start (xem ic_wp_start.xml) để không bị nhầm 2 nút với nhau. -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:fillColor="#00000000"
+        android:pathData="M3,3h13v13h-13z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8,8h13v13h-13z" />
+</vector>

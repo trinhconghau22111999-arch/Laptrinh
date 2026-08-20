@@ -443,10 +443,6 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- Điều hướng ----------
 
-    /** Mở 1 tab từ màn Đa nhiệm: nếu có trạng thái đã lưu (state) thì PHỤC HỒI nguyên trang
-     *  (giữ đúng vị trí cuộn, lịch sử điều hướng...) thay vì tải lại từ đầu - vì tab này không
-     *  chạy nền, chỉ có dữ liệu trạng thái nhẹ được lưu lúc rời trang. */
-
     private fun navigateTo(url: String) {
         // Đặt User-Agent ĐÚNG cho từng trang TRƯỚC khi tải (Zalo luôn máy tính, nút nổi "🖥ản máy
         // tính" ép toàn bộ, còn lại dùng UA di động "sạch" - xem UserAgentManager.kt để biết vì
@@ -471,8 +467,10 @@ class MainActivity : AppCompatActivity() {
         navigateTo(input)
     }
 
-    // ---------- Menu "đa nhiệm" (xem / xoá lịch sử phiên) ----------
-
+    // Màn hình chính (MainActivity) chỉ có ĐÚNG 1 WebView, không có khái niệm "nhiều tab" nên
+    // KHÔNG có nút/màn hình Đa nhiệm ở đây. Tính năng Đa nhiệm (xem TaskView.kt) chỉ áp dụng
+    // cho 2 màn hình thật sự có nhiều tab để chuyển qua lại: Ẩn danh (IncognitoActivity) và 1
+    // hồ sơ Nhiều tài khoản (AccountBrowserActivityBase) - xem toggleTaskView() ở 2 file đó.
 
     /** Widget giờ/ngày ở trang chủ - PHIÊN BẢN MỚI:
      *  - Không còn kéo-thả tự do tới bất kỳ đâu và KHÔNG còn nền (ô/nơ) phía sau nữa - widget

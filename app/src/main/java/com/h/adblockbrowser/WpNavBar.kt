@@ -68,7 +68,14 @@ object WpNavBar {
         /** ĐÃ BỎ nút Search khỏi NavBar (xem lý do ở comment đầu file).
          *  Tham số này giữ lại để TƯƠNG THÍCH ngược với code gọi ở MainActivity,
          *  nhưng giá trị truyền vào sẽ bị BỎ QUA - không hiện nút Search nữa. */
-        @Suppress("UNUSED_PARAMETER") onSearch: (() -> Unit)? = null
+        @Suppress("UNUSED_PARAMETER") onSearch: (() -> Unit)? = null,
+        /** Nút thứ 3 "Đa nhiệm" (Task View, xem TaskView.kt) - CHỈ hiện khi tham số này khác
+         *  null. Các màn hình không có nhiều tab để chuyển qua lại (Trang chủ, Cài đặt, Lịch,
+         *  Đồng hồ, Máy tính, danh sách Nhiều tài khoản...) không truyền tham số này nên
+         *  NavBar vẫn chỉ có đúng 2 nút Back/Start như trước. Hiện tại chỉ 2 màn hình có
+         *  nhiều tab thật sự truyền vào: Ẩn danh (IncognitoActivity) và 1 hồ sơ Nhiều tài
+         *  khoản (AccountBrowserActivityBase). */
+        onTaskView: (() -> Unit)? = null
     ): Handle {
         fun dp(v: Int) = (v * activity.resources.displayMetrics.density).toInt()
 
@@ -104,10 +111,16 @@ object WpNavBar {
             setBackgroundColor(0xFF000000.toInt())
         }
 
-        // CHỈ 2 NÚT: Back (trái) và Start/Windows (giữa-phải)
+        // MẶC ĐỊNH 2 NÚT: Back (trái) và Start/Windows (giữa/phải)
         // Win10 Mobile Threshold/Redstone đã bỏ nút Search cứng/mềm
         bar.addView(navButton(R.drawable.ic_wp_back, "Quay lại", onBack))
         bar.addView(navButton(R.drawable.ic_wp_start, "Start", onStart))
+        // NÚT THỨ 3 "Đa nhiệm": chỉ thêm khi màn hình gọi có truyền onTaskView (xem doc ở tham
+        // số bên trên) - tự động chia đều 3 ô nhờ weight=1f có sẵn trong navButton(), không
+        // cần chỉnh gì thêm ở layout.
+        if (onTaskView != null) {
+            bar.addView(navButton(R.drawable.ic_wp_taskview, "Đa nhiệm", onTaskView))
+        }
 
         val barHeight = dp(HEIGHT_DP) // 54dp thay vì 48dp
         var barWidth = root.width.takeIf { it > 0 } ?: activity.resources.displayMetrics.widthPixels

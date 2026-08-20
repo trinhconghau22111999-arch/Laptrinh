@@ -86,6 +86,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private lateinit var browserRoot: LinearLayout
     private lateinit var fullscreenContainer: FrameLayout
     private var floatingBackButtonHandle: WpNavBar.Handle? = null
+    private var taskViewHandle: TaskView.Handle? = null
     private lateinit var tabBar: LinearLayout
     private lateinit var webArea: FrameLayout
     private lateinit var edtUrl: EditText
@@ -291,11 +292,12 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    // ---------- Thanh điều hướng 3 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start / 🔍 Search ----------
-    // TRƯỚC ĐÂY dùng 1 nút tròn nổi kéo-thả (kiểu nút Home iPhone đời cũ), GIỜ thay bằng đúng 3
-    // nút cố định giữa cạnh dưới màn hình (xem WpNavBar.kt). Back = lùi trang trong tab hiện
-    // tại. Start = thoát hồ sơ này, quay về danh sách tài khoản (đúng vai trò "về Start" của
-    // WP thật). Search = focus vào ô địa chỉ để gõ ngay.
+    // ---------- Thanh điều hướng kiểu Windows Phone thật: ◁ Back / ⊞ Start / Đa nhiệm ----------
+    // TRƯỚC ĐÂY dùng 1 nút tròn nổi kéo-thả (kiểu nút Home iPhone đời cũ), GIỜ thay bằng nút cố
+    // định giữa cạnh dưới màn hình (xem WpNavBar.kt). Back = lùi trang trong tab hiện tại (hoặc
+    // đóng Đa nhiệm nếu đang mở - xem onBackPressed()). Start = thoát hồ sơ này, quay về danh
+    // sách tài khoản (đúng vai trò "về Start" của WP thật). Đa nhiệm (nút thứ 3, xem
+    // toggleTaskView()) = xem/đóng nhanh các tab của hồ sơ này dạng card toàn màn hình.
     @SuppressLint("ClickableViewAccessibility")
     private fun addFloatingBackHomeButtons(root: FrameLayout) {
         floatingBackButtonHandle = WpNavBar.attach(
@@ -303,10 +305,37 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             root = root,
             onBack = { onBackPressed() },
             onStart = { finish() },
-            onSearch = {
-                edtUrl.requestFocus()
-                val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-                imm?.showSoftInput(edtUrl, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            onTaskView = { toggleTaskView() }
+        )
+    }
+
+    // ---------- Đa nhiệm (Task View) - xem TaskView.kt để biết chi tiết cách overlay này gắn
+    // vào màn hình và vì sao KHÔNG dùng cửa sổ hệ thống riêng như WpNavBar. ----------
+    private fun taskViewItems() = tabs.map { TaskView.Item(it.title, it.webView.url ?: "") }
+
+    private fun toggleTaskView() {
+        val existing = taskViewHandle
+        if (existing != null && existing.isShowing) {
+            existing.dismiss()
+            return
+        }
+        taskViewHandle = TaskView.show(
+            activity = this,
+            root = outer,
+            items = taskViewItems(),
+            activeIndex = activeIndex,
+            onSelect = { i ->
+                taskViewHandle?.dismiss()
+                switchTab(i)
+            },
+            onCloseTab = { i ->
+                closeTab(i)
+                // closeTab() tự finish() activity nếu đó là tab CUỐI CÙNG - kiểm tra tabs còn
+                // rỗng hay không trước khi vẽ lại danh sách card, tránh thao tác lên overlay
+                // của 1 activity sắp/đã bị huỷ.
+                if (tabs.isNotEmpty()) {
+                    taskViewHandle?.update(taskViewItems(), activeIndex)
+                }
             }
         )
     }
@@ -700,6 +729,12 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
+        // Đang mở Đa nhiệm -> Back chỉ ĐÓNG Đa nhiệm, KHÔNG lùi trang/thoát hồ sơ.
+        val tv = taskViewHandle
+        if (tv != null && tv.isShowing) {
+            tv.dismiss()
+            return
+        }
         // Đang xem video toàn màn hình -> thoát toàn màn hình trước, không đóng tab/thoát app.
         if (customView != null) {
             exitFullscreenVideo()
@@ -756,6 +791,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         saveSession()
         for (t in tabs) t.webView.destroy()
         floatingBackButtonHandle?.detach()
+        taskViewHandle?.dismiss()
         super.onDestroy()
     }
 }
