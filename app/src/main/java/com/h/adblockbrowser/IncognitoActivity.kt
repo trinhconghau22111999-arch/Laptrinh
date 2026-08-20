@@ -59,6 +59,7 @@ class IncognitoActivity : AppCompatActivity() {
     // add overlay Đa nhiệm vào, thay vì chỉ là biến cục bộ "outer" trong onCreate() như trước.
     private lateinit var overlayRoot: FrameLayout
     private var taskViewHandle: TaskView.Handle? = null
+    private var starredViewHandle: StarredView.Handle? = null
     // Ẩn danh: theo dõi xem lần load hiện tại có phải do code khởi tạo không
     // (true = load do code/newTab, false = load do user click link trong trang)
     private var isInitiatedLoad = false
@@ -142,7 +143,7 @@ class IncognitoActivity : AppCompatActivity() {
         urlRow.addView(btnStar, LinearLayout.LayoutParams(dp(34), dp(34)))
 
         urlRow.addView(TextView(this).apply {
-            text = "Mở hết"
+            text = "Đã gắn dấu"
             textSize = 12f
             setTextColor(ThemePrefs.accent(this@IncognitoActivity))
             setPadding(dp(8), dp(6), dp(4), dp(6))
@@ -153,7 +154,7 @@ class IncognitoActivity : AppCompatActivity() {
             setCompoundDrawables(star, null, null, null)
             compoundDrawablePadding = dp(4)
             isClickable = true
-            setOnClickListener { openAllStarred() }
+            setOnClickListener { toggleStarredView() }
         })
         root.addView(urlRow)
 
@@ -533,13 +534,29 @@ class IncognitoActivity : AppCompatActivity() {
         Toast.makeText(this, if (nowStarred) "Đã gắn dấu sao" else "Đã bỏ dấu sao", Toast.LENGTH_SHORT).show()
     }
 
-    private fun openAllStarred() {
-        val list = IncognitoStarredStore.getAll(this)
-        if (list.isEmpty()) {
-            Toast.makeText(this, "Chưa có trang nào gắn dấu sao", Toast.LENGTH_SHORT).show()
+    /** Mở/đóng màn "đã gắn dấu" - lưới Live Tile giống hệt trang "start" (xem StarredView.kt),
+     *  THAY CHO hành vi cũ (mở thẳng luôn TẤT CẢ các trang đã gắn dấu thành tab mới cùng lúc) -
+     *  giờ người dùng thấy danh sách trước, bấm vào tile nào thì MỚI mở đúng trang đó. */
+    private fun toggleStarredView() {
+        val existing = starredViewHandle
+        if (existing != null && existing.isShowing) {
+            existing.dismiss()
             return
         }
-        list.forEach { newTab(it) }
+        starredViewHandle = StarredView.show(
+            activity = this,
+            root = overlayRoot,
+            urls = IncognitoStarredStore.getAll(this),
+            onOpen = { url ->
+                starredViewHandle?.dismiss()
+                newTab(url)
+            },
+            onRemove = { url ->
+                IncognitoStarredStore.toggle(this, url)
+                refreshStarIcon()
+                starredViewHandle?.update(IncognitoStarredStore.getAll(this))
+            }
+        )
     }
 
     private fun loadFromInput() {
@@ -579,6 +596,12 @@ class IncognitoActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
+        // Đang mở màn "đã gắn dấu" -> Back chỉ ĐÓNG màn đó, KHÔNG lùi trang/thoát Ẩn danh.
+        val sv = starredViewHandle
+        if (sv != null && sv.isShowing) {
+            sv.dismiss()
+            return
+        }
         // Đang mở Đa nhiệm -> Back chỉ ĐÓNG Đa nhiệm, KHÔNG lùi trang/thoát Ẩn danh.
         val tv = taskViewHandle
         if (tv != null && tv.isShowing) {
@@ -628,6 +651,7 @@ class IncognitoActivity : AppCompatActivity() {
         for (t in tabs) t.webView.destroy()
         floatingBackButtonHandle?.detach()
         taskViewHandle?.dismiss()
+        starredViewHandle?.dismiss()
         super.onDestroy()
     }
 }
