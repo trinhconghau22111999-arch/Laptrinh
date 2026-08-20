@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Màn hình hiện tại (đang đóng khi Back) trượt RA bên phải, kèm mờ dần đi - hướng NGƯỢC với
+     wp_slide_out_left.xml (dùng khi tiến tới/mở màn mới) - dùng kèm wp_slide_in_left.xml khi
+     LÙI LẠI (finishWp()), đúng hiệu ứng "turnstile" đối xứng của Windows Phone/Windows 10
+     Mobile: mở màn mới thì màn cũ lùi sang trái đón màn mới từ phải; đóng lại thì màn hiện tại
+     trả về bên phải để màn phía sau hiện lại từ trái - ĐÃ BỊ MẤT NỘI DUNG (file rỗng 0 byte)
+     trong lần đưa code lên trước, khiến toàn bộ app build lỗi "Unresolved reference:
+     wp_slide_out_right" ở mọi Activity phụ - phục hồi lại đúng theo cặp đối xứng còn lại. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/decelerate_interpolator">
+    <translate
+        android:fromXDelta="0%"
+        android:toXDelta="35%"
+        android:duration="240" />
+    <alpha
+        android:fromAlpha="1.0"
+        android:toAlpha="0.0"
+        android:duration="200" />
+</set>
