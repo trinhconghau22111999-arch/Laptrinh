@@ -2,11 +2,14 @@ package com.h.adblockbrowser
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.ResolveInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Build
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
@@ -244,8 +247,46 @@ class HomeScreenManager(
         return scrollView
     }
 
+    /** Thứ tự các danh mục app hiển thị trên trang "ứng dụng" - danh mục nào không có app nào
+     *  thuộc về thì tự động bỏ qua, không hiện tiêu đề rỗng. "Khác" luôn đứng cuối cùng, gom
+     *  mọi app mà hệ thống không xác định được rõ danh mục (rất nhiều app không khai báo). */
+    private val categoryOrder = listOf(
+        "Trình duyệt", "Mạng xã hội", "Game", "Video & phim", "Âm nhạc & âm thanh",
+        "Nhiếp ảnh", "Tin tức", "Bản đồ & du lịch", "Năng suất", "Hỗ trợ tiếp cận", "Khác"
+    )
+
+    /** Xác định danh mục hiển thị của 1 app:
+     *  1) "Trình duyệt": app có khả năng mở link web (đăng ký xử lý Intent.ACTION_VIEW với
+     *     link http://) - cách duy nhất đáng tin cậy để nhận diện trình duyệt, vì Android
+     *     không có hằng số category riêng cho "browser".
+     *  2) Từ Android 8.0 (API 26) trở lên, hệ thống có ApplicationInfo.category - do CHÍNH app
+     *     tự khai báo trong AndroidManifest (android:appCategory) khi đăng lên Play Store, nên
+     *     không phải app nào cũng khai (nhiều app cũ/sideload sẽ rơi vào "Khác").
+     *  3) Máy dưới Android 8.0 hoặc app không khai báo category -> xếp vào "Khác". */
+    private fun appCategoryLabel(info: ResolveInfo, browserPackages: Set<String>): String {
+        val pkgName = info.activityInfo.packageName
+        if (pkgName in browserPackages) return "Trình duyệt"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return when (info.activityInfo.applicationInfo.category) {
+                ApplicationInfo.CATEGORY_GAME -> "Game"
+                ApplicationInfo.CATEGORY_SOCIAL -> "Mạng xã hội"
+                ApplicationInfo.CATEGORY_VIDEO -> "Video & phim"
+                ApplicationInfo.CATEGORY_AUDIO -> "Âm nhạc & âm thanh"
+                ApplicationInfo.CATEGORY_IMAGE -> "Nhiếp ảnh"
+                ApplicationInfo.CATEGORY_NEWS -> "Tin tức"
+                ApplicationInfo.CATEGORY_MAPS -> "Bản đồ & du lịch"
+                ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Năng suất"
+                ApplicationInfo.CATEGORY_ACCESSIBILITY -> "Hỗ trợ tiếp cận"
+                else -> "Khác"
+            }
+        }
+        return "Khác"
+    }
+
     /** Dựng TRANG "ứng dụng" (trang phải - vuốt sang mới thấy): DANH SÁCH TOÀN BỘ app đã cài,
-     *  xếp A-Z. Mỗi dòng hỗ trợ NHẤN GIỮ để hiện menu ghim/bỏ ghim vào "start". */
+     *  PHÂN NHÓM THEO DANH MỤC (Trình duyệt, Mạng xã hội, Game...) thay vì A-Z như trước - dễ
+     *  tìm app theo loại hơn. Trong mỗi nhóm, app vẫn xếp A-Z (kế thừa thứ tự đã sắp sẵn từ
+     *  [installedApps]). Mỗi dòng hỗ trợ NHẤN GIỮ để hiện menu ghim/bỏ ghim vào "start". */
     private fun buildAppListPage(): View {
         val scrollView = ScrollView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -264,29 +305,44 @@ class HomeScreenManager(
 
         content.addView(sectionHeader("ứng dụng"))
 
+        val pm = context.packageManager
+        // Nhận diện trình duyệt: app nào ĐĂNG KÝ xử lý được link web (http://) coi như trình
+        // duyệt - resolveActivity/queryIntentActivities là cách chuẩn của Android để hỏi "ai
+        // xử lý được Intent này", không có API "isBrowser()" trực tiếp.
+        val browserPackages: Set<String> = try {
+            pm.queryIntentActivities(Intent(Intent.ACTION_VIEW, Uri.parse("http://")), 0)
+                .map { it.activityInfo.packageName }
+                .toSet()
+        } catch (e: Exception) { emptySet() }
+
         val apps = installedApps()
-        var lastLetter: String? = null
+        // Gom app theo danh mục, giữ nguyên thứ tự A-Z đã sắp sẵn bên trong từng nhóm
+        // (LinkedHashMap giữ thứ tự thêm vào đầu tiên của từng key).
+        val grouped = LinkedHashMap<String, MutableList<ResolveInfo>>()
         apps.forEach { info ->
-            val pm = context.packageManager
-            val label = info.loadLabel(pm).toString()
-            val icon = info.loadIcon(pm)
-            val pkgName = info.activityInfo.packageName
-            val firstLetter = label.trim().take(1).uppercase().ifEmpty { "#" }
-            if (firstLetter != lastLetter) {
-                content.addView(alphabetHeader(firstLetter))
-                lastLetter = firstLetter
+            val label = appCategoryLabel(info, browserPackages)
+            grouped.getOrPut(label) { mutableListOf() }.add(info)
+        }
+
+        categoryOrder.forEach { category ->
+            val appsInCategory = grouped[category] ?: return@forEach
+            content.addView(groupHeader(category))
+            appsInCategory.forEach { info ->
+                val label = info.loadLabel(pm).toString()
+                val icon = info.loadIcon(pm)
+                val pkgName = info.activityInfo.packageName
+                content.addView(buildAppListRow(
+                    label, icon,
+                    onClick = {
+                        val launch = pm.getLaunchIntentForPackage(pkgName)
+                        if (launch != null) {
+                            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(launch)
+                        }
+                    },
+                    onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
+                ))
             }
-            content.addView(buildAppListRow(
-                label, icon,
-                onClick = {
-                    val launch = pm.getLaunchIntentForPackage(pkgName)
-                    if (launch != null) {
-                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(launch)
-                    }
-                },
-                onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
-            ))
         }
 
         scrollView.addView(content)
@@ -376,10 +432,10 @@ class HomeScreenManager(
         setPadding(dp(2), dp(4), dp(2), dp(10))
     }
 
-    /** Tiêu đề chữ cái phân nhóm A-Z trong danh sách app, kiểu WP App List: chữ to, màu accent,
-     *  đứng riêng 1 dòng làm mốc phân cách trực quan giữa các nhóm chữ cái. */
-    private fun alphabetHeader(letter: String): View = TextView(context).apply {
-        text = letter.uppercase()
+    /** Tiêu đề phân nhóm trong danh sách app (danh mục: "Trình duyệt", "Game"...), kiểu WP App
+     *  List: chữ to, màu accent, đứng riêng 1 dòng làm mốc phân cách trực quan giữa các nhóm. */
+    private fun groupHeader(text: String): View = TextView(context).apply {
+        this.text = text
         textSize = 22f
         setTextColor(ThemePrefs.accent(context))
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
