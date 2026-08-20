@@ -6,8 +6,8 @@
     <path android:fillColor="#FFFFFF"
         android:pathData="M3,7Q3,5.5 4.5,5.5L9,5.5L10.5,7.5L20,7.5Q21,7.5 21,8.5L21,18.5Q21,20 19.5,20L4.5,20Q3,20 3,18.5Z"/>
     <!-- Tài liệu trên thư mục (outline trắng riêng biệt để thấy) -->
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.2" android:fillColor="@android:color/transparent"
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.2" android:fillColor="#00000000"
         android:pathData="M9,20L9,10L17,10L17,20"/>
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.1" android:fillColor="@android:color/transparent"
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.1" android:fillColor="#00000000"
         android:pathData="M11,13L15,13M11,15.5L15,15.5M11,18L15,18"/>
 </vector>

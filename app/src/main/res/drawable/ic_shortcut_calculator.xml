@@ -3,7 +3,7 @@
     android:width="24dp" android:height="24dp"
     android:viewportWidth="24" android:viewportHeight="24">
     <!-- Thân máy tính -->
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.4" android:fillColor="@android:color/transparent"
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.4" android:fillColor="#00000000"
         android:pathData="M6,2L18,2Q19.5,2 19.5,3.5L19.5,20.5Q19.5,22 18,22L6,22Q4.5,22 4.5,20.5L4.5,3.5Q4.5,2 6,2Z"/>
     <!-- Màn hình hiển thị -->
     <path android:fillColor="#FFFFFF"
