@@ -251,9 +251,10 @@ class HomeScreenManager(
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
-            // Cùng lý do như buildStartPage() ở trên: chừa thêm đúng chiều cao WpNavBar, nếu
-            // không app CUỐI CÙNG trong danh sách A-Z sẽ bị thanh điều hướng nổi che mất.
-            setPadding(dp(20), dp(40), dp(20), dp(24) + dp(WpNavBar.HEIGHT_DP))
+            // Chừa lề trái nhỉnh hơn lề phải 1 chút - trên màn hình rộng (máy tính bảng/ngang)
+            // toàn bộ nội dung bị dồn sát mép trái trông rất lệch, nhích nhẹ sang phải cho cân
+            // mắt hơn mà không phá bố cục danh sách 1 cột hiện có.
+            setPadding(dp(32), dp(40), dp(16), dp(24) + dp(WpNavBar.HEIGHT_DP))
             overScrollMode = View.OVER_SCROLL_NEVER
         }
 
@@ -472,7 +473,7 @@ class HomeScreenManager(
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(4), dp(9), dp(4), dp(9))
+            setPadding(dp(4), dp(12), dp(4), dp(12))
             isClickable = true
             isFocusable = true
             isLongClickable = true
@@ -480,7 +481,7 @@ class HomeScreenManager(
         }
         val icon = ImageView(context).apply {
             setImageDrawable(iconDrawable)
-            layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).also { it.rightMargin = dp(16) }
+            layoutParams = LinearLayout.LayoutParams(dp(64), dp(64)).also { it.rightMargin = dp(20) }
         }
         val text = TextView(context).apply {
             text = label
