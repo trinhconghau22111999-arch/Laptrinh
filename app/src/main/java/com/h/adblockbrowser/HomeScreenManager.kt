@@ -372,25 +372,43 @@ class HomeScreenManager(
             grouped.getOrPut(label) { mutableListOf() }.add(info)
         }
 
+        // Dùng chung 1 closure dựng dòng app (tránh lặp lại onClick/onLongPress) cho cả nhóm
+        // "★ ĐÃ ĐÁNH DẤU SAO" lẫn các nhóm danh mục thường bên dưới.
+        fun addAppRow(info: ResolveInfo) {
+            val label = info.loadLabel(pm).toString()
+            val icon = info.loadIcon(pm)
+            val pkgName = info.activityInfo.packageName
+            content.addView(buildAppListRow(
+                label, icon,
+                onClick = {
+                    val launch = pm.getLaunchIntentForPackage(pkgName)
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(launch)
+                    }
+                },
+                onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
+            ))
+        }
+
+        // ── Nhóm "★ ĐÃ ĐÁNH DẤU SAO" - LUÔN Ở ĐẦU trang (trước mọi danh mục khác), chỉ hiện khi
+        // có ít nhất 1 app đã đánh dấu (xem StarredAppsStore.kt) - nhấn giữ 1 app rồi chọn "Đánh
+        // dấu sao" ở menu bật lên (showPinContextMenu) để thêm vào đây. App đánh dấu sao VẪN
+        // hiện nguyên ở danh mục gốc của nó bên dưới - nhóm này chỉ là lối tắt nổi lên trên,
+        // không di chuyển/xoá app khỏi danh mục thật của nó.
+        val starredPkgs = StarredAppsStore.getAll(context).toSet()
+        if (starredPkgs.isNotEmpty()) {
+            val starredApps = apps.filter { it.activityInfo.packageName in starredPkgs }
+            if (starredApps.isNotEmpty()) {
+                content.addView(groupHeaderStarred("ĐÃ ĐÁNH DẤU SAO"))
+                starredApps.forEach { addAppRow(it) }
+            }
+        }
+
         categoryOrder.forEach { category ->
             val appsInCategory = grouped[category] ?: return@forEach
             content.addView(groupHeader(category))
-            appsInCategory.forEach { info ->
-                val label = info.loadLabel(pm).toString()
-                val icon = info.loadIcon(pm)
-                val pkgName = info.activityInfo.packageName
-                content.addView(buildAppListRow(
-                    label, icon,
-                    onClick = {
-                        val launch = pm.getLaunchIntentForPackage(pkgName)
-                        if (launch != null) {
-                            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(launch)
-                        }
-                    },
-                    onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
-                ))
-            }
+            appsInCategory.forEach { addAppRow(it) }
         }
 
         scrollView.addView(content)
@@ -398,8 +416,8 @@ class HomeScreenManager(
     }
 
     /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
-     *  "start") - tự đổi nhãn "Ghim vào start" / "Bỏ ghim khỏi start" tuỳ trạng thái hiện tại,
-     *  rồi dựng lại 2 trang ngay để tile mới hiện/mất tức thì.
+     *  "start") - 2 dòng: "Ghim/Bỏ ghim vào start" và "Đánh dấu/Bỏ đánh dấu sao", tự đổi nhãn
+     *  tuỳ trạng thái hiện tại, rồi dựng lại 2 trang ngay để tile/nhóm "★" mới hiện/mất tức thì.
      *
      *  DỰNG THỦ CÔNG bằng [PopupWindow] thay vì [android.widget.PopupMenu] mặc định của Android:
      *  PopupMenu hệ thống luôn tự vẽ nền TRẮNG BO GÓC + ĐỔ BÓNG (Material Card) bất kể theme app
@@ -407,11 +425,11 @@ class HomeScreenManager(
      *  menu phẳng, không bóng, nền đen của WP/Windows 10 Mobile thật. */
     private fun showPinContextMenu(anchor: View, pkgName: String) {
         val pinned = PinnedAppsStore.isPinned(context, pkgName)
-        val title = if (pinned) "Bỏ ghim khỏi start" else "Ghim vào start"
+        val starred = StarredAppsStore.isStarred(context, pkgName)
 
         lateinit var popup: PopupWindow
-        val item = TextView(context).apply {
-            text = title
+        fun menuItem(label: String, onTap: () -> Unit): TextView = TextView(context).apply {
+            text = label
             textSize = 16f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
@@ -421,10 +439,20 @@ class HomeScreenManager(
             isFocusable = true
             background = pressedOverlay()
             setOnClickListener {
-                if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
+                onTap()
                 refreshPages()
                 popup.dismiss()
             }
+        }
+        val itemPin = menuItem(if (pinned) "Bỏ ghim khỏi start" else "Ghim vào start") {
+            if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
+        }
+        val itemStar = menuItem(if (starred) "Bỏ đánh dấu sao" else "Đánh dấu sao") {
+            if (starred) StarredAppsStore.unstar(context, pkgName) else StarredAppsStore.star(context, pkgName)
+        }
+        val divider = View(context).apply {
+            setBackgroundColor(0xFF3A3A3A.toInt())
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
         }
         val menuBox = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -435,7 +463,9 @@ class HomeScreenManager(
                 setColor(0xFF1A1A1A.toInt())
                 setStroke(dp(1), 0xFF3A3A3A.toInt())
             }
-            addView(item)
+            addView(itemPin)
+            addView(divider)
+            addView(itemStar)
         }
 
         popup = PopupWindow(
@@ -488,6 +518,26 @@ class HomeScreenManager(
         setTextColor(ThemePrefs.accent(context))
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         setPadding(dp(4), dp(14), dp(4), dp(4))
+    }
+
+    /** Giống [groupHeader] nhưng có thêm ICON DẤU SAO (★) đứng trước chữ - dùng riêng cho nhóm
+     *  "ĐÃ ĐÁNH DẤU SAO" ở đầu trang "ứng dụng", để phân biệt trực quan ngay lập tức với các
+     *  nhóm danh mục thường (Trình duyệt, Game...) vốn chỉ có chữ. */
+    private fun groupHeaderStarred(text: String): View = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(4), dp(14), dp(4), dp(4))
+        addView(ImageView(context).apply {
+            setImageResource(R.drawable.ic_wp_star_filled)
+            setColorFilter(ThemePrefs.accent(context))
+            layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).also { it.marginEnd = dp(8) }
+        })
+        addView(TextView(context).apply {
+            this.text = text
+            textSize = 22f
+            setTextColor(ThemePrefs.accent(context))
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        })
     }
 
     /** 1 ô "Live Tile" vuông kiểu WP cho các mục CỐ ĐỊNH (dùng icon vector có sẵn trong app):
