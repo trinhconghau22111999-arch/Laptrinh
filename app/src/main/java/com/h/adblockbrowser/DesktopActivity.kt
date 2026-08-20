@@ -124,15 +124,24 @@ class DesktopActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
             background = ColorDrawable(0x66000000)
         }
-        dock.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ic_wp_start)
-            val pad = dp(18)
-            setPadding(pad, pad, pad, pad)
+        dock.addView(FrameLayout(this).apply {
+            // Ô VUÔNG MÀU (accent người dùng đã chọn ở Cài đặt > Giao diện - mặc định Cobalt,
+            // có thể là Tím/Chàm nếu người dùng chọn màu đó) đúng kiểu "Live Tile Start" thật
+            // của Windows Phone, thay vì icon trắng trơn không nền như trước - để nút này thật
+            // sự NỔI BẬT, rõ ràng là 1 nút bấm được, không bị lẫn vào nền tối của dock.
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(ThemePrefs.accent(this@DesktopActivity))
+            }
             isClickable = true
             isFocusable = true
             contentDescription = "Về Start"
             setOnClickListener { finish() }
-        }, LinearLayout.LayoutParams(dp(64), dp(64)))
+            addView(ImageView(this@DesktopActivity).apply {
+                setImageResource(R.drawable.ic_wp_start)
+                val pad = dp(14)
+                setPadding(pad, pad, pad, pad)
+            })
+        }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.bottomMargin = dp(2) })
         dock.addView(View(this).apply {
             setBackgroundColor(0x33FFFFFF)
         }, LinearLayout.LayoutParams(dp(32), dp(1)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.topMargin = dp(4); it.bottomMargin = dp(4) })
