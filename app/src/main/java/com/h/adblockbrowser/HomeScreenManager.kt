@@ -12,7 +12,6 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
@@ -162,32 +161,60 @@ class HomeScreenManager(
         // ── Tiêu đề "start" kiểu Hub/Pivot header của WP: chữ thường, mảnh, rất to ──
         content.addView(sectionHeader("start"))
 
-        // ── Lưới Live Tile - 3 cột, ô vuông sát nhau (khe hở 2dp) ──
+        // ── Lưới Live Tile - ĐÚNG kiểu Start Screen WP thật: TRỘN cỡ vuông (1 đơn vị) và
+        // "wide" hình chữ nhật dài (2 đơn vị, gấp đôi bề ngang) trong lưới ngang 3 cột, thay vì
+        // toàn bộ tile cùng 1 cỡ vuông như trước (khác biệt hình ảnh rõ nhất so với WP thật).
+        //
+        // TỰ XẾP HÀNG THỦ CÔNG bằng LinearLayout lồng nhau (cộng dồn "đơn vị" từng tile theo thứ
+        // tự, đủ 3 đơn vị/hàng thì xuống hàng mới) THAY VÌ dùng GridLayout tự động dồn ô +
+        // columnSpec: GridLayout tự đặt vị trí (row/col = UNDEFINED) rất dễ vỡ layout (hở ô,
+        // lệch hàng) khi trộn nhiều columnSpec span khác nhau trong cùng lưới - rủi ro không
+        // đáng, trong khi cách xếp hàng thủ công này luôn cho kết quả chắc chắn, dễ kiểm chứng.
         val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "calendar", "calculator", "clock", "app_lock")
-        val tileCols = 3
-        val tileGrid = GridLayout(context).apply {
-            columnCount = tileCols
+        // Các ô này chiếm 2/3 lưới (tile "wide") - YouTube vì là chức năng dùng nhiều nhất
+        // (giống Store/Photos hay được đặt wide trên Start Screen thật), "Nhiều T.khoản" vì tên
+        // dài, đặt wide giúp chữ không bị ngắt dòng xấu trong ô vuông chật.
+        val wideKeys = setOf("youtube", "accounts")
+        val tileUnitsPerRow = 3
+        var colorIndex = 0
+
+        val tilesContainer = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
         }
-        var colorIndex = 0
-        fun nextTileLp(): GridLayout.LayoutParams = GridLayout.LayoutParams().apply {
-            width = 0
-            height = dp(96)
-            columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1, 1f)
-            setMargins(dp(1), dp(1), dp(1), dp(1))
+        var currentRow: LinearLayout? = null
+        var unitsInRow = 0
+        fun addTileToGrid(tileView: View, units: Int) {
+            if (currentRow == null || unitsInRow + units > tileUnitsPerRow) {
+                currentRow = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                }
+                tilesContainer.addView(currentRow, LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(96)
+                ))
+                unitsInRow = 0
+            }
+            currentRow!!.addView(tileView, LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, units.toFloat()
+            ).also { it.setMargins(dp(1), dp(1), dp(1), dp(1)) })
+            unitsInRow += units
         }
 
         // Các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản, ...)
         pinnedKeys.forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
                 val tileColor = tilePalette[colorIndex % tilePalette.size]; colorIndex++
-                tileGrid.addView(buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }, nextTileLp())
+                val units = if (key in wideKeys) 2 else 1
+                val tile = buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }
+                addTileToGrid(tile, units)
             }
         }
 
         // ── Các app người dùng đã NHẤN GIỮ trong trang "ứng dụng" rồi chọn "Ghim vào start" ──
+        // (luôn cỡ vuông 1 đơn vị - đúng mặc định của WP thật khi ghim mới 1 app, muốn đổi cỡ
+        // phải tự vào menu "Đổi kích thước" riêng, ngoài phạm vi sửa lần này).
         val pm = context.packageManager
         PinnedAppsStore.getAll(context).forEach { pkgName ->
             val appIcon = try { pm.getApplicationIcon(pkgName) } catch (e: Exception) { null }
@@ -204,11 +231,11 @@ class HomeScreenManager(
                     },
                     onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
                 )
-                tileGrid.addView(tile, nextTileLp())
+                addTileToGrid(tile, 1)
             }
         }
 
-        content.addView(tileGrid)
+        content.addView(tilesContainer)
 
         scrollView.addView(content)
         return scrollView
