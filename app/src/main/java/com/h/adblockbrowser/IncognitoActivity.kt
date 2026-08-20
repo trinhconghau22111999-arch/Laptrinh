@@ -17,9 +17,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.content.res.ColorStateList
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -61,7 +63,7 @@ class IncognitoActivity : AppCompatActivity() {
     private lateinit var webContainer: FrameLayout
     private lateinit var edtUrl: EditText
     private lateinit var progressBar: ProgressBar
-    private lateinit var btnStar: TextView
+    private lateinit var btnStar: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,30 +117,37 @@ class IncognitoActivity : AppCompatActivity() {
 
         // Nút tìm kiếm/đi tới - dự phòng cho trường hợp bàn phím không kích hoạt Enter được,
         // bấm trực tiếp vào đây luôn hoạt động.
-        val btnGo = TextView(this).apply {
-            text = "🔍"
-            textSize = 18f
+        val btnGo = ImageView(this).apply {
+            setImageResource(R.drawable.ic_wp_search)
+            imageTintList = ColorStateList.valueOf(0xFFFFFFFF.toInt())
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(10), dp(6), dp(4), dp(6))
             isClickable = true
             setOnClickListener { loadFromInput() }
         }
-        urlRow.addView(btnGo)
+        urlRow.addView(btnGo, LinearLayout.LayoutParams(dp(34), dp(34)))
 
-        btnStar = TextView(this).apply {
-            text = "☆"
-            textSize = 20f
-            setTextColor(0xFFCCCCCC.toInt())
+        btnStar = ImageView(this).apply {
+            setImageResource(R.drawable.ic_wp_star_outline)
+            imageTintList = ColorStateList.valueOf(0xFFCCCCCC.toInt())
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(10), dp(6), dp(4), dp(6))
             isClickable = true
             setOnClickListener { toggleStarCurrent() }
         }
-        urlRow.addView(btnStar)
+        urlRow.addView(btnStar, LinearLayout.LayoutParams(dp(34), dp(34)))
 
         urlRow.addView(TextView(this).apply {
-            text = "★ Mở hết"
+            text = "Mở hết"
             textSize = 12f
             setTextColor(ThemePrefs.accent(this@IncognitoActivity))
             setPadding(dp(8), dp(6), dp(4), dp(6))
+            // Icon sao dạng vector thay cho ký tự "★", đặt bên trái chữ, cùng màu accent.
+            val star = ContextCompat.getDrawable(this@IncognitoActivity, R.drawable.ic_wp_star_filled)
+            star?.setTintList(ColorStateList.valueOf(ThemePrefs.accent(this@IncognitoActivity)))
+            star?.setBounds(0, 0, dp(16), dp(16))
+            setCompoundDrawables(star, null, null, null)
+            compoundDrawablePadding = dp(4)
             isClickable = true
             setOnClickListener { openAllStarred() }
         })
@@ -479,8 +488,8 @@ class IncognitoActivity : AppCompatActivity() {
     private fun refreshStarIcon() {
         val url = tabs.getOrNull(activeIndex)?.webView?.url ?: ""
         val starred = url.isNotBlank() && IncognitoStarredStore.isStarred(this, url)
-        btnStar.text = if (starred) "★" else "☆"
-        btnStar.setTextColor(if (starred) 0xFFFFD700.toInt() else 0xFFCCCCCC.toInt())
+        btnStar.setImageResource(if (starred) R.drawable.ic_wp_star_filled else R.drawable.ic_wp_star_outline)
+        btnStar.imageTintList = ColorStateList.valueOf(if (starred) 0xFFFFD700.toInt() else 0xFFCCCCCC.toInt())
     }
 
     private fun toggleStarCurrent() {

@@ -22,9 +22,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.content.res.ColorStateList
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -87,7 +89,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private lateinit var tabBar: LinearLayout
     private lateinit var webArea: FrameLayout
     private lateinit var edtUrl: EditText
-    private lateinit var btnStar: TextView
+    private lateinit var btnStar: ImageView
     private lateinit var progressBar: ProgressBar
     private lateinit var btnSplit3: TextView
 
@@ -210,39 +212,36 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         }
         urlRow.addView(edtUrl)
 
-        val btnGo = TextView(this).apply {
-            text = "🔍"
-            textSize = 18f
+        val btnGo = ImageView(this).apply {
+            setImageResource(R.drawable.ic_wp_search)
+            imageTintList = ColorStateList.valueOf(0xFFFFFFFF.toInt())
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(10), dp(6), dp(4), dp(6))
             isClickable = true
             setOnClickListener { loadFromInput() }
         }
-        urlRow.addView(btnGo)
+        urlRow.addView(btnGo, LinearLayout.LayoutParams(dp(32), dp(32)))
 
-        btnStar = TextView(this).apply {
-            text = "☆"
-            textSize = 18f
-            setTextColor(0xFFCCCCCC.toInt())
+        btnStar = ImageView(this).apply {
+            setImageResource(R.drawable.ic_wp_star_outline)
+            imageTintList = ColorStateList.valueOf(0xFFCCCCCC.toInt())
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(10), dp(6), dp(4), dp(6))
             isClickable = true
             setOnClickListener { toggleStarCurrent() }
         }
-        urlRow.addView(btnStar)
+        urlRow.addView(btnStar, LinearLayout.LayoutParams(dp(32), dp(32)))
 
-        urlRow.addView(TextView(this).apply {
-            text = "★"
-            // Tăng cỡ chữ (12f -> 22f) và mở rộng vùng đệm chạm ra 44dp mỗi chiều (giống các
-            // nút tròn khác trong app) để dễ bấm trúng hơn, tránh bấm nhầm nút "☆" đánh dấu
-            // trang kế bên.
-            textSize = 22f
-            setTextColor(0xFF29B6F6.toInt())
-            gravity = Gravity.CENTER
-            minWidth = dp(44)
-            minHeight = dp(44)
+        urlRow.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_wp_star_filled)
+            imageTintList = ColorStateList.valueOf(0xFF29B6F6.toInt())
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            // Vùng đệm chạm mở rộng ra 44dp mỗi chiều (giống các nút tròn khác trong app) để
+            // dễ bấm trúng hơn, tránh bấm nhầm nút đánh dấu trang kế bên.
             setPadding(dp(8), dp(4), dp(8), dp(4))
             isClickable = true
             setOnClickListener { openAllStarred() }
-        })
+        }, LinearLayout.LayoutParams(dp(44), dp(44)))
         browserRoot.addView(urlRow)
 
         progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -634,8 +633,8 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private fun refreshStarIcon() {
         val url = tabs.getOrNull(activeIndex)?.webView?.url ?: ""
         val starred = url.isNotBlank() && AccountStarredStore.isStarred(this, slot, url)
-        btnStar.text = if (starred) "★" else "☆"
-        btnStar.setTextColor(if (starred) 0xFFFFD700.toInt() else 0xFFCCCCCC.toInt())
+        btnStar.setImageResource(if (starred) R.drawable.ic_wp_star_filled else R.drawable.ic_wp_star_outline)
+        btnStar.imageTintList = ColorStateList.valueOf(if (starred) 0xFFFFD700.toInt() else 0xFFCCCCCC.toInt())
     }
 
     private fun toggleStarCurrent() {
