@@ -91,6 +91,17 @@ class HomeScreenManager(
      *  dùng ghim/bỏ ghim 1 app, mà KHÔNG cần thoát vào lại trang chủ mới thấy cập nhật. */
     private var pageAdapterRef: PageAdapter? = null
     private var clockWidgetRef: View? = null
+    private var pagerRef: ViewPager2? = null
+
+    /** Cuộn về trang "start" (trang 0) ngay lập tức - gọi khi bấm nút Home (Windows) hoặc Back
+     *  về màn chính, để trang Start luôn là trang hiển thị mặc định. */
+    fun goToStart() {
+        pagerRef?.setCurrentItem(0, true)
+    }
+
+    /** Trả về true nếu đang đứng ở trang 1 "DS Ứng Dụng" - dùng để Back từ trang này
+     *  về trang "start" thay vì đưa app xuống nền ngay. */
+    fun isOnAppListPage(): Boolean = (pagerRef?.currentItem ?: 0) == 1
 
     /** [clockWidget]: widget giờ/ngày (nếu có) được chèn làm mục ĐẦU TIÊN trong nội dung cuộn
      *  dọc của TRANG "start", NẰM NGAY TRONG LUỒNG LAYOUT (không phải overlay nổi tự do) - nhờ
@@ -114,6 +125,7 @@ class HomeScreenManager(
             this.adapter = adapter
             offscreenPageLimit = 1
         }
+        pagerRef = pager
         root.addView(pager)
 
         return root

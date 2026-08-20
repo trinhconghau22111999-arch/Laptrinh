@@ -281,15 +281,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun showHomeOverlay() {
         homeOverlay.visibility = View.VISIBLE
-        toolbarUrl.visibility = View.GONE // trang chủ không phải trang web, không cần thanh địa chỉ
-        progressBar?.visibility = View.GONE // trang chủ không tải trang web nào, ẩn luôn thanh tiến trình
-        // FIX: trước đây chỉ đóng cửa sổ nổi (customView) nếu có, còn video đang phát BÌNH
-        // THƯỜNG (chưa fullscreen/chưa tách cửa sổ nổi) thì WebView vẫn nằm phía SAU
-        // homeOverlay và tiếp tục chạy -> tiếng vẫn phát dù đã "thoát" về màn hình chính.
-        // Dừng hẳn mọi video đang phát trên trang hiện tại mỗi khi rời về màn hình chính.
+        toolbarUrl.visibility = View.GONE
+        progressBar?.visibility = View.GONE
         pauseAllVideos()
-        // Về trang chủ = không còn ở YouTube -> ẩn nút "Off" giả tắt màn hình luôn.
         floatingOffButtonHandle?.setVisible(false)
+        // Luôn về trang "start" (trang 0) khi quay về màn chính - dù đang ở trang "DS Ứng Dụng"
+        homeScreenManager.goToStart()
     }
 
     private val pauseRetryHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -948,6 +945,10 @@ class MainActivity : AppCompatActivity() {
             }
             homeOverlay.visibility != View.VISIBLE -> {
                 showHomeOverlay()
+            }
+            homeScreenManager.isOnAppListPage() -> {
+                // Đang ở trang "DS Ứng Dụng" (trang 1) → Back về trang "start" (trang 0) trước
+                homeScreenManager.goToStart()
             }
             else -> {
                 super.onBackPressed()
