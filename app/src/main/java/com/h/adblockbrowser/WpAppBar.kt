@@ -36,8 +36,16 @@ object WpAppBar {
      *  ảnh vì đã có [label] đi kèm). [iconRes]: icon vector đơn sắc thật (0 = không có, dùng
      *  [icon] chữ thay thế) - LUÔN ưu tiên dùng cho 4 nút chính ở hàng dưới, vì đó là hàng CHỈ
      *  CÓ ICON không có chữ, nên icon vector chuẩn (không lệch tuỳ font emoji từng máy) quan
-     *  trọng hơn nhiều so với hàng chữ mở rộng. */
-    data class ActionItem(val icon: String, val label: String, val action: () -> Unit, val iconRes: Int = 0)
+     *  trọng hơn nhiều so với hàng chữ mở rộng.
+     *
+     *  [action] CỐ Ý đặt là THAM SỐ CUỐI CÙNG (sau [iconRes] dù [iconRes] có giá trị mặc định) -
+     *  để các lệnh gọi kiểu "trailing lambda" ĐANG CÓ SẴN trong MainActivity (vd.
+     *  `ActionItem("⚙", "cài đặt") { ... }`) tiếp tục biên dịch đúng: Kotlin luôn gán lambda
+     *  cuối cùng viết ngoài dấu ngoặc () cho ĐÚNG THAM SỐ CUỐI trong khai báo, bất kể tham số đó
+     *  tên gì - đặt [action] ở giữa (trước [iconRes]) như bản sửa trước đã LÀM VỠ BUILD ở toàn bộ
+     *  chỗ gọi kiểu này (lambda bị gán nhầm cho iconRes: Int -> lỗi "Type mismatch: inferred
+     *  type is () -> Unit but Int was expected"). */
+    data class ActionItem(val icon: String, val label: String, val iconRes: Int = 0, val action: () -> Unit)
 
     class Handle internal constructor(
         private val wm: WindowManager,
