@@ -127,6 +127,9 @@ class MainActivity : AppCompatActivity() {
     // tiếp vì tính năng "phát nền thật" khi thoát hẳn app (bấm Home vật lý) vốn không làm được
     // bằng WebView (xem giải thích trong hội thoại) - giữ app đơn giản, ổn định hơn.
     private var floatingBackButtonHandle: WpNavBar.Handle? = null
+    // Thanh App Bar kiểu WP (icon Tải lại / Bản máy tính-di động / Chia sẻ + nút "..." mở rộng)
+    // - chỉ hiện khi đang XEM TRANG WEB (ẩn ở trang chủ, giống toolbarUrl), xem [WpAppBar].
+    private var appBarHandle: WpAppBar.Handle? = null
 
     // Nút "Off" nổi thứ 2, cùng kiểu nút tròn nổi kéo-thả với nút Back (xem FloatingBackButton),
     // nhưng bấm vào sẽ phủ màn hình "giả tắt" (FakeScreenOff) thay vì lùi trang - dùng khi đang
@@ -182,7 +185,24 @@ class MainActivity : AppCompatActivity() {
         // > Giao diện, để đổi màu ở đó là ô địa chỉ lên màu mới ngay từ lần mở app kế tiếp.
         edtUrl.background = buildUrlBarBackground()
         toolbarUrl = findViewById(R.id.toolbarUrl)
-        progressBar = null  // đã xoá khỏi layout
+        // Thanh tiến trình tải trang mỏng kiểu Windows Phone (IE Mobile/Edge): 1 vạch phẳng màu
+        // NHẤN nằm sát cạnh trên màn hình, không bo góc, không đổ bóng - trước đây bị xoá hẳn
+        // khỏi layout (progressBar = null cứng) nên lúc tải trang KHÔNG còn dấu hiệu gì cho biết
+        // trang đang load, thiếu hẳn 1 chi tiết đặc trưng của trình duyệt WP thật. Dựng lại bằng
+        // code (giống cách AccountBrowserActivity/IncognitoActivity đã làm) để luôn lên đúng màu
+        // nhấn người dùng vừa chọn ở Cài đặt, không cần build lại app.
+        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progressTintList = android.content.res.ColorStateList.valueOf(ThemePrefs.accent(this@MainActivity))
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.BLACK)
+            visibility = View.GONE
+        }
+        findViewById<FrameLayout>(R.id.rootFrame).addView(
+            progressBar,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)).also {
+                it.gravity = Gravity.TOP
+            }
+        )
         homeOverlay = findViewById(R.id.homeOverlay)
         imgWallpaper = findViewById(R.id.imgWallpaper)
         edtHomeSearch = null  // đã xoá khỏi layout
@@ -244,6 +264,7 @@ class MainActivity : AppCompatActivity() {
         // khác trong lúc màn hình này ở nền) - xem giải thích đồng bộ ở FloatingBackButton.kt.
         floatingBackButtonHandle?.resync()
         floatingOffButtonHandle?.resync()
+        appBarHandle?.resync()
     }
 
     private fun loadWallpaper() {
@@ -258,6 +279,8 @@ class MainActivity : AppCompatActivity() {
     private fun showHomeOverlay() {
         homeOverlay.visibility = View.VISIBLE
         toolbarUrl.visibility = View.GONE // trang chủ không phải trang web, không cần thanh địa chỉ
+        progressBar?.visibility = View.GONE // trang chủ không tải trang web nào, ẩn luôn thanh tiến trình
+        appBarHandle?.setVisible(false) // trang chủ không có lệnh "theo trang" nào -> ẩn App Bar
         // FIX: trước đây chỉ đóng cửa sổ nổi (customView) nếu có, còn video đang phát BÌNH
         // THƯỜNG (chưa fullscreen/chưa tách cửa sổ nổi) thì WebView vẫn nằm phía SAU
         // homeOverlay và tiếp tục chạy -> tiếng vẫn phát dù đã "thoát" về màn hình chính.
@@ -295,6 +318,7 @@ class MainActivity : AppCompatActivity() {
         homeOverlay.visibility = View.GONE
         // Đã ẩn hẳn thanh địa chỉ dưới cùng theo yêu cầu - không hiện lại kể cả khi đang xem
         // trang web. Điều hướng dùng trang chủ (icon/tìm kiếm) + nút Back tròn nổi.
+        appBarHandle?.setVisible(true) // rời trang chủ = đang xem trang web -> hiện lại App Bar
     }
 
     private fun loadFromHomeSearch() {
@@ -321,6 +345,55 @@ class MainActivity : AppCompatActivity() {
             Toast.LENGTH_SHORT
         ).show()
         webView.url?.let { navigateTo(it) }
+        // Icon 🖥/📱 phải đổi NGAY theo trạng thái mới - dựng lại App Bar là cách đơn giản nhất
+        // vì icon được tạo 1 lần lúc attach() (đúng cảm giác "nhấn là đổi luôn" của WP).
+        setupAppBar(findViewById<FrameLayout>(R.id.rootFrame))
+        appBarHandle?.setVisible(homeOverlay.visibility != View.VISIBLE)
+    }
+
+    /** Dựng (hoặc dựng lại) App Bar kiểu WP - xem [WpAppBar]. Gọi lại mỗi khi cần đổi icon/nhãn
+     *  theo trạng thái hiện tại (vd. bấm đổi bản máy tính/di động xong đổi icon ngay). */
+    private fun setupAppBar(root: FrameLayout) {
+        appBarHandle?.detach()
+        appBarHandle = WpAppBar.attach(
+            activity = this,
+            root = root,
+            primaryActions = listOf(
+                WpAppBar.ActionItem("↻", "Tải lại trang") { webView.reload() },
+                WpAppBar.ActionItem(
+                    if (forceDesktop) "📱" else "🖥",
+                    if (forceDesktop) "Bản di động" else "Bản máy tính"
+                ) { toggleDesktopSite() },
+                WpAppBar.ActionItem("⇧", "Chia sẻ trang") { shareCurrentPage() }
+            ),
+            secondaryActions = listOf(
+                WpAppBar.ActionItem("⚙", "cài đặt") { startActivityWp(Intent(this, SettingsActivity::class.java)) },
+                WpAppBar.ActionItem("🗑", "xoá dữ liệu duyệt web") { clearBrowsingData() }
+            )
+        )
+    }
+
+    /** Chia sẻ địa chỉ trang đang xem qua app khác (Zalo, Messenger, email...) bằng hộp thoại
+     *  chia sẻ HỆ THỐNG - hộp thoại này KHÔNG thuộc app nên để hệ thống tự vẽ theo ROM máy, không
+     *  can thiệp theme (giống cách app xử lý các Intent mở ứng dụng ngoài khác). */
+    private fun shareCurrentPage() {
+        val url = webView.url ?: return
+        val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(android.content.Intent.EXTRA_TEXT, url)
+        }
+        try {
+            startActivity(android.content.Intent.createChooser(send, "Chia sẻ trang qua"))
+        } catch (e: Exception) { }
+    }
+
+    /** Xoá cookie/cache duyệt web - giống hệt lệnh cùng tên ở [SettingsActivity], đặt lại đây để
+     *  bấm được ngay từ App Bar mà không cần rời khỏi trang đang xem. */
+    private fun clearBrowsingData() {
+        android.webkit.CookieManager.getInstance().removeAllCookies(null)
+        android.webkit.CookieManager.getInstance().flush()
+        android.webkit.WebStorage.getInstance().deleteAllData()
+        Toast.makeText(this, "Đã xoá dữ liệu duyệt web", Toast.LENGTH_SHORT).show()
     }
 
     // ---------- Quyền ----------
@@ -990,6 +1063,15 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
+        // ---------- App Bar kiểu WP: hàng icon hành động của TRANG đang xem + nút "..." ----------
+        // Đúng vai trò App Bar thật của WP: chứa lệnh THEO NGỮ CẢNH TRANG (khác 3 nút cứng
+        // Back/Start/Search ở trên vốn KHÔNG đổi theo trang). Nút "Bản máy tính/di động" trước
+        // đây bị ẩn hẳn (không có chỗ đặt đúng kiểu WP) nay chuyển hẳn vào đây.
+        setupAppBar(root)
+        // Chỉ hiện App Bar khi đang xem trang web (đồng bộ với toolbarUrl) - đã ở trang chủ lúc
+        // vừa mở app nên mặc định ẩn, hiện lại ngay khi rời trang chủ (xem hideHomeOverlay()).
+        appBarHandle?.setVisible(homeOverlay.visibility != View.VISIBLE)
+
         // Nút "Off" nổi - bấm để phủ màn hình giả tắt (xem FakeScreenOff). Icon "⏻" (nút nguồn)
         // để phân biệt rõ với mũi tên "◁" của nút Back.
         //
@@ -1034,6 +1116,7 @@ class MainActivity : AppCompatActivity() {
         clearAllSessionData()
         floatingBackButtonHandle?.detach()
         floatingOffButtonHandle?.detach()
+        appBarHandle?.detach()
         FakeScreenOff.hide()
         super.onDestroy()
     }

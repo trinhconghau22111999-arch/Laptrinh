@@ -2,13 +2,11 @@ package com.h.adblockbrowser
 
 import android.app.AlertDialog
 import android.app.TimePickerDialog
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.GridLayout
 import android.widget.LinearLayout
@@ -317,10 +315,14 @@ class CalendarActivity : AppCompatActivity() {
             setTextColor(0xFFFFFFFF.toInt())
         }
         var hour = 8; var minute = 0
-        val cbRemind = CheckBox(this).apply {
+        // Dùng toggle kiểu WP dùng chung (xem UiUtils.buildWpToggle) thay cho CheckBox mặc định
+        // của Android (vuông bo góc + ripple Material, luôn chỏi trên nền phẳng WP) - để đồng bộ
+        // với đúng 1 kiểu công tắc bật/tắt duy nhất trong toàn app (giống công tắc báo thức ở
+        // ClockActivity), thay vì mỗi màn hình 1 kiểu control khác nhau.
+        val tvRemindLabel = TextView(this).apply {
             text = "Hẹn giờ nhắc"
             setTextColor(0xFFFFFFFF.toInt())
-            buttonTintList = ColorStateList.valueOf(ThemePrefs.accent(this@CalendarActivity))
+            textSize = 16f
         }
         val tvTime = TextView(this).apply {
             text = "Giờ nhắc: %02d:%02d".format(hour, minute)
@@ -329,17 +331,26 @@ class CalendarActivity : AppCompatActivity() {
             setPadding(0, dp(8), 0, 0)
             isClickable = true
             setOnClickListener {
-                TimePickerDialog(this@CalendarActivity, android.R.style.Theme_Material_Dialog, { _, h, m ->
+                TimePickerDialog(this@CalendarActivity, R.style.Theme_WP_Dialog, { _, h, m ->
                     hour = h; minute = m
                     text = "Giờ nhắc: %02d:%02d".format(hour, minute)
                 }, hour, minute, true).show()
             }
         }
-        cbRemind.setOnCheckedChangeListener { _, checked ->
+        var remindChecked = false
+        val toggleRemind = buildWpToggle(false) { checked ->
+            remindChecked = checked
             tvTime.visibility = if (checked) View.VISIBLE else View.GONE
         }
+        val remindRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(10), 0, 0)
+            addView(tvRemindLabel, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(toggleRemind)
+        }
         container.addView(input)
-        container.addView(cbRemind)
+        container.addView(remindRow)
         container.addView(tvTime)
 
         AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
@@ -352,7 +363,7 @@ class CalendarActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
                 val key = dateKey(selDay, selMonth, selYear)
-                val timeMinutes = if (cbRemind.isChecked) hour * 60 + minute else -1
+                val timeMinutes = if (remindChecked) hour * 60 + minute else -1
                 val note = NotesStore.addNote(this, key, text, timeMinutes)
                 if (timeMinutes >= 0) {
                     val triggerCal = Calendar.getInstance()

@@ -2,6 +2,11 @@ package com.h.adblockbrowser
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
+import android.view.View
+import android.widget.FrameLayout
 import android.widget.TextView
 
 /** Mở 1 màn hình MỚI trong app kèm hiệu ứng chuyển màn kiểu Windows Phone (màn mới trượt vào từ
@@ -75,4 +80,73 @@ fun Activity.hideStatusBar() {
     controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
     controller.systemBarsBehavior =
         androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+}
+
+/** Toggle bật/tắt kiểu Windows Phone/Windows 10 Mobile thật - hình viên thuốc (pill) bo tròn 2
+ *  đầu (1 trong SỐ RẤT ÍT chỗ WP dùng bo góc, khác hẳn phần còn lại của Metro vốn vuông sắc 100%):
+ *  rãnh (track) RỖNG viền màu accent khi TẮT, ĐẶC màu accent khi BẬT; núm (thumb) tròn trắng
+ *  nhô cao hơn rãnh 1 chút, KHÔNG đổ bóng/elevation, KHÔNG ripple tròn Material khi bấm - trượt
+ *  bằng animate() đơn giản thay effect Material - dùng thay cho android.widget.Switch mặc định
+ *  (Switch gốc của Android luôn có ripple + shadow quanh núm, không đúng cảm giác "phẳng" WP). */
+fun Activity.buildWpToggle(initialChecked: Boolean, onToggle: (Boolean) -> Unit): FrameLayout {
+    var checked = initialChecked
+    val trackW = dp(46)
+    val trackH = dp(20)
+    val thumbD = dp(28)
+    val containerW = trackW + dp(6)
+    val containerH = thumbD
+
+    val trackBg = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = trackH / 2f
+    }
+    fun applyTrackColor() {
+        if (checked) {
+            trackBg.setColor(ThemePrefs.accent(this))
+            trackBg.setStroke(0, Color.TRANSPARENT)
+        } else {
+            trackBg.setColor(Color.TRANSPARENT)
+            trackBg.setStroke(dp(2), 0xFF767676.toInt())
+        }
+    }
+    applyTrackColor()
+
+    val track = View(this).apply { background = trackBg }
+    val thumb = View(this).apply {
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.WHITE)
+        }
+    }
+
+    val offX = 0f
+    val onX = (containerW - thumbD).toFloat()
+    thumb.translationX = if (checked) onX else offX
+
+    // KHÔNG gán cứng `layoutParams = FrameLayout.LayoutParams(...)` ở đây - view này sẽ được
+    // addView() vào NHIỀU LOẠI cha khác nhau tuỳ nơi gọi (LinearLayout, FrameLayout...), mà
+    // layoutParams của 1 view PHẢI đúng loại của CHA nó, nếu không sẽ crash ClassCastException
+    // ngay khi cha đó layout. Dùng minimumWidth/minimumHeight để tự báo kích thước mong muốn -
+    // cha sẽ tự sinh đúng loại LayoutParams (kiểu WRAP_CONTENT) phù hợp với chính nó.
+    val container = FrameLayout(this).apply {
+        minimumWidth = containerW
+        minimumHeight = containerH
+        isClickable = true
+        isFocusable = true
+    }
+    container.addView(track, FrameLayout.LayoutParams(trackW, trackH).also {
+        it.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+        it.leftMargin = dp(3)
+    })
+    container.addView(thumb, FrameLayout.LayoutParams(thumbD, thumbD).also {
+        it.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+    })
+    container.setOnClickListener {
+        checked = !checked
+        applyTrackColor()
+        track.invalidate()
+        thumb.animate().translationX(if (checked) onX else offX).setDuration(120).start()
+        onToggle(checked)
+    }
+    return container
 }

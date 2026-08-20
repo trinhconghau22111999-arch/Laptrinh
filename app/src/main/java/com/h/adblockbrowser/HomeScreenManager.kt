@@ -15,7 +15,7 @@ import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.PopupMenu
+import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -262,18 +262,53 @@ class HomeScreenManager(
 
     /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
      *  "start") - tự đổi nhãn "Ghim vào start" / "Bỏ ghim khỏi start" tuỳ trạng thái hiện tại,
-     *  rồi dựng lại 2 trang ngay để tile mới hiện/mất tức thì. */
+     *  rồi dựng lại 2 trang ngay để tile mới hiện/mất tức thì.
+     *
+     *  DỰNG THỦ CÔNG bằng [PopupWindow] thay vì [android.widget.PopupMenu] mặc định của Android:
+     *  PopupMenu hệ thống luôn tự vẽ nền TRẮNG BO GÓC + ĐỔ BÓNG (Material Card) bất kể theme app
+     *  đặt gì - hiện lên giữa 1 màn hình đen phẳng tuyệt đối sẽ rất chỏi, sai hẳn cảm giác context
+     *  menu phẳng, không bóng, nền đen của WP/Windows 10 Mobile thật. */
     private fun showPinContextMenu(anchor: View, pkgName: String) {
         val pinned = PinnedAppsStore.isPinned(context, pkgName)
-        val popup = PopupMenu(context, anchor)
         val title = if (pinned) "Bỏ ghim khỏi start" else "Ghim vào start"
-        popup.menu.add(0, 0, 0, title)
-        popup.setOnMenuItemClickListener {
-            if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
-            refreshPages()
-            true
+
+        lateinit var popup: PopupWindow
+        val item = TextView(context).apply {
+            text = title
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(dp(22), dp(16), dp(22), dp(16))
+            minWidth = dp(200)
+            isClickable = true
+            isFocusable = true
+            background = pressedOverlay()
+            setOnClickListener {
+                if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
+                refreshPages()
+                popup.dismiss()
+            }
         }
-        popup.show()
+        val menuBox = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            // Nền đen tuyệt đối phẳng, viền mảnh màu xám đậm thay vì bóng đổ - đúng cảm giác
+            // context menu WP thật nổi trên nền tối, phân biệt bằng đường viền chứ không bằng
+            // elevation/shadow (Metro là thiết kế phẳng tuyệt đối).
+            background = GradientDrawable().apply {
+                setColor(0xFF1A1A1A.toInt())
+                setStroke(dp(1), 0xFF3A3A3A.toInt())
+            }
+            addView(item)
+        }
+
+        popup = PopupWindow(
+            menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true
+        ).apply {
+            elevation = 0f // bỏ hẳn bóng đổ mặc định của PopupWindow trên Android 5.0+
+            animationStyle = 0 // bỏ hiệu ứng mờ dần mặc định, hiện tức thì như context menu WP thật
+            isOutsideTouchable = true
+        }
+        popup.showAsDropDown(anchor, 0, dp(4))
     }
 
     /** Adapter tối giản cho ViewPager2: 2 trang (có thể được [refreshPages] dựng lại), bọc mỗi

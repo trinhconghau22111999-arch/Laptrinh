@@ -2,7 +2,6 @@ package com.h.adblockbrowser
 
 import android.app.AlertDialog
 import android.app.TimePickerDialog
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -16,7 +15,6 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import java.text.SimpleDateFormat
@@ -361,14 +359,10 @@ class ClockActivity : AppCompatActivity() {
                     setTextColor(0xFF888888.toInt())
                 })
             }
-            val toggle = Switch(this).apply {
-                isChecked = alarm.enabled
-                thumbTintList = ColorStateList.valueOf(ThemePrefs.accent(this@ClockActivity))
-                setOnCheckedChangeListener { _, checked ->
-                    AlarmsStore.setEnabled(this@ClockActivity, alarm.id, checked)
-                    if (checked) scheduleAlarm(alarm.copy(enabled = true))
-                    else AlarmScheduler.cancel(this@ClockActivity, alarm.id)
-                }
+            val toggle = buildWpToggle(alarm.enabled) { checked ->
+                AlarmsStore.setEnabled(this@ClockActivity, alarm.id, checked)
+                if (checked) scheduleAlarm(alarm.copy(enabled = true))
+                else AlarmScheduler.cancel(this@ClockActivity, alarm.id)
             }
             val btnDelete = TextView(this).apply {
                 text = "✕"
@@ -425,7 +419,7 @@ class ClockActivity : AppCompatActivity() {
             setTextColor(0xFFFFFFFF.toInt())
         }
         tvPick.setOnClickListener {
-            TimePickerDialog(this, android.R.style.Theme_Material_Dialog, { _, h, m ->
+            TimePickerDialog(this, R.style.Theme_WP_Dialog, { _, h, m ->
                 hour = h; minute = m
                 tvPick.text = "Giờ: %02d:%02d".format(hour, minute)
             }, hour, minute, true).show()
@@ -439,7 +433,7 @@ class ClockActivity : AppCompatActivity() {
             isClickable = true
             setPadding(0, dp(12), 0, dp(4))
             setOnClickListener {
-                AlertDialog.Builder(this@ClockActivity)
+                AlertDialog.Builder(this@ClockActivity, R.style.Theme_WP_Dialog)
                     .setTitle("Chọn âm báo thức")
                     .setSingleChoiceItems(soundNames.toTypedArray(), soundIndex) { dialog, which ->
                         soundIndex = which
