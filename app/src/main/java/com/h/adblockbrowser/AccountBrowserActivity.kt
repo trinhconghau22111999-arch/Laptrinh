@@ -246,7 +246,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
         progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
-            progressTintList = android.content.res.ColorStateList.valueOf(ThemePrefs.accent(this@AccountBrowserActivity))
+            progressTintList = android.content.res.ColorStateList.valueOf(ThemePrefs.accent(this@AccountBrowserActivityBase))
             visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3))
         }
