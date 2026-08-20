@@ -167,12 +167,25 @@ object WpAppBar {
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
                 )
-                addView(TextView(activity).apply {
-                    text = item.icon
-                    textSize = 18f
-                    setTextColor(Color.WHITE)
-                    layoutParams = LinearLayout.LayoutParams(dp(36), ViewGroup.LayoutParams.WRAP_CONTENT)
-                })
+                addView(
+                    if (item.iconRes != 0) {
+                        ImageView(activity).apply {
+                            setImageResource(item.iconRes)
+                            setColorFilter(Color.WHITE)
+                            scaleType = ImageView.ScaleType.CENTER_INSIDE
+                            layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).also {
+                                it.marginEnd = dp(12)
+                            }
+                        }
+                    } else {
+                        TextView(activity).apply {
+                            text = item.icon
+                            textSize = 18f
+                            setTextColor(Color.WHITE)
+                            layoutParams = LinearLayout.LayoutParams(dp(36), ViewGroup.LayoutParams.WRAP_CONTENT)
+                        }
+                    }
+                )
                 addView(TextView(activity).apply {
                     text = item.label.lowercase()
                     textSize = 17f // tăng từ 16f

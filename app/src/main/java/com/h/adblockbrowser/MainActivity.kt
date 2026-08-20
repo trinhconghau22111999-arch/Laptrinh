@@ -368,8 +368,8 @@ class MainActivity : AppCompatActivity() {
                 WpAppBar.ActionItem("⇧", "Chia sẻ trang", R.drawable.ic_wp_share) { shareCurrentPage() }
             ),
             secondaryActions = listOf(
-                WpAppBar.ActionItem("⚙", "cài đặt") { startActivityWp(Intent(this, SettingsActivity::class.java)) },
-                WpAppBar.ActionItem("🗑", "xoá dữ liệu duyệt web") { clearBrowsingData() }
+                WpAppBar.ActionItem("⚙", "cài đặt", R.drawable.ic_shortcut_settings) { startActivityWp(Intent(this, SettingsActivity::class.java)) },
+                WpAppBar.ActionItem("🗑", "xoá dữ liệu duyệt web", R.drawable.ic_wp_trash_flat) { clearBrowsingData() }
             )
         )
     }
@@ -512,7 +512,6 @@ class MainActivity : AppCompatActivity() {
             setTextColor(0xFFFFFFFF.toInt())
             gravity = android.view.Gravity.CENTER
             typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
-            setShadowLayer(4f, 0f, 1f, 0x99000000.toInt())
             isClickable = true
             isFocusable = true
         }
@@ -521,7 +520,6 @@ class MainActivity : AppCompatActivity() {
             setTextColor(0xFFDDDDDD.toInt())
             gravity = android.view.Gravity.CENTER
             typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
-            setShadowLayer(3f, 0f, 1f, 0x99000000.toInt())
             isClickable = true
             isFocusable = true
         }

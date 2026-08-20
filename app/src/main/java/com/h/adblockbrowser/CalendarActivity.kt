@@ -218,14 +218,14 @@ class CalendarActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             setTextColor(if (isToday) ThemePrefs.accent(this@CalendarActivity) else 0xFFFFFFFF.toInt())
         })
-        // Ngày âm lịch - chữ tím neon nhỏ phía dưới số ngày dương. Mùng 1 âm hiện kèm tháng âm
-        // cho dễ nhận biết đầu tháng âm, giống các app lịch âm phổ biến.
+        // Ngày âm lịch - chữ tím nhỏ phía dưới số ngày dương, PHẲNG (không đổ bóng/glow - đúng
+        // kiểu chữ Metro/Windows Phone thật, không neon như Android/iOS). Mùng 1 âm hiện kèm
+        // tháng âm cho dễ nhận biết đầu tháng âm, giống các app lịch âm phổ biến.
         cell.addView(TextView(this).apply {
             text = if (lunar[0] == 1) "${lunar[0]}/${lunar[1]}" else lunar[0].toString()
             textSize = 9f
             gravity = Gravity.CENTER
             setTextColor(0xFFE38CFF.toInt())
-            setShadowLayer(6f, 0f, 0f, ThemePrefs.accent(this@CalendarActivity))
         })
         if (hasNote) {
             cell.addView(View(this).apply {

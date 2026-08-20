@@ -117,7 +117,6 @@ class ClockActivity : AppCompatActivity() {
             textSize = 48f
             setTextColor(0xFFFFFFFF.toInt())
             gravity = Gravity.CENTER
-            setShadowLayer(20f, 0f, 0f, ThemePrefs.accent(this@ClockActivity))
         }
         tvDate = TextView(this).apply {
             textSize = 16f
@@ -211,7 +210,6 @@ class ClockActivity : AppCompatActivity() {
             textSize = 64f
             setTextColor(0xFFFFFFFF.toInt())
             gravity = Gravity.CENTER
-            setShadowLayer(28f, 0f, 0f, ThemePrefs.accent(this@ClockActivity))
         }
         tvSleepDate = TextView(this).apply {
             textSize = 18f
