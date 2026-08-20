@@ -24,6 +24,8 @@ import java.util.Locale
 
 class ClockActivity : AppCompatActivity() {
 
+    private var navBarHandle: WpNavBar.Handle? = null
+
     /** Thoát màn này kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp] ở
      *  UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, mũi tên ◀, phím Back cứng...). */
     override fun finish() {
@@ -104,7 +106,9 @@ class ClockActivity : AppCompatActivity() {
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(8), dp(24), dp(32))
+            // Chừa khoảng trống bằng chiều cao WpNavBar ở đáy, tránh danh sách báo thức bị
+            // thanh điều hướng nổi đè lên - xem addFloatingBackButton ở cuối onCreate.
+            setPadding(dp(24), dp(8), dp(24), dp(32) + dp(WpNavBar.HEIGHT_DP))
         }
 
         // ── Đồng hồ chính ──
@@ -230,6 +234,16 @@ class ClockActivity : AppCompatActivity() {
         outer.addView(sleepOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         setContentView(outer)
+
+        // ── Thanh điều hướng 2 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start - đồng bộ với
+        // MainActivity/AccountsActivity/... (WpNavBar.kt). Màn này là màn "gốc" (không có
+        // trang con để lùi), nên cả Back lẫn Start đều thoát về nơi đã mở màn này. ──
+        navBarHandle = WpNavBar.attach(
+            activity = this,
+            root = outer,
+            onBack = { onBackPressed() },
+            onStart = { onBackPressed() }
+        )
 
         gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDoubleTap(e: MotionEvent): Boolean {
@@ -457,10 +471,16 @@ class ClockActivity : AppCompatActivity() {
             .show()
     }
 
+    override fun onResume() {
+        super.onResume()
+        navBarHandle?.resync()
+    }
+
     override fun onDestroy() {
         handler.removeCallbacks(tick)
         handler.removeCallbacks(swTick)
         handler.removeCallbacks(sleepRunnable)
+        navBarHandle?.detach()
         super.onDestroy()
     }
 }

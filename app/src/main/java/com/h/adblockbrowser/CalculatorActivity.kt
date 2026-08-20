@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -12,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity
 /** Máy tính hiện ĐẦY ĐỦ phép tính đang gõ trên 1 dòng (vd "6-3", rồi "6-3=3" sau khi bấm "="),
  *  không chỉ hiện mỗi số cuối như trước - đúng cách 1 máy tính thật hoạt động. */
 class CalculatorActivity : AppCompatActivity() {
+
+    private var navBarHandle: WpNavBar.Handle? = null
 
     /** Thoát màn này kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp] ở
      *  UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, mũi tên ◀, phím Back cứng...). */
@@ -32,6 +35,9 @@ class CalculatorActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(0xFF000000.toInt())
+            // Chừa khoảng trống bằng đúng chiều cao WpNavBar ở đáy, tránh hàng phím cuối
+            // (0, ., =) bị thanh điều hướng nổi đè lên - xem addFloatingBackButton bên dưới.
+            setPadding(0, 0, 0, dp(WpNavBar.HEIGHT_DP))
         }
 
         val titleRow = LinearLayout(this).apply {
@@ -96,7 +102,28 @@ class CalculatorActivity : AppCompatActivity() {
             grid.addView(btn)
         }
 
-        setContentView(root)
+        // ── Thanh điều hướng 2 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start - đồng bộ với
+        // MainActivity/AccountsActivity/... (WpNavBar.kt). Màn này là màn "gốc" (không có
+        // trang con để lùi), nên cả Back lẫn Start đều thoát về nơi đã mở màn này. ──
+        val outer = FrameLayout(this)
+        outer.addView(root, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        setContentView(outer)
+        navBarHandle = WpNavBar.attach(
+            activity = this,
+            root = outer,
+            onBack = { onBackPressed() },
+            onStart = { onBackPressed() }
+        )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        navBarHandle?.resync()
+    }
+
+    override fun onDestroy() {
+        navBarHandle?.detach()
+        super.onDestroy()
     }
 
     private val opChars = "÷×−+"

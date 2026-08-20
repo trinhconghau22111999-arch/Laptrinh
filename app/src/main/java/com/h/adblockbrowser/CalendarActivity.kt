@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -17,6 +18,8 @@ import androidx.appcompat.app.AppCompatActivity
 import java.util.Calendar
 
 class CalendarActivity : AppCompatActivity() {
+
+    private var navBarHandle: WpNavBar.Handle? = null
 
     /** Thoát màn này kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp] ở
      *  UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, mũi tên ◀, phím Back cứng...). */
@@ -121,16 +124,42 @@ class CalendarActivity : AppCompatActivity() {
         val scroll = ScrollView(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
         }
-        val scrollContent = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val scrollContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            // Chừa khoảng trống bằng chiều cao WpNavBar ở đáy nội dung cuộn, tránh nút "Thêm
+            // ghi chú" bị thanh điều hướng nổi đè lên - xem addFloatingBackButton bên dưới.
+            setPadding(0, 0, 0, dp(WpNavBar.HEIGHT_DP))
+        }
         scrollContent.addView(selectedLabel)
         scrollContent.addView(notesContainer)
         scrollContent.addView(btnAdd)
         scroll.addView(scrollContent)
         root.addView(scroll)
 
-        setContentView(root)
+        // ── Thanh điều hướng 2 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start - đồng bộ với
+        // MainActivity/AccountsActivity/... (WpNavBar.kt). Màn này là màn "gốc" (không có
+        // trang con để lùi), nên cả Back lẫn Start đều thoát về nơi đã mở màn này. ──
+        val outer = FrameLayout(this)
+        outer.addView(root, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        setContentView(outer)
+        navBarHandle = WpNavBar.attach(
+            activity = this,
+            root = outer,
+            onBack = { onBackPressed() },
+            onStart = { onBackPressed() }
+        )
         renderMonth()
         selectDay(selDay, selMonth, selYear)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        navBarHandle?.resync()
+    }
+
+    override fun onDestroy() {
+        navBarHandle?.detach()
+        super.onDestroy()
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
