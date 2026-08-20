@@ -34,8 +34,11 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || true
-          echo "build_exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+          set +e
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          build_exit=$?
+          set -e
+          echo "build_exit=$build_exit" >> $GITHUB_OUTPUT
 
       - name: Save build log to repo (via API)
         if: always()
