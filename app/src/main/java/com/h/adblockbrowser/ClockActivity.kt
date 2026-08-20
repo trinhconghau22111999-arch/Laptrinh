@@ -45,7 +45,8 @@ class ClockActivity : AppCompatActivity() {
         override fun run() {
             val now = Date()
             val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(now)
-            val dateStr = SimpleDateFormat("EEEE, dd/MM/yyyy", Locale("vi")).format(now)
+            // Định dạng ngày đúng WP thật: "thứ tư, 20 tháng 8 2026" (chữ thường, đầy đủ)
+            val dateStr = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("vi")).format(now).lowercase()
             tvTime.text = timeStr
             tvDate.text = dateStr
             tvSleepTime.text = timeStr
@@ -121,15 +122,16 @@ class ClockActivity : AppCompatActivity() {
             setPadding(0, dp(24), 0, dp(24))
         }
         tvTime = TextView(this).apply {
-            textSize = 48f
+            textSize = 72f  // 48f → 72f, đúng cỡ đồng hồ app Clock WP thật
             setTextColor(0xFFFFFFFF.toInt())
             gravity = Gravity.CENTER
+            typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
         }
         tvDate = TextView(this).apply {
-            textSize = 16f
+            textSize = 18f  // 16f → 18f, dễ đọc hơn
             setTextColor(ThemePrefs.accent(this@ClockActivity))
             gravity = Gravity.CENTER
-            setPadding(0, 16, 0, 0)
+            setPadding(0, dp(8), 0, 0)
         }
         clockCol.addView(tvTime)
         clockCol.addView(tvDate)
@@ -214,15 +216,16 @@ class ClockActivity : AppCompatActivity() {
             visibility = View.GONE
         }
         tvSleepTime = TextView(this).apply {
-            textSize = 64f
+            textSize = 90f  // 64f → 90f: đồng hồ screensaver to hơn, đúng WP thật
             setTextColor(0xFFFFFFFF.toInt())
             gravity = Gravity.CENTER
+            typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
         }
         tvSleepDate = TextView(this).apply {
-            textSize = 18f
+            textSize = 20f  // 18f → 20f
             setTextColor(ThemePrefs.accent(this@ClockActivity))
             gravity = Gravity.CENTER
-            setPadding(0, dp(16), 0, 0)
+            setPadding(0, dp(10), 0, 0)
         }
         val tvSleepHint = TextView(this).apply {
             text = "Chạm 2 lần để mở"

@@ -465,19 +465,19 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("clock_widget_prefs", 0)
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
 
-        // Cỡ chữ MẶC ĐỊNH = cỡ NHỎ NHẤT được phép (đúng như yêu cầu "nhỏ nhất là như hiện tại").
-        val baseTimeSize = 48f
-        // Chữ thứ/ngày/tháng/năm TĂNG THÊM 20% so với trước (14 -> 16.8) theo yêu cầu, dễ đọc
-        // hơn mà không đổi tỉ lệ phóng to/thu nhỏ (scale) hiện có.
-        val baseDateSize = 14f * 1.2f
+        // 90sp cho giờ - đúng kiểu đồng hồ Lock Screen Windows Phone / Win10 Mobile thật.
+        // 48sp (bản cũ) quá nhỏ, đặc trưng nổi bật nhất của WP là số giờ RẤT TO + font cực mảnh.
+        val baseTimeSize = 90f
+        // 18sp cho ngày - dễ đọc hơn, tương đương WP thật.
+        val baseDateSize = 18f
         val minScale = 1f
-        val maxScale = 3f
+        val maxScale = 2f  // maxScale giảm từ 3x vì baseSize đã lớn hơn rồi
         var scale = prefs.getFloat("scale", minScale).coerceIn(minScale, maxScale)
 
         val widget = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER_HORIZONTAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
+            gravity = android.view.Gravity.START  // căn TRÁI - đúng kiểu đồng hồ WP thật
+            setPadding(dp(14), dp(12), dp(14), dp(12))
             // Khung nền phẳng kiểu Live Tile (hình chữ nhật, không bo góc) giống hệt các ô icon
             // bên dưới, thay vì trong suốt như trước - dùng đúng màu nhấn (accent) người dùng đã
             // chọn ở Cài đặt > Giao diện để đồng bộ với ô địa chỉ/thanh tiến trình.
@@ -492,15 +492,16 @@ class MainActivity : AppCompatActivity() {
         val tvTime = android.widget.TextView(this).apply {
             textSize = baseTimeSize * scale
             setTextColor(0xFFFFFFFF.toInt())
-            gravity = android.view.Gravity.CENTER
+            gravity = android.view.Gravity.START  // căn TRÁI như WP thật
             typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
+            includeFontPadding = false
             isClickable = true
             isFocusable = true
         }
         val tvDate = android.widget.TextView(this).apply {
             textSize = baseDateSize * scale
-            setTextColor(0xFFDDDDDD.toInt())
-            gravity = android.view.Gravity.CENTER
+            setTextColor(0xFFFFFFFF.toInt())  // trắng thuần (bỏ xám 0xFFDDDDDD)
+            gravity = android.view.Gravity.START  // căn TRÁI
             typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             isClickable = true
             isFocusable = true
@@ -517,9 +518,13 @@ class MainActivity : AppCompatActivity() {
             override fun run() {
                 val now = java.util.Calendar.getInstance()
                 tvTime.text = String.format("%02d:%02d", now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE))
-                val days = arrayOf("CN", "T2", "T3", "T4", "T5", "T6", "T7")
+                // Định dạng đúng WP thật: "thứ tư, 20 tháng 8 2026" (viết đầy đủ, chữ thường)
+                val days = arrayOf("chủ nhật","thứ hai","thứ ba","thứ tư","thứ năm","thứ sáu","thứ bảy")
                 val day = days[now.get(java.util.Calendar.DAY_OF_WEEK) - 1]
-                tvDate.text = "$day, ${now.get(java.util.Calendar.DAY_OF_MONTH)}/${now.get(java.util.Calendar.MONTH)+1}/${now.get(java.util.Calendar.YEAR)}"
+                val dom = now.get(java.util.Calendar.DAY_OF_MONTH)
+                val month = now.get(java.util.Calendar.MONTH) + 1
+                val year = now.get(java.util.Calendar.YEAR)
+                tvDate.text = "$day, $dom tháng $month $year"
                 handler.postDelayed(this, 1000)
             }
         }

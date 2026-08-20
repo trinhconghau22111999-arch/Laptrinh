@@ -72,27 +72,63 @@ class LockScreenActivity : AppCompatActivity() {
         layer.addView(View(this).apply { setBackgroundColor(0x66000000) },
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
+        // Lock Screen WP thật: giờ RẤT TO (~100sp) + font cực mảnh, căn TRÁI,
+        // nằm ở khoảng 1/3 PHÍA TRÊN màn hình (không phải chính giữa).
         val clockColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            gravity = Gravity.START
         }
         val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val sdfDate = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
+        // Ngày viết đầy đủ chữ thường kiểu WP: "thứ tư, 20 tháng 8 2026"
+        val sdfDayName = SimpleDateFormat("EEEE", Locale("vi"))
+        val sdfDayMonth = SimpleDateFormat("d MMMM yyyy", Locale("vi"))
+        fun formatDate(d: java.util.Date): String {
+            val dayName = sdfDayName.format(d).lowercase()
+            val rest = sdfDayMonth.format(d).lowercase()
+            return "$dayName, $rest"
+        }
         val now = java.util.Date()
-        clockColumn.addView(TextView(this).apply {
+        val tvLockTime = TextView(this).apply {
             text = sdfTime.format(now)
-            textSize = 72f
+            textSize = 100f   // 72f → 100f: to hơn nhiều, đúng WP thật
+            setTextColor(0xFFFFFFFF.toInt())
+            typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)  // thin (không phải light)
+            gravity = Gravity.START
+            includeFontPadding = false
+        }
+        val tvLockDate = TextView(this).apply {
+            text = formatDate(now)
+            textSize = 22f  // 20f → 22f
             setTextColor(0xFFFFFFFF.toInt())
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            gravity = Gravity.START
+            setPadding(0, dp(2), 0, 0)
+        }
+        // Cập nhật đồng hồ mỗi giây (không chỉ đọc 1 lần lúc create)
+        val lockHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        val lockTick = object : Runnable {
+            override fun run() {
+                val t = java.util.Date()
+                tvLockTime.text = sdfTime.format(t)
+                tvLockDate.text = formatDate(t)
+                lockHandler.postDelayed(this, 1000)
+            }
+        }
+        lockHandler.post(lockTick)
+        layer.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) {}
+            override fun onViewDetachedFromWindow(v: View) { lockHandler.removeCallbacks(lockTick) }
         })
-        clockColumn.addView(TextView(this).apply {
-            text = sdfDate.format(now)
-            textSize = 20f
-            setTextColor(0xFFFFFFFF.toInt())
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        })
+        clockColumn.addView(tvLockTime)
+        clockColumn.addView(tvLockDate)
+        // Căn TRÁI, margin-top ~140dp ≈ 1/3 từ đỉnh màn hình
         layer.addView(clockColumn, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).also { it.gravity = Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL })
+        ).also {
+            it.gravity = Gravity.START or Gravity.TOP
+            it.leftMargin = dp(28)
+            it.topMargin = dp(140)
+        })
 
         layer.addView(TextView(this).apply {
             text = "vuốt lên để mở khoá"

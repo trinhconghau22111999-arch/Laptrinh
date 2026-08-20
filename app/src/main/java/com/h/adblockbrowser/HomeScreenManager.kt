@@ -191,7 +191,7 @@ class HomeScreenManager(
                     orientation = LinearLayout.HORIZONTAL
                 }
                 tilesContainer.addView(currentRow, LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(96)
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(110) // 96→110dp: tile to hơn, đúng WP thật
                 ))
                 unitsInRow = 0
             }
@@ -501,13 +501,15 @@ class HomeScreenManager(
         override fun getItemCount(): Int = pages.size
     }
 
-    /** Tiêu đề lớn kiểu Pivot/Hub header của WP: chữ thường, cực mảnh, cỡ lớn, màu trắng. */
+    /** Tiêu đề lớn kiểu Pivot/Hub header của WP: chữ thường, cực mảnh, cỡ lớn, màu trắng.
+     *  46sp (tăng từ 30sp) - WP thật dùng chữ cực to cho Pivot/Hub header, 30sp trông nhỏ hơn
+     *  nhiều so với "start" / "ứng dụng" trên máy Lumia thật. */
     private fun sectionHeader(text: String): View = TextView(context).apply {
         this.text = text
-        textSize = 30f
+        textSize = 46f
         setTextColor(Color.WHITE)
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        setPadding(dp(2), dp(4), dp(2), dp(10))
+        setPadding(dp(2), dp(8), dp(2), dp(14))
     }
 
     /** Tiêu đề phân nhóm trong danh sách app (danh mục: "Trình duyệt", "Game"...), kiểu WP App
@@ -555,9 +557,10 @@ class HomeScreenManager(
 
         val icon = ImageView(context).apply {
             setImageResource(iconRes)
-            layoutParams = FrameLayout.LayoutParams(dp(28), dp(28)).also {
+            // 36dp (tăng từ 28dp) + margin 12dp - đúng tỉ lệ tile WP thật với tile 110dp
+            layoutParams = FrameLayout.LayoutParams(dp(36), dp(36)).also {
                 it.gravity = Gravity.TOP or Gravity.START
-                it.leftMargin = dp(10); it.topMargin = dp(10)
+                it.leftMargin = dp(12); it.topMargin = dp(12)
             }
         }
 
@@ -588,9 +591,9 @@ class HomeScreenManager(
 
         val iconView = ImageView(context).apply {
             setImageDrawable(icon)
-            layoutParams = FrameLayout.LayoutParams(dp(28), dp(28)).also {
+            layoutParams = FrameLayout.LayoutParams(dp(36), dp(36)).also {
                 it.gravity = Gravity.TOP or Gravity.START
-                it.leftMargin = dp(10); it.topMargin = dp(10)
+                it.leftMargin = dp(12); it.topMargin = dp(12)
             }
         }
 
@@ -605,7 +608,7 @@ class HomeScreenManager(
 
     private fun buildTileLabel(label: String): TextView = TextView(context).apply {
         text = label
-        textSize = 13f
+        textSize = 15f  // 13f → 15f: chữ tile lớn hơn, dễ đọc hơn, đúng WP thật
         setTextColor(Color.WHITE)
         maxLines = 2
         ellipsize = TextUtils.TruncateAt.END
@@ -614,7 +617,7 @@ class HomeScreenManager(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).also {
             it.gravity = Gravity.BOTTOM or Gravity.START
-            it.leftMargin = dp(8); it.bottomMargin = dp(6); it.rightMargin = dp(8)
+            it.leftMargin = dp(10); it.bottomMargin = dp(8); it.rightMargin = dp(10)
         }
     }
 
