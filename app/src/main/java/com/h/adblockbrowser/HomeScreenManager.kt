@@ -198,7 +198,7 @@ class HomeScreenManager(
             }
             currentRow!!.addView(tileView, LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, units.toFloat()
-            ).also { it.setMargins(dp(1), dp(1), dp(1), dp(1)) })
+            ).also { it.setMargins(dp(2), dp(2), dp(2), dp(2)) })
             unitsInRow += units
         }
 
