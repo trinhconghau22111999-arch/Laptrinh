@@ -260,6 +260,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         showHomeOverlay()
+        // FIX: DesktopActivity (trang "Điện thoại") mở MainActivity kèm extra "initial_url" (vd
+        // bấm icon YouTube trong dock ở cạnh phải) để vào THẲNG trang đó - nhưng TRƯỚC ĐÂY không
+        // có dòng nào đọc lại extra này, nên showHomeOverlay() ở trên luôn thắng, khiến người
+        // dùng bấm icon YouTube chỉ thấy app "bật lên rồi quay lại trang Start" thay vì mở
+        // YouTube. Đọc lại extra, có thì điều hướng thẳng qua navigateTo() (hàm này tự ẩn
+        // homeOverlay giúp, xem navigateTo()).
+        intent.getStringExtra("initial_url")?.let { url -> navigateTo(url) }
     }
 
     override fun onResume() {

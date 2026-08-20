@@ -138,16 +138,33 @@ class DesktopActivity : AppCompatActivity() {
             it.rightMargin = dp(64)
         })
 
-        // ── Dock dọc cạnh phải - lối tắt cố định tới chức năng riêng của app. Nút ĐẦU TIÊN là
-        // "Start" (icon 4-ô kiểu logo Windows/WP thật, [R.drawable.ic_wp_start]) - đưa thẳng về
-        // trang Start NGAY TỪ TRONG NỘI DUNG trang Điện thoại (không cần với tay xuống thanh
-        // WpNavBar ở đáy màn hình) - vì màn "Điện thoại" cố tình phá cách thẩm mỹ Android (xem
-        // class doc), nút quay về Start cần rõ ràng, dễ thấy ngay trong dock. ──
+        // ── Dock dọc cạnh phải - lối tắt cố định tới chức năng riêng của app. Nút "Start" (icon
+        // 4-ô kiểu logo Windows/WP thật, [R.drawable.ic_wp_start]) đưa thẳng về trang Start
+        // NGAY TỪ TRONG NỘI DUNG trang Điện thoại (không cần với tay xuống thanh WpNavBar ở đáy
+        // màn hình). ĐẶT Ở CUỐI dock (dưới cùng, sau icon youtube/files/settings/calculator/
+        // clock) theo yêu cầu - trước đây đặt ở ĐẦU dock. ──
         val dock = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             background = ColorDrawable(0x66000000)
         }
+        val dockKeys = listOf("youtube", "files", "settings", "calculator", "clock")
+        dockKeys.forEach { key ->
+            ShortcutsRepository.ALL[key]?.let { item ->
+                dock.addView(ImageView(this).apply {
+                    setImageResource(item.iconRes)
+                    val pad = dp(14)
+                    setPadding(pad, pad, pad, pad)
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = item.label
+                    setOnClickListener { openShortcut(key) }
+                }, LinearLayout.LayoutParams(dp(64), dp(64)))
+            }
+        }
+        dock.addView(View(this).apply {
+            setBackgroundColor(0x33FFFFFF)
+        }, LinearLayout.LayoutParams(dp(32), dp(1)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.topMargin = dp(4); it.bottomMargin = dp(4) })
         dock.addView(FrameLayout(this).apply {
             // Ô VUÔNG MÀU (accent người dùng đã chọn ở Cài đặt > Giao diện - mặc định Cobalt,
             // có thể là Tím/Chàm nếu người dùng chọn màu đó) đúng kiểu "Live Tile Start" thật
@@ -165,24 +182,7 @@ class DesktopActivity : AppCompatActivity() {
                 val pad = dp(14)
                 setPadding(pad, pad, pad, pad)
             })
-        }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.bottomMargin = dp(2) })
-        dock.addView(View(this).apply {
-            setBackgroundColor(0x33FFFFFF)
-        }, LinearLayout.LayoutParams(dp(32), dp(1)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.topMargin = dp(4); it.bottomMargin = dp(4) })
-        val dockKeys = listOf("youtube", "files", "settings", "calculator", "clock")
-        dockKeys.forEach { key ->
-            ShortcutsRepository.ALL[key]?.let { item ->
-                dock.addView(ImageView(this).apply {
-                    setImageResource(item.iconRes)
-                    val pad = dp(14)
-                    setPadding(pad, pad, pad, pad)
-                    isClickable = true
-                    isFocusable = true
-                    contentDescription = item.label
-                    setOnClickListener { openShortcut(key) }
-                }, LinearLayout.LayoutParams(dp(64), dp(64)))
-            }
-        }
+        }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
         outer.addView(dock, FrameLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.MATCH_PARENT).also {
             it.gravity = Gravity.END
         })
