@@ -209,8 +209,7 @@ class MainActivity : AppCompatActivity() {
         // Khởi tạo màn hình chính - chỉ còn 3 icon cố định (YouTube, Ẩn danh, YouTube+Ẩn danh)
         homeScreenManager = HomeScreenManager(
             this,
-            onOpenShortcut = { item -> openShortcutByKey(item.key) },
-            onOpenSettings = { startActivityWp(Intent(this, SettingsActivity::class.java)) }
+            onOpenShortcut = { item -> openShortcutByKey(item.key) }
         )
         val homeContainer = homeOverlay as android.widget.FrameLayout
         homeContainer.addView(homeScreenManager.build(buildClockWidget()))
@@ -583,6 +582,7 @@ class MainActivity : AppCompatActivity() {
                 "CalendarActivity" -> CalendarActivity::class.java
                 "CalculatorActivity" -> CalculatorActivity::class.java
                 "ClockActivity" -> ClockActivity::class.java
+                "SettingsActivity" -> SettingsActivity::class.java
                 else -> null
             }
             if (activityClass != null) {

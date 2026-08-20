@@ -45,8 +45,8 @@ object ShortcutsRepository {
         "accounts" to ShortcutItem(
             "accounts", "Nhiều T.khoản", ShortcutType.ACTIVITY, "AccountsActivity", R.drawable.ic_shortcut_accounts
         ),
-        "app_lock" to ShortcutItem(
-            "app_lock", "Khoá", ShortcutType.ACTIVITY, "AppLockSetupActivity", R.drawable.ic_shortcut_applock
+        "settings" to ShortcutItem(
+            "settings", "Cài đặt", ShortcutType.ACTIVITY, "SettingsActivity", R.drawable.ic_shortcut_settings
         ),
         "files" to ShortcutItem(
             "files", "Quản lý tệp", ShortcutType.ACTIVITY, "FilesActivity", R.drawable.ic_shortcut_files
@@ -66,15 +66,17 @@ object ShortcutsRepository {
 /** Trang chủ kiểu PIVOT/HUB 2 TRANG của Windows Phone / Windows 10 Mobile - vuốt ngang để
  *  chuyển giữa 2 trang riêng biệt, đúng cảm giác Start Screen thật:
  *   1) TRANG "start" (bên trái, hiện ra đầu tiên): widget giờ/ngày + lưới "Live Tile" vuông -
- *      gồm các ô CỐ ĐỊNH (YouTube, Ẩn danh...) VÀ các app người dùng tự "Ghim vào start".
+ *      gồm các ô CỐ ĐỊNH (YouTube, Ẩn danh, Cài đặt...) VÀ các app người dùng tự "Ghim vào
+ *      start". Nút "Cài đặt" (bánh răng) TRƯỚC ĐÂY là 1 nút riêng nổi cố định ở góc trên-phải
+ *      màn hình, GIỜ ĐÃ GỘP vào thành 1 ô tile bình thường trong lưới (xem ShortcutsRepository
+ *      key "settings") - không còn nút nổi tách biệt nữa, mọi thứ đều là tile.
  *   2) TRANG "ứng dụng" (bên phải, vuốt sang mới thấy): DANH SÁCH TOÀN BỘ ỨNG DỤNG đã cài, xếp
  *      A-Z. NHẤN GIỮ (long-press) 1 app trong danh sách này sẽ hiện menu "Ghim vào start" -
  *      chọn xong app đó xuất hiện thành tile ngay trên trang "start", đúng kiểu Windows Phone.
  *      NHẤN GIỮ tile vừa ghim đó trên trang "start" sẽ hiện menu "Bỏ ghim khỏi start". */
 class HomeScreenManager(
     private val context: Context,
-    private val onOpenShortcut: (ShortcutItem) -> Unit,
-    private val onOpenSettings: () -> Unit
+    private val onOpenShortcut: (ShortcutItem) -> Unit
 ) {
     /** Bảng màu Live Tile - dùng chung [ThemePrefs.PALETTE] (đúng 20 màu Accent/Live Tile gốc
      *  của Windows Phone) để đồng bộ với lưới chọn màu ở Cài đặt > Giao diện - xoay vòng cho
@@ -109,22 +111,6 @@ class HomeScreenManager(
             offscreenPageLimit = 1
         }
         root.addView(pager)
-
-        // ── Nút Cài đặt (bánh răng) - CỐ ĐỊNH ở góc trên-phải, nổi trên CẢ 2 trang. ──
-        val btnSettings = ImageView(context).apply {
-            setImageResource(R.drawable.ic_shortcut_settings)
-            setColorFilter(Color.WHITE)
-            setPadding(dp(9), dp(9), dp(9), dp(9))
-            background = pressedOverlay()
-            isClickable = true
-            isFocusable = true
-            contentDescription = "Cài đặt"
-            setOnClickListener { onOpenSettings() }
-        }
-        root.addView(btnSettings, FrameLayout.LayoutParams(dp(40), dp(40)).also {
-            it.gravity = Gravity.TOP or Gravity.END
-            it.topMargin = dp(12); it.rightMargin = dp(12)
-        })
 
         return root
     }
@@ -178,7 +164,7 @@ class HomeScreenManager(
         // columnSpec: GridLayout tự đặt vị trí (row/col = UNDEFINED) rất dễ vỡ layout (hở ô,
         // lệch hàng) khi trộn nhiều columnSpec span khác nhau trong cùng lưới - rủi ro không
         // đáng, trong khi cách xếp hàng thủ công này luôn cho kết quả chắc chắn, dễ kiểm chứng.
-        val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "calendar", "calculator", "clock", "app_lock")
+        val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "calendar", "calculator", "clock", "settings")
         // Các ô này chiếm 2/3 lưới (tile "wide") - YouTube vì là chức năng dùng nhiều nhất
         // (giống Store/Photos hay được đặt wide trên Start Screen thật), "Nhiều T.khoản" vì tên
         // dài, đặt wide giúp chữ không bị ngắt dòng xấu trong ô vuông chật.
