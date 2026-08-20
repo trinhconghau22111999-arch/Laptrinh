@@ -36,12 +36,11 @@ class AccountsActivity : AppCompatActivity() {
     private lateinit var grid: GridLayout
     private var floatingBackButtonHandle: FloatingBackButton.Handle? = null
 
-    private val colors = intArrayOf(
-        0xFF29B6F6.toInt(), 0xFFAB47BC.toInt(), 0xFF66BB6A.toInt(),
-        0xFFFFA726.toInt(), 0xFFEF5350.toInt(), 0xFF26A69A.toInt(),
-        0xFF7E57C2.toInt(), 0xFFEC407A.toInt(), 0xFF8D6E63.toInt(),
-        0xFF5C6BC0.toInt()
-    )
+    // Dùng đúng bảng 20 màu Live Tile gốc của Windows Phone (ThemePrefs.PALETTE) thay vì bảng
+    // màu Material tự bịa riêng cho màn này - trước đây màn "Nhiều tài khoản" là màn hình DUY
+    // NHẤT trong app có bảng màu lệch tông (xanh dương/tím/xanh lá kiểu Google) so với mọi màn
+    // hình khác đều dùng chung 1 bảng màu Metro.
+    private val colors = ThemePrefs.PALETTE
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,14 +56,16 @@ class AccountsActivity : AppCompatActivity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "Nhiều tài khoản Google"
-            textSize = 20f
+            text = "nhiều tài khoản"
+            textSize = 30f
             setTextColor(Color.WHITE)
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
         })
         root.addView(TextView(this).apply {
             text = "Mỗi hồ sơ là 1 phiên đăng nhập riêng, hoàn toàn tách biệt (cookie & dữ liệu\nkhông chung nhau). Bạn có thể tạo nhiều hồ sơ để đăng nhập nhiều tài\nkhoản khác nhau cùng lúc - mỗi tài khoản tương ứng với 1 hồ sơ riêng."
             textSize = 12f
             setTextColor(0xFF999999.toInt())
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             setPadding(0, dp(6), 0, dp(20))
         })
 
@@ -129,39 +130,44 @@ class AccountsActivity : AppCompatActivity() {
         }
     }
 
+    // Mỗi hồ sơ giờ là 1 "Live Tile" VUÔNG PHẲNG (không viền, không bo góc) đúng ngôn ngữ hình
+    // khối của toàn app - trước đây avatar hình TRÒN có viền trắng là chi tiết duy nhất trong
+    // cả app phá vỡ hoàn toàn phong cách Metro (Metro không có hình tròn/bo góc/viền nổi).
     private fun buildProfileCell(profile: AccountProfileStore.Profile): android.view.View {
         val color = colors[(profile.slot - 1) % colors.size]
-        val cell = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(10), dp(14), dp(10), dp(14))
+        val cell = FrameLayout(this).apply {
             val lp = GridLayout.LayoutParams()
             lp.width = dp(96)
-            lp.height = GridLayout.LayoutParams.WRAP_CONTENT
+            lp.height = dp(96)
+            lp.setMargins(dp(2), dp(2), dp(2), dp(2))
             layoutParams = lp
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(color)
+            }
             isClickable = true
             setOnClickListener { openProfile(profile) }
             setOnLongClickListener { showProfileOptions(profile); true }
         }
         cell.addView(TextView(this).apply {
             text = profile.name.trim().take(1).uppercase().ifBlank { "?" }
-            textSize = 24f
+            textSize = 30f
             setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(dp(64), dp(64))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(color)
-                setStroke(dp(2), Color.WHITE)
-            }
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).also { it.gravity = Gravity.TOP or Gravity.START; it.leftMargin = dp(8); it.topMargin = dp(4) }
         })
         cell.addView(TextView(this).apply {
             text = profile.name
-            textSize = 12f
+            textSize = 13f
             setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
             maxLines = 2
-            setPadding(0, dp(8), 0, 0)
+            android.text.TextUtils.TruncateAt.END.let { ellipsize = it }
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).also { it.gravity = Gravity.BOTTOM or Gravity.START; it.leftMargin = dp(8); it.bottomMargin = dp(6); it.rightMargin = dp(8) }
         })
         return cell
     }
@@ -169,34 +175,26 @@ class AccountsActivity : AppCompatActivity() {
     private fun buildAddCell(): android.view.View {
         val cell = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(10), dp(14), dp(10), dp(14))
+            gravity = Gravity.CENTER
             val lp = GridLayout.LayoutParams()
             lp.width = dp(96)
-            lp.height = GridLayout.LayoutParams.WRAP_CONTENT
+            lp.height = dp(96)
+            lp.setMargins(dp(2), dp(2), dp(2), dp(2))
             layoutParams = lp
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.TRANSPARENT)
+                setStroke(dp(1), 0xFF444444.toInt())
+            }
             isClickable = true
             setOnClickListener { showAddDialog() }
         }
         cell.addView(TextView(this).apply {
             text = "+"
-            textSize = 28f
+            textSize = 30f
             setTextColor(0xFFCCCCCC.toInt())
             gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(dp(64), dp(64))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(0xFF1E1E1E.toInt())
-                setStroke(dp(1), 0xFF444444.toInt())
-            }
-        })
-        cell.addView(TextView(this).apply {
-            text = "Thêm tài khoản"
-            textSize = 12f
-            setTextColor(0xFFCCCCCC.toInt())
-            gravity = Gravity.CENTER
-            maxLines = 2
-            setPadding(0, dp(8), 0, 0)
+            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
         })
         return cell
     }
