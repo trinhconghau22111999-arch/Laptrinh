@@ -32,41 +32,29 @@ Daemon will be stopped at the end of the build
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:processDebugManifestForPackage
-> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
+> Task :app:compressDebugAssets
 > Task :app:mergeDebugStartupProfile
 > Task :app:mergeDebugJniLibFolders
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugNativeLibs
-> Task :app:processDebugResources
-> Task :app:mergeExtDexDebug
+> Task :app:processDebugManifestForPackage
 > Task :app:mergeLibDexDebug
 
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libimage_processing_util_jni.so.
 
+> Task :app:processDebugResources
 > Task :app:validateSigningDebug
+> Task :app:mergeExtDexDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
 
-> Task :app:compileDebugKotlin
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:67:67 Unresolved reference: wp_slide_out_right
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AccountsActivity.kt:32:67 Unresolved reference: wp_slide_out_right
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/AppLockSetupActivity.kt:21:67 Unresolved reference: wp_slide_out_right
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/CalculatorActivity.kt:21:67 Unresolved reference: wp_slide_out_right
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/CalendarActivity.kt:26:67 Unresolved reference: wp_slide_out_right
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/ClockActivity.kt:32:67 Unresolved reference: wp_slide_out_right
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/FilesActivity.kt:27:67 Unresolved reference: wp_slide_out_right
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:46:67 Unresolved reference: wp_slide_out_right
+> Task :app:compileDebugKotlin FAILED
 e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:372:42 No value passed for parameter 'action'
 e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:372:53 Type mismatch: inferred type is () -> Unit but Int was expected
 e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:373:43 No value passed for parameter 'action'
 e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:373:68 Type mismatch: inferred type is () -> Unit but Int was expected
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/SettingsActivity.kt:34:67 Unresolved reference: wp_slide_out_right
-e: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/UiUtils.kt:38:63 Unresolved reference: wp_slide_out_right
-
-> Task :app:compileDebugKotlin FAILED
 
 FAILURE: Build failed with an exception.
 
@@ -275,5 +263,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 1m 31s
+BUILD FAILED in 1m 39s
 32 actionable tasks: 32 executed
