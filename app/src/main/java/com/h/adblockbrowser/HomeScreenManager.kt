@@ -2,14 +2,12 @@ package com.h.adblockbrowser
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.ResolveInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
-import android.os.Build
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
@@ -238,37 +236,92 @@ class HomeScreenManager(
 
     /** Thứ tự các danh mục app hiển thị trên trang "ứng dụng" - danh mục nào không có app nào
      *  thuộc về thì tự động bỏ qua, không hiện tiêu đề rỗng. "Khác" luôn đứng cuối cùng, gom
-     *  mọi app mà hệ thống không xác định được rõ danh mục (rất nhiều app không khai báo). */
+     *  mọi app không khớp bất kỳ quy tắc nhận diện nào bên dưới. */
     private val categoryOrder = listOf(
-        "Trình duyệt", "Mạng xã hội", "Game", "Video & phim", "Âm nhạc & âm thanh",
-        "Nhiếp ảnh", "Tin tức", "Bản đồ & du lịch", "Năng suất", "Hỗ trợ tiếp cận", "Khác"
+        "Điện thoại", "Mạng xã hội", "Trình duyệt", "Ứng dụng Google", "Ngân hàng", "Office", "Khác"
     )
 
-    /** Xác định danh mục hiển thị của 1 app:
-     *  1) "Trình duyệt": app có khả năng mở link web (đăng ký xử lý Intent.ACTION_VIEW với
-     *     link http://) - cách duy nhất đáng tin cậy để nhận diện trình duyệt, vì Android
-     *     không có hằng số category riêng cho "browser".
-     *  2) Từ Android 8.0 (API 26) trở lên, hệ thống có ApplicationInfo.category - do CHÍNH app
-     *     tự khai báo trong AndroidManifest (android:appCategory) khi đăng lên Play Store, nên
-     *     không phải app nào cũng khai (nhiều app cũ/sideload sẽ rơi vào "Khác").
-     *  3) Máy dưới Android 8.0 hoặc app không khai báo category -> xếp vào "Khác". */
+    /** Tên gói (package) của các app THƯỜNG GẶP theo từng danh mục - dùng để nhận diện CHẮC
+     *  CHẮN NHẤT (so khớp đúng package name), ưu tiên hơn so khớp theo tên hiển thị (label) vì
+     *  label có thể trùng chữ ở nhiều app không liên quan. Gồm cả tên gói của Android gốc (AOSP)
+     *  LẪN các bản OEM phổ biến ở Việt Nam (Samsung, Xiaomi/MIUI...) vì mỗi hãng máy thường tự
+     *  đóng gói lại app hệ thống (Điện thoại, Danh bạ, Máy ảnh...) với package riêng. */
+    private val phonePackages = setOf(
+        // Cuộc gọi
+        "com.android.dialer", "com.google.android.dialer", "com.samsung.android.dialer",
+        "com.android.incallui", "com.android.phone",
+        // Tin nhắn
+        "com.android.mms", "com.google.android.apps.messaging", "com.samsung.android.messaging",
+        // Danh bạ
+        "com.android.contacts", "com.google.android.contacts", "com.samsung.android.app.contacts",
+        // Camera
+        "com.android.camera", "com.android.camera2", "com.google.android.GoogleCamera",
+        "com.sec.android.app.camera",
+        // Thư viện (thư viện ảnh CỦA MÁY - khác "Thư viện Google"/Google Photos, xem googlePackages)
+        "com.android.gallery3d", "com.sec.android.gallery3d", "com.miui.gallery",
+        // Ghi âm
+        "com.android.soundrecorder", "com.samsung.android.app.soundrecorder", "com.miui.SoundRecorder",
+        // Máy phát nhạc
+        "com.android.music", "com.sec.android.app.music", "com.google.android.music",
+        "com.miui.player",
+        // Máy tính
+        "com.android.calculator2", "com.google.android.calculator", "com.sec.android.app.popupcalculator",
+        "com.miui.calculator",
+        // Đồng hồ
+        "com.android.deskclock", "com.google.android.deskclock", "com.sec.android.app.clockpackage",
+        "com.android.alarmclock",
+        // Lịch
+        "com.android.calendar", "com.google.android.calendar", "com.samsung.android.calendar",
+        // Ghi chú
+        "com.google.android.keep", "com.samsung.android.app.notes", "com.miui.notes",
+        "com.samsung.android.memo", "com.google.android.apps.notebooklm"
+    )
+    private val socialPackages = setOf(
+        "com.google.android.youtube", "com.zing.zalo",
+        "com.facebook.katana", "com.facebook.lite",
+        "com.zhiliaoapp.musically", "com.ss.android.ugc.trill"
+    )
+    private val browserPackagesExplicit = setOf(
+        "com.google.android.googlequicksearchbox", "com.android.chrome"
+    )
+    private val googlePackages = setOf(
+        "com.google.android.gm", "com.android.vending",
+        "com.google.android.apps.docs", "com.google.android.apps.maps",
+        "com.google.android.apps.photos"
+    )
+    /** "Ngân hàng"/"Office" KHÔNG có danh sách app cố định trước (người dùng không liệt kê tên
+     *  cụ thể) - nhận diện bằng CHỮ KHOÁ trong tên hiển thị (label), không phân biệt hoa/thường. */
+    private val bankKeywords = listOf(
+        "bank", "ngân hàng", "momo", "zalopay", "viettelpay", "shopeepay"
+    )
+    private val officeKeywords = listOf(
+        "word", "excel", "powerpoint", "office", "onedrive"
+    )
+
+    /** Xác định danh mục hiển thị của 1 app - so khớp package name trước (chắc chắn nhất), rồi
+     *  mới tới chữ khoá trong tên hiển thị, cuối cùng còn lại rơi vào "Khác":
+     *   1) "Điện thoại": các app hệ thống cốt lõi (Cuộc gọi, Tin nhắn, Danh bạ, Camera, Thư
+     *      viện, Ghi âm, Máy phát nhạc, Máy tính, Đồng hồ, Lịch, Ghi chú...).
+     *   2) "Mạng xã hội": YouTube, Zalo, Facebook, TikTok.
+     *   3) "Trình duyệt": Google (app tìm kiếm), Chrome - CỘNG THÊM bất kỳ app nào khác có đăng
+     *      ký xử lý link web (http://), để các trình duyệt khác (Cốc Cốc, Firefox, Samsung
+     *      Internet...) không có tên cụ thể vẫn được xếp đúng nhóm.
+     *   4) "Ứng dụng Google": Mail (Gmail), CH Play (Play Store), Drive, Maps, Thư viện Google
+     *      (Google Photos) - CỘNG THÊM mọi app khác thuộc hãng Google (package "com.google.")
+     *      chưa khớp nhóm nào ở trên.
+     *   5) "Ngân hàng"/6) "Office": nhận diện qua chữ khoá trong tên hiển thị (xem
+     *      [bankKeywords]/[officeKeywords]) vì không có danh sách app cụ thể.
+     *   7) "Khác": mọi app còn lại không khớp quy tắc nào ở trên. */
     private fun appCategoryLabel(info: ResolveInfo, browserPackages: Set<String>): String {
         val pkgName = info.activityInfo.packageName
-        if (pkgName in browserPackages) return "Trình duyệt"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return when (info.activityInfo.applicationInfo.category) {
-                ApplicationInfo.CATEGORY_GAME -> "Game"
-                ApplicationInfo.CATEGORY_SOCIAL -> "Mạng xã hội"
-                ApplicationInfo.CATEGORY_VIDEO -> "Video & phim"
-                ApplicationInfo.CATEGORY_AUDIO -> "Âm nhạc & âm thanh"
-                ApplicationInfo.CATEGORY_IMAGE -> "Nhiếp ảnh"
-                ApplicationInfo.CATEGORY_NEWS -> "Tin tức"
-                ApplicationInfo.CATEGORY_MAPS -> "Bản đồ & du lịch"
-                ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Năng suất"
-                ApplicationInfo.CATEGORY_ACCESSIBILITY -> "Hỗ trợ tiếp cận"
-                else -> "Khác"
-            }
-        }
+        val label = info.loadLabel(context.packageManager).toString().lowercase()
+
+        if (pkgName in phonePackages) return "Điện thoại"
+        if (pkgName in socialPackages) return "Mạng xã hội"
+        if (pkgName in browserPackagesExplicit || pkgName in browserPackages) return "Trình duyệt"
+        if (pkgName in googlePackages || pkgName.startsWith("com.google.")) return "Ứng dụng Google"
+        if (bankKeywords.any { label.contains(it) }) return "Ngân hàng"
+        if (officeKeywords.any { label.contains(it) }) return "Office"
         return "Khác"
     }
 
@@ -292,7 +345,7 @@ class HomeScreenManager(
             orientation = LinearLayout.VERTICAL
         }
 
-        content.addView(sectionHeader("ứng dụng"))
+        content.addView(sectionHeader("ỨNG DỤNG"))
 
         val pm = context.packageManager
         // Nhận diện trình duyệt: app nào ĐĂNG KÝ xử lý được link web (http://) coi như trình
