@@ -34,7 +34,7 @@ class AccountsActivity : AppCompatActivity() {
 
 
     private lateinit var grid: GridLayout
-    private var floatingBackButtonHandle: FloatingBackButton.Handle? = null
+    private var floatingBackButtonHandle: WpNavBar.Handle? = null
 
     // Dùng đúng bảng 20 màu Live Tile gốc của Windows Phone (ThemePrefs.PALETTE) thay vì bảng
     // màu Material tự bịa riêng cho màn này - trước đây màn "Nhiều tài khoản" là màn hình DUY
@@ -90,20 +90,18 @@ class AccountsActivity : AppCompatActivity() {
         render()
     }
 
-    // ---------- Nút Back nổi (dùng chung FloatingBackButton.kt - đồng bộ với MainActivity /
-    // AccountBrowserActivity / IncognitoActivity, thay vì tự dựng widget riêng như trước) ----------
-    // Màn hình này cũng ẩn thanh điều hướng hệ thống (immersive) nên cần nút back riêng trong
-    // app. Đây là màn "gốc" (không có trang con để lùi), nên bấm nhanh = thoát màn này về lại
-    // nơi đã mở nó (MainActivity). Không cần hành động long-press riêng ở màn này.
+    // ---------- Thanh điều hướng 2 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start (dùng chung
+    // WpNavBar.kt - đồng bộ với MainActivity / AccountBrowserActivity / IncognitoActivity, thay
+    // vì tự dựng widget riêng như trước) ----------
+    // Màn hình này không có ô địa chỉ nào để "tìm kiếm" nên KHÔNG truyền onSearch - WpNavBar tự
+    // chỉ vẽ 2 nút Back/Start khi thiếu tham số đó (xem WpNavBar.attach). Đây là màn "gốc"
+    // (không có trang con để lùi), nên cả Back lẫn Start đều thoát về lại nơi đã mở màn này.
     private fun addFloatingBackButton(root: FrameLayout) {
-        // fixed = true: nút Back CỐ ĐỊNH ở góc DƯỚI-PHẢI, không kéo-thả được nữa và không đổi
-        // vị trí dù xoay ngang/dọc màn hình (xem chi tiết ở FloatingBackButton.attach).
-        floatingBackButtonHandle = FloatingBackButton.attach(
+        floatingBackButtonHandle = WpNavBar.attach(
             activity = this,
             root = root,
-            onTap = { onBackPressed() },
-            defaultIsRight = true,
-            fixed = true
+            onBack = { onBackPressed() },
+            onStart = { onBackPressed() }
         )
     }
 

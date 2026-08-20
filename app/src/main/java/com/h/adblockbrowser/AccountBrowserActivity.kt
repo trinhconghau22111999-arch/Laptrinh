@@ -83,7 +83,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private lateinit var outer: FrameLayout
     private lateinit var browserRoot: LinearLayout
     private lateinit var fullscreenContainer: FrameLayout
-    private var floatingBackButtonHandle: FloatingBackButton.Handle? = null
+    private var floatingBackButtonHandle: WpNavBar.Handle? = null
     private lateinit var tabBar: LinearLayout
     private lateinit var webArea: FrameLayout
     private lateinit var edtUrl: EditText
@@ -292,24 +292,23 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    // ---------- Nút Back nổi kiểu nút Home iPhone đời cũ ----------
-    // App ẩn thanh điều hướng hệ thống để full màn hình - cần nút điều hướng riêng trong app.
-    // 1 nút tròn nổi DUY NHẤT, luôn hiện sẵn (không ẩn/hiện theo cử chỉ vuốt cạnh nữa), kéo đi
-    // đâu tuỳ ý trên màn hình, thả tay tự "hít" (snap) vào cạnh trái/phải gần nhất cho gọn.
-    // Bấm (chạm nhanh, không kéo) = lùi trang trong tab hiện tại. Giữ (long-press) = thoát hồ
-    // sơ này, quay về danh sách tài khoản - giống nút Home vật lý của iPhone đời cũ (bấm = về
-    // trước, giữ/bấm đúp = tác vụ khác).
+    // ---------- Thanh điều hướng 3 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start / 🔍 Search ----------
+    // TRƯỚC ĐÂY dùng 1 nút tròn nổi kéo-thả (kiểu nút Home iPhone đời cũ), GIỜ thay bằng đúng 3
+    // nút cố định giữa cạnh dưới màn hình (xem WpNavBar.kt). Back = lùi trang trong tab hiện
+    // tại. Start = thoát hồ sơ này, quay về danh sách tài khoản (đúng vai trò "về Start" của
+    // WP thật). Search = focus vào ô địa chỉ để gõ ngay.
     @SuppressLint("ClickableViewAccessibility")
     private fun addFloatingBackHomeButtons(root: FrameLayout) {
-        // fixed = true: nút Back CỐ ĐỊNH ở góc DƯỚI-PHẢI, không kéo-thả được nữa và không đổi
-        // vị trí dù xoay ngang/dọc màn hình (xem chi tiết ở FloatingBackButton.attach).
-        floatingBackButtonHandle = FloatingBackButton.attach(
+        floatingBackButtonHandle = WpNavBar.attach(
             activity = this,
             root = root,
-            onTap = { onBackPressed() },
-            onLongPress = { finish() },
-            defaultIsRight = true,
-            fixed = true
+            onBack = { onBackPressed() },
+            onStart = { finish() },
+            onSearch = {
+                edtUrl.requestFocus()
+                val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                imm?.showSoftInput(edtUrl, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
         )
     }
 

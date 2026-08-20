@@ -52,7 +52,7 @@ class IncognitoActivity : AppCompatActivity() {
     private val tabs = ArrayList<Tab>()
     private var activeIndex = 0
     private var programmaticLoad = false
-    private var floatingBackButtonHandle: FloatingBackButton.Handle? = null
+    private var floatingBackButtonHandle: WpNavBar.Handle? = null
     // Ẩn danh: theo dõi xem lần load hiện tại có phải do code khởi tạo không
     // (true = load do code/newTab, false = load do user click link trong trang)
     private var isInitiatedLoad = false
@@ -200,22 +200,23 @@ class IncognitoActivity : AppCompatActivity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    // ---------- Nút Back nổi kiểu nút Home iPhone đời cũ ----------
-    // App ẩn thanh điều hướng hệ thống để full màn hình - cần nút điều hướng riêng trong app.
-    // 1 nút tròn nổi DUY NHẤT, luôn hiện sẵn, kéo đi đâu tuỳ ý, thả tay tự "hít" vào cạnh gần
-    // nhất. Bấm nhanh = lùi trang trong tab hiện tại. Giữ tay = thoát hẳn Ẩn danh, quay về màn
-    // hình chính app (xoá sạch dữ liệu phiên Ẩn danh như trước).
+    // ---------- Thanh điều hướng 3 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start / 🔍 Search ----------
+    // TRƯỚC ĐÂY dùng 1 nút tròn nổi kéo-thả (kiểu nút Home iPhone đời cũ), GIỜ thay bằng đúng 3
+    // nút cố định giữa cạnh dưới màn hình (xem WpNavBar.kt). Back = lùi trang trong tab hiện
+    // tại. Start = thoát hẳn Ẩn danh, quay về màn hình chính app (xoá sạch dữ liệu phiên Ẩn danh
+    // như trước). Search = focus vào ô địa chỉ để gõ ngay.
     @SuppressLint("ClickableViewAccessibility")
     private fun addFloatingBackHomeButtons(root: FrameLayout) {
-        // fixed = true: nút Back CỐ ĐỊNH ở góc DƯỚI-PHẢI, không kéo-thả được nữa và không đổi
-        // vị trí dù xoay ngang/dọc màn hình (xem chi tiết ở FloatingBackButton.attach).
-        floatingBackButtonHandle = FloatingBackButton.attach(
+        floatingBackButtonHandle = WpNavBar.attach(
             activity = this,
             root = root,
-            onTap = { onBackPressed() },
-            onLongPress = { saveSession(); finish() },
-            defaultIsRight = true,
-            fixed = true
+            onBack = { onBackPressed() },
+            onStart = { saveSession(); finish() },
+            onSearch = {
+                edtUrl.requestFocus()
+                val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                imm?.showSoftInput(edtUrl, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
         )
     }
 

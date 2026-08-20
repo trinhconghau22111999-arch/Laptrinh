@@ -126,7 +126,7 @@ class MainActivity : AppCompatActivity() {
     // và lỗi "153 - Lỗi cấu hình trình phát video" (tải embed sai cách). Không đáng công sửa
     // tiếp vì tính năng "phát nền thật" khi thoát hẳn app (bấm Home vật lý) vốn không làm được
     // bằng WebView (xem giải thích trong hội thoại) - giữ app đơn giản, ổn định hơn.
-    private var floatingBackButtonHandle: FloatingBackButton.Handle? = null
+    private var floatingBackButtonHandle: WpNavBar.Handle? = null
 
     // Nút "Off" nổi thứ 2, cùng kiểu nút tròn nổi kéo-thả với nút Back (xem FloatingBackButton),
     // nhưng bấm vào sẽ phủ màn hình "giả tắt" (FakeScreenOff) thay vì lùi trang - dùng khi đang
@@ -966,24 +966,28 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    // ---------- Nút Back nổi kiểu nút Home iPhone đời cũ ----------
+    // ---------- Thanh điều hướng 3 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start / 🔍 Search ----------
     // App ẩn thanh điều hướng hệ thống (enableImmersiveMode) để full màn hình, nên cần nút
-    // điều hướng RIÊNG trong app. 1 nút tròn nổi DUY NHẤT, luôn hiện sẵn (không ẩn ngoài mép
-    // /không cần vuốt để hiện như bản cũ), kéo đi đâu tuỳ ý, thả tay tự "hít" vào cạnh trái/
-    // phải gần nhất. Bấm nhanh = lùi trang (doBack). Giữ tay = về màn hình chính app.
+    // điều hướng RIÊNG trong app - TRƯỚC ĐÂY dùng 1 nút tròn nổi kéo-thả tự do (kiểu nút Home
+    // vật lý của iPhone đời cũ), GIỜ thay bằng đúng 3 nút cố định ở giữa cạnh dưới màn hình như
+    // 3 nút cứng/cảm ứng thật của điện thoại Windows Phone (xem WpNavBar.kt). Back = lùi trang,
+    // Start = về màn hình chính app (⊞, đúng vai trò nút Start thật), Search = focus vào ô địa
+    // chỉ để gõ ngay (không có ô tìm kiếm hệ thống riêng như WP thật nên dùng tạm ô địa chỉ).
     @SuppressLint("ClickableViewAccessibility")
     private fun addFloatingBackHomeButtons() {
         val root = findViewById<FrameLayout>(R.id.rootFrame)
-        // fixed = true: nút Back CỐ ĐỊNH ở góc DƯỚI-PHẢI, không kéo-thả được nữa và không đổi
-        // vị trí dù xoay ngang/dọc màn hình (xem chi tiết ở FloatingBackButton.attach).
-        floatingBackButtonHandle = FloatingBackButton.attach(
+        floatingBackButtonHandle = WpNavBar.attach(
             activity = this,
             root = root,
-            onTap = { doBack() },
-            onLongPress = { if (homeOverlay.visibility != View.VISIBLE) showHomeOverlay() },
-            defaultIsRight = true,
-            fixed = true,
-            doubleTapOnly = true
+            onBack = { doBack() },
+            onStart = { if (homeOverlay.visibility != View.VISIBLE) showHomeOverlay() },
+            onSearch = {
+                if (homeOverlay.visibility == View.VISIBLE) showHomeOverlay() // trang chủ không có ô địa chỉ, thoát trước
+                toolbarUrl.visibility = View.VISIBLE
+                edtUrl.requestFocus()
+                val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                imm?.showSoftInput(edtUrl, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
         )
 
         // Nút "Off" nổi - bấm để phủ màn hình giả tắt (xem FakeScreenOff). Icon "⏻" (nút nguồn)
