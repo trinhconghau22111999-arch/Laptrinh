@@ -114,12 +114,28 @@ class DesktopActivity : AppCompatActivity() {
             it.rightMargin = dp(64)
         })
 
-        // ── Dock dọc cạnh phải - lối tắt cố định tới chức năng riêng của app. ──
+        // ── Dock dọc cạnh phải - lối tắt cố định tới chức năng riêng của app. Nút ĐẦU TIÊN là
+        // "Start" (icon 4-ô kiểu logo Windows/WP thật, [R.drawable.ic_wp_start]) - đưa thẳng về
+        // trang Start NGAY TỪ TRONG NỘI DUNG trang Điện thoại (không cần với tay xuống thanh
+        // WpNavBar ở đáy màn hình) - vì màn "Điện thoại" cố tình phá cách thẩm mỹ Android (xem
+        // class doc), nút quay về Start cần rõ ràng, dễ thấy ngay trong dock. ──
         val dock = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             background = ColorDrawable(0x66000000)
         }
+        dock.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_wp_start)
+            val pad = dp(18)
+            setPadding(pad, pad, pad, pad)
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Về Start"
+            setOnClickListener { finish() }
+        }, LinearLayout.LayoutParams(dp(64), dp(64)))
+        dock.addView(View(this).apply {
+            setBackgroundColor(0x33FFFFFF)
+        }, LinearLayout.LayoutParams(dp(32), dp(1)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.topMargin = dp(4); it.bottomMargin = dp(4) })
         val dockKeys = listOf("youtube", "files", "settings", "calculator", "clock")
         dockKeys.forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
@@ -182,7 +198,12 @@ class DesktopActivity : AppCompatActivity() {
     private fun openShortcut(key: String) {
         val item = ShortcutsRepository.ALL[key] ?: return
         if (item.type == ShortcutType.WEB) {
-            startActivityWp(Intent(this, MainActivity::class.java).putExtra("initial_url", item.target))
+            // "from_phone": báo cho MainActivity biết nó được mở TỪ trang Điện thoại, để nút
+            // Back/Start (Home) của WpNavBar bên đó biết đường quay VỀ ĐÂY (trang Điện thoại)
+            // thay vì mặc định về Start - xem MainActivity.openedFromPhone.
+            startActivityWp(Intent(this, MainActivity::class.java)
+                .putExtra("initial_url", item.target)
+                .putExtra("from_phone", true))
         } else {
             val activityClass = when (item.target.split(":", limit = 2)[0]) {
                 "FilesActivity" -> FilesActivity::class.java
@@ -196,16 +217,17 @@ class DesktopActivity : AppCompatActivity() {
         }
     }
 
-    /** Vẽ icon ứng dụng đã "Ghim vào Start" ([PinnedAppsStore] - DÙNG CHUNG với trang Start, xem
-     *  class doc) dạng TỰ DO kéo-thả trong [desktopArea]. Chưa ghim app nào -> hiện dòng chữ
-     *  hướng dẫn thay vì để trống trơn khó hiểu. */
+    /** Vẽ icon ứng dụng đã "Thêm vào Điện thoại" ([DesktopAppsStore] - danh sách RIÊNG, độc lập
+     *  hoàn toàn với "Ghim vào start" của trang Start, xem [DesktopAppsStore]) dạng TỰ DO
+     *  kéo-thả trong [desktopArea]. Chưa thêm app nào -> hiện dòng chữ hướng dẫn thay vì để
+     *  trống trơn khó hiểu. Nhấn giữ 1 icon đã có ở đây để gỡ khỏi trang này. */
     private fun layoutPinnedIcons() {
         desktopArea.removeAllViews()
         val pm = packageManager
-        val pinned = PinnedAppsStore.getAll(this)
+        val pinned = DesktopAppsStore.getAll(this)
         if (pinned.isEmpty()) {
             desktopArea.addView(TextView(this).apply {
-                text = "Giữ 1 ứng dụng trong trang \"ứng dụng\" ở Start rồi bấm \"Ghim vào start\"\nđể nó xuất hiện ở đây."
+                text = "Giữ 1 ứng dụng trong trang \"ứng dụng\" ở Start rồi bấm \"Thêm vào Điện thoại\"\nđể nó xuất hiện ở đây."
                 setTextColor(0xFFDDDDDD.toInt())
                 textSize = 13f
                 gravity = Gravity.CENTER
@@ -274,26 +296,36 @@ class DesktopActivity : AppCompatActivity() {
                 cell.y = y.coerceIn(0f, (areaHNow - cellH).coerceAtLeast(0f))
             }
 
-            attachDrag(cell, pkgName, cellW, cellH) {
-                // Chạm (không kéo) -> mở app, giống hành vi chạm icon trên màn hình chính
-                // Android thật.
-                val launchIntent = pm.getLaunchIntentForPackage(pkgName)
-                if (launchIntent != null) startActivity(launchIntent)
-            }
+            attachDrag(cell, pkgName, cellW, cellH,
+                onTap = {
+                    // Chạm (không kéo) -> mở app, giống hành vi chạm icon trên màn hình chính
+                    // Android thật.
+                    val launchIntent = pm.getLaunchIntentForPackage(pkgName)
+                    if (launchIntent != null) startActivity(launchIntent)
+                },
+                onLongPress = { showRemoveFromDesktopMenu(cell, pkgName) }
+            )
         }
     }
 
     /** Kéo-thả tự do 1 icon trong [desktopArea]: nhấn giữ + di chuyển để đổi vị trí (lưu lại
      *  qua [DesktopIconStore]); chạm ngắn không di chuyển (dưới ngưỡng [tapSlop]) -> coi là
-     *  TAP, gọi [onTap] thay vì kéo - đúng cách phân biệt tap/drag chuẩn trên Android (không có
-     *  API hệ thống nào tự làm việc này cho drag tự do bằng x/y, phải tự tính khoảng cách di
-     *  chuyển so với điểm nhấn ban đầu). */
-    private fun attachDrag(view: View, pkgName: String, cellW: Int, cellH: Int, onTap: () -> Unit) {
+     *  TAP, gọi [onTap]; giữ nguyên tại chỗ đủ lâu (không di chuyển) -> coi là LONG PRESS, gọi
+     *  [onLongPress] (mở menu gỡ khỏi trang này) - đúng cách phân biệt tap/drag/long-press chuẩn
+     *  trên Android (không có API hệ thống nào tự làm việc này cho drag tự do bằng x/y, phải tự
+     *  tính khoảng cách + thời gian di chuyển so với điểm nhấn ban đầu). */
+    private fun attachDrag(view: View, pkgName: String, cellW: Int, cellH: Int, onTap: () -> Unit, onLongPress: () -> Unit) {
         var downRawX = 0f
         var downRawY = 0f
         var startX = 0f
         var startY = 0f
+        var longPressFired = false
         val tapSlop = dp(10)
+        val longPressRunnable = Runnable {
+            longPressFired = true
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+            onLongPress()
+        }
         view.setOnTouchListener { v, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -301,18 +333,25 @@ class DesktopActivity : AppCompatActivity() {
                     downRawY = event.rawY
                     startX = v.x
                     startY = v.y
+                    longPressFired = false
+                    v.postDelayed(longPressRunnable, android.view.ViewConfiguration.getLongPressTimeout().toLong())
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - downRawX
                     val dy = event.rawY - downRawY
-                    val maxX = (desktopArea.width - cellW).coerceAtLeast(0).toFloat()
-                    val maxY = (desktopArea.height - cellH).coerceAtLeast(0).toFloat()
-                    v.x = (startX + dx).coerceIn(0f, maxX)
-                    v.y = (startY + dy).coerceIn(0f, maxY)
+                    if (abs(dx) + abs(dy) > tapSlop) v.removeCallbacks(longPressRunnable)
+                    if (!longPressFired) {
+                        val maxX = (desktopArea.width - cellW).coerceAtLeast(0).toFloat()
+                        val maxY = (desktopArea.height - cellH).coerceAtLeast(0).toFloat()
+                        v.x = (startX + dx).coerceIn(0f, maxX)
+                        v.y = (startY + dy).coerceIn(0f, maxY)
+                    }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
+                    v.removeCallbacks(longPressRunnable)
+                    if (longPressFired) return@setOnTouchListener true
                     val moved = abs(event.rawX - downRawX) + abs(event.rawY - downRawY)
                     if (moved < tapSlop) {
                         onTap()
@@ -325,8 +364,51 @@ class DesktopActivity : AppCompatActivity() {
                     }
                     true
                 }
+                MotionEvent.ACTION_CANCEL -> {
+                    v.removeCallbacks(longPressRunnable)
+                    true
+                }
                 else -> false
             }
         }
+    }
+
+    /** Menu phẳng kiểu WP (giống [HomeScreenManager.showPinContextMenu]) hiện khi nhấn giữ 1
+     *  icon NGAY TRÊN trang Điện thoại - chỉ 1 lựa chọn "Bỏ khỏi Điện thoại" (không có "Ghim
+     *  vào start"/"Đánh dấu sao" ở đây, vì đó là hành động của trang Start, giữ 2 trang tách
+     *  biệt rạch ròi đúng yêu cầu). */
+    private fun showRemoveFromDesktopMenu(anchor: View, pkgName: String) {
+        lateinit var popup: android.widget.PopupWindow
+        val item = TextView(this).apply {
+            text = "Bỏ khỏi Điện thoại"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(dp(22), dp(16), dp(22), dp(16))
+            minWidth = dp(200)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                DesktopAppsStore.remove(this@DesktopActivity, pkgName)
+                desktopArea.post { layoutPinnedIcons() }
+                popup.dismiss()
+            }
+        }
+        val menuBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(0xFF1A1A1A.toInt())
+                setStroke(dp(1), 0xFF3A3A3A.toInt())
+            }
+            addView(item)
+        }
+        popup = android.widget.PopupWindow(
+            menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true
+        ).apply {
+            elevation = 0f
+            animationStyle = 0
+            isOutsideTouchable = true
+        }
+        popup.showAsDropDown(anchor, 0, 0)
     }
 }

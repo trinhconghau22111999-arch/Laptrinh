@@ -5,7 +5,10 @@ import android.content.Context
 /** Danh sách gói app người dùng đã "Ghim vào start" bằng cách NHẤN GIỮ trong trang "ứng dụng"
  *  (trang phải). Các app này hiện thêm dưới dạng Live Tile trên trang "start" (trang trái),
  *  ngay sau các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản...). Lưu VĨNH VIỄN qua
- *  SharedPreferences theo thứ tự đã ghim (ghim thêm sẽ nối vào cuối danh sách). */
+ *  SharedPreferences theo thứ tự đã ghim (ghim thêm sẽ nối vào cuối danh sách).
+ *
+ *  Đây là danh sách RIÊNG của trang Start - xem [DesktopAppsStore] cho danh sách tương tự nhưng
+ *  của trang "Điện thoại" (2 danh sách độc lập, ghim ở nơi này KHÔNG tự xuất hiện ở nơi kia). */
 object PinnedAppsStore {
     private const val PREFS = "pinned_apps_start"
     private const val KEY = "packages"

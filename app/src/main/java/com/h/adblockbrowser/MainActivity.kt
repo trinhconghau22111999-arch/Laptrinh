@@ -44,6 +44,13 @@ import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
 
+    /** true nếu Activity này được mở TỪ trang "Điện thoại" (DesktopActivity, qua extra
+     *  "from_phone") - đọc 1 lần ở onCreate(), dùng để Back/Home (nút Start của WpNavBar) biết
+     *  đường quay VỀ trang Điện thoại thay vì mặc định về Start. Đây là ngoại lệ DUY NHẤT khỏi
+     *  quy tắc mặc định "Back/Home luôn về Start" - mặc định (không có cờ này, tức mở từ Start
+     *  hoặc mở trực tiếp từ icon app ngoài Android) vẫn giữ nguyên luôn về Start như trước. */
+    private var openedFromPhone = false
+
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     /** Nền ô địa chỉ kiểu Windows Phone: nền đen phẳng + 1 gạch chân màu NHẤN ở đáy (đặc trưng
@@ -158,6 +165,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        openedFromPhone = intent.getBooleanExtra("from_phone", false)
         setContentView(R.layout.activity_main)
         // FIX khoảng đen dư ở trên cùng: dù đã setDecorFitsSystemWindows(false), 1 số máy vẫn tự
         // đệm (padding) view gốc theo chiều cao thanh trạng thái/điều hướng theo cơ chế insets
@@ -276,6 +284,24 @@ class MainActivity : AppCompatActivity() {
             try {
                 imgWallpaper.setImageURI(Uri.parse(uriStr))
             } catch (e: Exception) { }
+        }
+    }
+
+    /** Điều hướng "về nhà" dùng chung cho nút Start (WpNavBar) và bước cuối của doBack(). MẶC
+     *  ĐỊNH (đặt lên trước, áp dụng cho MỌI trường hợp khác) LUÔN về Start ([showHomeOverlay]) -
+     *  đúng quy tắc gốc "Trang Start là trang chính". NGOẠI LỆ DUY NHẤT: nếu Activity này được
+     *  mở TỪ trang Điện thoại ([openedFromPhone], qua DesktopActivity) VÀ có 1 màn hình khác
+     *  bên dưới trong back stack để quay về (![isTaskRoot] - nếu Activity này lại là task root,
+     *  vd bị hệ thống khôi phục sau khi bị kill nền, thì không còn gì bên dưới để quay lại,
+     *  phải fallback về Start như bình thường) - lúc đó thoát (finish, kèm hiệu ứng trượt qua
+     *  [startActivityWp]/finish() đã override) để lộ lại ĐÚNG trang Điện thoại bên dưới, KHÔNG
+     *  hiện Start - vì trước đó người dùng đang dùng app TỪ ngữ cảnh Điện thoại, không phải
+     *  Start. */
+    private fun goHome() {
+        if (openedFromPhone && !isTaskRoot) {
+            finish()
+        } else {
+            showHomeOverlay()
         }
     }
 
@@ -944,7 +970,7 @@ class MainActivity : AppCompatActivity() {
                 webView.goBack()
             }
             homeOverlay.visibility != View.VISIBLE -> {
-                showHomeOverlay()
+                goHome()
             }
             homeScreenManager.isOnAppListPage() -> {
                 // Đang ở trang "DS Ứng Dụng" (trang 1) → Back về trang "start" (trang 0) trước
@@ -977,7 +1003,7 @@ class MainActivity : AppCompatActivity() {
             programmaticLoad = true
             webView.goBackOrForward(targetIndex - currentIndex)
         } else if (homeOverlay.visibility != View.VISIBLE) {
-            showHomeOverlay()
+            goHome()
         } else {
             super.onBackPressed()
         }
@@ -1045,7 +1071,7 @@ class MainActivity : AppCompatActivity() {
             activity = this,
             root = root,
             onBack = { doBack() },
-            onStart = { if (homeOverlay.visibility != View.VISIBLE) showHomeOverlay() },
+            onStart = { if (homeOverlay.visibility != View.VISIBLE) goHome() },
             onSearch = {
                 if (homeOverlay.visibility == View.VISIBLE) showHomeOverlay() // trang chủ không có ô địa chỉ, thoát trước
                 toolbarUrl.visibility = View.VISIBLE

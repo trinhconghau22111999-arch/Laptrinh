@@ -446,8 +446,11 @@ class HomeScreenManager(
     }
 
     /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
-     *  "start") - 2 dòng: "Ghim/Bỏ ghim vào start" và "Đánh dấu/Bỏ đánh dấu sao", tự đổi nhãn
-     *  tuỳ trạng thái hiện tại, rồi dựng lại 2 trang ngay để tile/nhóm "★" mới hiện/mất tức thì.
+     *  "start") - 3 dòng: "Ghim/Bỏ ghim vào start", "Thêm/Bỏ khỏi Điện thoại" và "Đánh dấu/Bỏ
+     *  đánh dấu sao", tự đổi nhãn tuỳ trạng thái hiện tại, rồi dựng lại 2 trang ngay để tile/nhóm
+     *  "★" mới hiện/mất tức thì. "Ghim vào start" và "Thêm vào Điện thoại" là 2 hành động ĐỘC
+     *  LẬP HOÀN TOÀN (xem [PinnedAppsStore] và [DesktopAppsStore]) - chọn 1 trong 2 không tự
+     *  động thêm vào nơi còn lại, đúng ý phân biệt rạch ròi 2 trang.
      *
      *  DỰNG THỦ CÔNG bằng [PopupWindow] thay vì [android.widget.PopupMenu] mặc định của Android:
      *  PopupMenu hệ thống luôn tự vẽ nền TRẮNG BO GÓC + ĐỔ BÓNG (Material Card) bất kể theme app
@@ -455,6 +458,7 @@ class HomeScreenManager(
      *  menu phẳng, không bóng, nền đen của WP/Windows 10 Mobile thật. */
     private fun showPinContextMenu(anchor: View, pkgName: String) {
         val pinned = PinnedAppsStore.isPinned(context, pkgName)
+        val onDesktop = DesktopAppsStore.isAdded(context, pkgName)
         val starred = StarredAppsStore.isStarred(context, pkgName)
 
         lateinit var popup: PopupWindow
@@ -477,10 +481,17 @@ class HomeScreenManager(
         val itemPin = menuItem(if (pinned) "Bỏ ghim khỏi start" else "Ghim vào start") {
             if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
         }
+        val itemDesktop = menuItem(if (onDesktop) "Bỏ khỏi Điện thoại" else "Thêm vào Điện thoại") {
+            if (onDesktop) DesktopAppsStore.remove(context, pkgName) else DesktopAppsStore.add(context, pkgName)
+        }
         val itemStar = menuItem(if (starred) "Bỏ đánh dấu sao" else "Đánh dấu sao") {
             if (starred) StarredAppsStore.unstar(context, pkgName) else StarredAppsStore.star(context, pkgName)
         }
         val divider = View(context).apply {
+            setBackgroundColor(0xFF3A3A3A.toInt())
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+        }
+        val divider2 = View(context).apply {
             setBackgroundColor(0xFF3A3A3A.toInt())
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
         }
@@ -495,6 +506,8 @@ class HomeScreenManager(
             }
             addView(itemPin)
             addView(divider)
+            addView(itemDesktop)
+            addView(divider2)
             addView(itemStar)
         }
 
