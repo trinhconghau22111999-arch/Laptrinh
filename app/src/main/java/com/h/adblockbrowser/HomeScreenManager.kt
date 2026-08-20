@@ -49,6 +49,12 @@ object ShortcutsRepository {
         "files" to ShortcutItem(
             "files", "Quản lý tệp", ShortcutType.ACTIVITY, "FilesActivity", R.drawable.ic_shortcut_files
         ),
+        // Ô "Phone": mở màn giả lập MÀN HÌNH CHÍNH ANDROID THẬT (icon tự do kéo-thả + dock dọc
+        // cạnh phải) - đóng vai trò tương tự icon "Desktop/This PC" trên máy tính Windows, xem
+        // giải thích đầy đủ ở class doc của DesktopActivity.kt.
+        "phone" to ShortcutItem(
+            "phone", "Điện thoại", ShortcutType.ACTIVITY, "DesktopActivity", R.drawable.ic_wp_mobile_flat
+        ),
         "calendar" to ShortcutItem(
             "calendar", "Lịch", ShortcutType.ACTIVITY, "CalendarActivity", R.drawable.ic_shortcut_calendar
         ),
@@ -163,7 +169,7 @@ class HomeScreenManager(
         // columnSpec: GridLayout tự đặt vị trí (row/col = UNDEFINED) rất dễ vỡ layout (hở ô,
         // lệch hàng) khi trộn nhiều columnSpec span khác nhau trong cùng lưới - rủi ro không
         // đáng, trong khi cách xếp hàng thủ công này luôn cho kết quả chắc chắn, dễ kiểm chứng.
-        val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "calendar", "calculator", "clock", "settings")
+        val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "phone", "calendar", "calculator", "clock", "settings")
         // Các ô này chiếm 2/3 lưới (tile "wide") - YouTube vì là chức năng dùng nhiều nhất
         // (giống Store/Photos hay được đặt wide trên Start Screen thật), "Nhiều T.khoản" vì tên
         // dài, đặt wide giúp chữ không bị ngắt dòng xấu trong ô vuông chật.
