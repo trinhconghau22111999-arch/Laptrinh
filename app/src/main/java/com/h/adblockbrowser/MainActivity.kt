@@ -443,10 +443,11 @@ class MainActivity : AppCompatActivity() {
     // cho 2 màn hình thật sự có nhiều tab để chuyển qua lại: Ẩn danh (IncognitoActivity) và 1
     // hồ sơ Nhiều tài khoản (AccountBrowserActivityBase) - xem toggleTaskView() ở 2 file đó.
 
-    /** Widget giờ/ngày ở trang chủ - PHIÊN BẢN MỚI:
-     *  - Không còn kéo-thả tự do tới bất kỳ đâu và KHÔNG còn nền (ô/nơ) phía sau nữa - widget
-     *    giờ nằm NGAY TRONG luồng layout ở trang chủ (do [HomeScreenManager.build] chèn lên đầu),
-     *    "dính" cố định phía trên hàng icon thay vì nổi tự do đè lên màn hình.
+    /** Widget giờ/ngày ở trang chủ:
+     *  - Nằm NGAY TRONG luồng layout ở trang chủ (do [HomeScreenManager.build] chèn lên đầu),
+     *    "dính" cố định phía trên hàng icon.
+     *  - Có KHUNG NỀN kiểu Live Tile (hình chữ nhật phẳng, màu accent, trải hết bề ngang) giống
+     *    hệt các ô icon bên dưới, thay vì chữ trôi nổi không khung như trước.
      *  - CHỤM/DÃN 2 ngón để phóng to - thu nhỏ tuỳ ý (qua [PinchZoomLayout]), nhỏ nhất đúng bằng
      *    cỡ chữ mặc định hiện tại (48/14 - không cho thu nhỏ hơn nữa), tỉ lệ phóng to được LƯU
      *    lại nên mở app lại vẫn giữ nguyên cỡ đã chỉnh.
@@ -469,9 +470,14 @@ class MainActivity : AppCompatActivity() {
         val widget = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER_HORIZONTAL
-            setPadding(dp(16), dp(10), dp(16), dp(10))
-            // Không còn nền/ô phía sau nữa - trong suốt hoàn toàn.
-            background = null
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            // Khung nền phẳng kiểu Live Tile (hình chữ nhật, không bo góc) giống hệt các ô icon
+            // bên dưới, thay vì trong suốt như trước - dùng đúng màu nhấn (accent) người dùng đã
+            // chọn ở Cài đặt > Giao diện để đồng bộ với ô địa chỉ/thanh tiến trình.
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                setColor(ThemePrefs.accent(this@MainActivity))
+            }
         }
 
         // Font mảnh (sans-serif-thin) cho số giờ - đúng kiểu đồng hồ khoá màn hình của Windows
@@ -514,9 +520,12 @@ class MainActivity : AppCompatActivity() {
 
         // Bọc trong PinchZoomLayout để chụm/dãn 2 ngón phóng to - thu nhỏ mà không chặn mất
         // sự kiện bấm (tap) riêng lẻ trên tvTime/tvDate ở trên.
+        // Chiều rộng MATCH_PARENT (thay vì WRAP_CONTENT trước đây) để khung trải hết bề ngang,
+        // đúng như các ô Live Tile bên dưới - xem [HomeScreenManager.buildStartPage] nơi gọi
+        // hàm này cũng đã đổi LayoutParams tương ứng để khớp.
         val pinchWrapper = PinchZoomLayout(this).apply {
             layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
             onScale = { factor ->
                 scale = (scale * factor).coerceIn(minScale, maxScale)
@@ -526,7 +535,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         pinchWrapper.addView(widget, ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ))
 
         return pinchWrapper

@@ -157,11 +157,13 @@ class HomeScreenManager(
         }
 
         // ── Widget giờ/ngày (nếu có) - luôn ở trên cùng của trang "start" ──
+        // MATCH_PARENT (thay vì WRAP_CONTENT + căn giữa trước đây) để khung nền của widget trải
+        // hết bề ngang, đúng như các ô Live Tile bên dưới - xem [MainActivity.buildClockWidget].
         if (clockWidget != null) {
             (clockWidget.parent as? ViewGroup)?.removeView(clockWidget)
             content.addView(clockWidget, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = dp(12) })
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).also { it.bottomMargin = dp(12) })
         }
 
         // ── Tiêu đề "start" kiểu Hub/Pivot header của WP: chữ thường, mảnh, rất to ──
