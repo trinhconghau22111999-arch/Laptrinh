@@ -244,7 +244,7 @@ class HomeScreenManager(
      *  thuộc về thì tự động bỏ qua, không hiện tiêu đề rỗng. "Khác" luôn đứng cuối cùng, gom
      *  mọi app không khớp bất kỳ quy tắc nhận diện nào bên dưới. */
     private val categoryOrder = listOf(
-        "Điện thoại", "Mạng xã hội", "Trình duyệt", "Ứng dụng Google", "Ngân hàng", "Office", "Khác"
+        "Điện thoại", "Mạng xã hội", "Trình duyệt", "Ứng dụng Google", "Ngân hàng", "Mua sắm", "Office", "Khác"
     )
 
     /** Tên gói (package) của các app THƯỜNG GẶP theo từng danh mục - dùng để nhận diện CHẮC
@@ -278,9 +278,26 @@ class HomeScreenManager(
         "com.android.alarmclock",
         // Lịch
         "com.android.calendar", "com.google.android.calendar", "com.samsung.android.calendar",
-        // Ghi chú
+        // Ghi chú - Google Keep, Samsung Notes, MIUI Notes, NotebookLM
         "com.google.android.keep", "com.samsung.android.app.notes", "com.miui.notes",
-        "com.samsung.android.memo", "com.google.android.apps.notebooklm"
+        "com.samsung.android.memo", "com.google.android.apps.notebooklm",
+        // Microsoft To Do, OneNote (ghi chú/task - xếp cùng nhóm điện thoại)
+        "com.microsoft.todos", "com.microsoft.office.onenote"
+    )
+    /** Mua sắm: package name của các app TMĐT phổ biến ở Việt Nam */
+    private val shoppingPackages = setOf(
+        "com.shopee.vn", "com.lazada.android", "vn.sendo.app",
+        "vn.tiki.app.tikiapp", "com.tiki.store",
+        "com.vindemia.sendo", "air.com.sendbuyapp",
+        "com.coupang.mobile", "vn.fptshop.fptshop",
+        "com.thegioididong.mshop", "com.dienmayxanh.app",
+        "vn.bachhoaxanh.app", "com.hasaki.app",
+        "com.fahasa.ebook", "vn.momo.partner"
+    )
+    private val shoppingKeywords = listOf(
+        "shopee", "lazada", "tiki", "sendo", "sen đỏ", "mua sắm", "shop",
+        "cửa hàng", "thegioididong", "dienmayxanh", "bachhoaxanh", "hasaki",
+        "fahasa", "fptshop", "coupang"
     )
     private val socialPackages = setOf(
         "com.google.android.youtube", "com.zing.zalo",
@@ -327,6 +344,7 @@ class HomeScreenManager(
         if (pkgName in browserPackagesExplicit || pkgName in browserPackages) return "Trình duyệt"
         if (pkgName in googlePackages || pkgName.startsWith("com.google.")) return "Ứng dụng Google"
         if (bankKeywords.any { label.contains(it) }) return "Ngân hàng"
+        if (pkgName in shoppingPackages || shoppingKeywords.any { label.contains(it) }) return "Mua sắm"
         if (officeKeywords.any { label.contains(it) }) return "Office"
         return "Khác"
     }
@@ -351,7 +369,7 @@ class HomeScreenManager(
             orientation = LinearLayout.VERTICAL
         }
 
-        content.addView(sectionHeader("ỨNG DỤNG"))
+        content.addView(sectionHeader("DS Ứng Dụng", smallHeader = true))
 
         val pm = context.packageManager
         // Nhận diện trình duyệt: app nào ĐĂNG KÝ xử lý được link web (http://) coi như trình
@@ -501,15 +519,15 @@ class HomeScreenManager(
         override fun getItemCount(): Int = pages.size
     }
 
-    /** Tiêu đề lớn kiểu Pivot/Hub header của WP: chữ thường, cực mảnh, cỡ lớn, màu trắng.
-     *  46sp (tăng từ 30sp) - WP thật dùng chữ cực to cho Pivot/Hub header, 30sp trông nhỏ hơn
-     *  nhiều so với "start" / "ứng dụng" trên máy Lumia thật. */
-    private fun sectionHeader(text: String): View = TextView(context).apply {
+    /** Tiêu đề lớn kiểu Pivot/Hub header của WP.
+     *  [smallHeader]=true: dùng cho trang "DS Ứng Dụng" (28sp) để không chiếm quá nhiều không gian.
+     *  [smallHeader]=false (mặc định): cỡ 46sp đặc trưng Hub header cho trang "start". */
+    private fun sectionHeader(text: String, smallHeader: Boolean = false): View = TextView(context).apply {
         this.text = text
-        textSize = 46f
+        textSize = if (smallHeader) 28f else 46f
         setTextColor(Color.WHITE)
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        setPadding(dp(2), dp(8), dp(2), dp(14))
+        setPadding(dp(2), dp(8), dp(2), dp(10))
     }
 
     /** Tiêu đề phân nhóm trong danh sách app (danh mục: "Trình duyệt", "Game"...), kiểu WP App
