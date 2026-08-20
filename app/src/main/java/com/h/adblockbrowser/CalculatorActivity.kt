@@ -77,24 +77,29 @@ class CalculatorActivity : AppCompatActivity() {
 
         // Bỏ nút "±" (vừa cộng vừa trừ) theo yêu cầu - thay bằng "⌫" (xoá lùi 1 ký tự), hữu ích
         // hơn nhiều để sửa lỗi gõ nhầm mà không cần bấm "C" xoá sạch từ đầu.
+        // Hàng cuối chỉ có 3 phím (0, ., =) - nút "=" kéo dài chiếm luôn ô trống bên dưới "+",
+        // to gấp đôi các phím khác thay vì để trống 1 ô như trước.
         val labels = listOf(
             "C", "⌫", "%", "÷",
             "7", "8", "9", "×",
             "4", "5", "6", "−",
             "1", "2", "3", "+",
-            "0", ".", "=", ""
+            "0", ".", "="
         )
 
         for (label in labels) {
-            if (label.isEmpty()) continue
             val btn = Button(this).apply {
                 text = label
                 textSize = 26f
                 setTextColor(if (label in listOf("÷", "×", "−", "+", "=")) ThemePrefs.accent(this@CalculatorActivity) else 0xFFFFFFFF.toInt())
                 setBackgroundColor(0xFF0D0D0D.toInt())
+                // Nút "=" chiếm 2 cột (columnSpan=2, weight=2f) - rộng gấp đôi phím thường, kéo
+                // dài qua luôn vị trí ô trống cũ bên dưới dấu "+".
+                val span = if (label == "=") 2 else 1
+                val weight = if (label == "=") 2f else 1f
                 val lp = GridLayout.LayoutParams(
                     GridLayout.spec(GridLayout.UNDEFINED, 1f),
-                    GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    GridLayout.spec(GridLayout.UNDEFINED, span, weight)
                 )
                 lp.width = 0
                 lp.height = 0
