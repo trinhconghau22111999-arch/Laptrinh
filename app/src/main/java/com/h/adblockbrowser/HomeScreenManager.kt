@@ -142,7 +142,10 @@ class HomeScreenManager(
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setPadding(dp(20), dp(40), dp(20), dp(24))
+            // Đáy chừa thêm đúng chiều cao WpNavBar (xem WpNavBar.HEIGHT_DP) - thanh điều
+            // hướng nổi là cửa sổ hệ thống riêng luôn đè lên trên cùng, nếu chỉ để dp(24) như
+            // trước thì tile cuối cùng của lưới Live Tile bị nó che khuất mất 1 phần.
+            setPadding(dp(20), dp(40), dp(20), dp(24) + dp(WpNavBar.HEIGHT_DP))
             overScrollMode = View.OVER_SCROLL_NEVER
         }
 
@@ -248,7 +251,9 @@ class HomeScreenManager(
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setPadding(dp(20), dp(40), dp(20), dp(24))
+            // Cùng lý do như buildStartPage() ở trên: chừa thêm đúng chiều cao WpNavBar, nếu
+            // không app CUỐI CÙNG trong danh sách A-Z sẽ bị thanh điều hướng nổi che mất.
+            setPadding(dp(20), dp(40), dp(20), dp(24) + dp(WpNavBar.HEIGHT_DP))
             overScrollMode = View.OVER_SCROLL_NEVER
         }
 
