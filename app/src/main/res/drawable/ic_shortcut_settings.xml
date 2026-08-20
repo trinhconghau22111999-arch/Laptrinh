@@ -1,10 +1,10 @@
+<!-- Cài đặt: bánh răng phẳng kiểu WP (ic_shortcut_settings đã vẽ tốt, nhưng vẽ lại gọn hơn) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M10.03,4.66 L10.34,1.53 L13.66,1.53 L13.97,4.66 L15.8,5.42 L18.23,3.42 L20.58,5.77 L18.58,8.2 L19.34,10.03 L22.47,10.34 L22.47,13.66 L19.34,13.97 L18.58,15.8 L20.58,18.23 L18.23,20.58 L15.8,18.58 L13.97,19.34 L13.66,22.47 L10.34,22.47 L10.03,19.34 L8.2,18.58 L5.77,20.58 L3.42,18.23 L5.42,15.8 L4.66,13.97 L1.53,13.66 L1.53,10.34 L4.66,10.03 L5.42,8.2 L3.42,5.77 L5.77,3.42 L8.2,5.42 Z M16.3,12 A4.3,4.3 0 1,0 7.7,12 A4.3,4.3 0 1,0 16.3,12 Z"/>
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Bánh răng 8 răng phẳng kiểu Win10 Settings -->
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd"
+        android:pathData="
+M10.1,2L10.1,2L9.7,4.8L8,5.7L5.6,4L4,5.6L5.7,8L4.8,9.7L2,10.1L2,13.9L4.8,14.3L5.7,16L4,18.4L5.6,20L8,18.3L9.7,19.2L10.1,22L13.9,22L14.3,19.2L16,18.3L18.4,20L20,18.4L18.3,16L19.2,14.3L22,13.9L22,10.1L19.2,9.7L18.3,8L20,5.6L18.4,4L16,5.7L14.3,4.8L13.9,2Z
+M12,8.5A3.5,3.5 0 1,0 12,15.5A3.5,3.5 0 1,0 12,8.5Z"/>
 </vector>

@@ -1,15 +1,31 @@
+<!-- Máy tính: kiểu WP Calculator - outline gọn, màn hình + 9 nút -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24" android:viewportHeight="24">    <path android:fillColor="#FFFFFF" android:pathData="M7,4h10a1,1 0 0,1 1,1v14a1,1 0 0,1 -1,1h-10a1,1 0 0,1 -1,-1v-14a1,1 0 0,1 1,-1Z"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,6h7.6v3h-7.6Z"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,10.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M12,10.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M15.8,10.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,13.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M12,13.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M15.8,13.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M8.2,16.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M12,16.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M15.8,16.6m-0.9,0a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0"/>
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Thân máy tính -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.4" android:fillColor="@android:color/transparent"
+        android:pathData="M6,2L18,2Q19.5,2 19.5,3.5L19.5,20.5Q19.5,22 18,22L6,22Q4.5,22 4.5,20.5L4.5,3.5Q4.5,2 6,2Z"/>
+    <!-- Màn hình hiển thị -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M6.5,4.5L17.5,4.5L17.5,8.5L6.5,8.5Z"/>
+    <!-- Hàng nút 1: + / * - -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M7,10.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0
+                          M10.5,10.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0
+                          M14,10.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0
+                          M17.5,10.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0"/>
+    <!-- Hàng nút 2 -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M7,13.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0
+                          M10.5,13.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0
+                          M14,13.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0
+                          M17.5,13.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0"/>
+    <!-- Hàng nút 3 -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M7,16.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0
+                          M10.5,16.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0
+                          M14,16.5m-1,0a1,1 0 1,0 2,0a1,1 0 1,0 -2,0"/>
+    <!-- Nút = lớn (góc dưới phải) -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M15.5,15.5L19.5,15.5L19.5,19.5L15.5,19.5Z"/>
 </vector>
