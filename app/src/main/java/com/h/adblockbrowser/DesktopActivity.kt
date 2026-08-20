@@ -158,6 +158,14 @@ class DesktopActivity : AppCompatActivity() {
         desktopArea.post { layoutPinnedIcons() }
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Áp lại ẩn thanh trạng thái/điều hướng mỗi lần cửa sổ lấy lại focus - xem giải thích
+        // chi tiết ở MainActivity.onWindowFocusChanged(). Màn này không có ô nhập chữ nào trực
+        // tiếp trên cửa sổ chính nên không cần kiểm tra IME.
+        if (hasFocus) hideStatusBar()
+    }
+
     override fun onDestroy() {
         navBarHandle?.detach()
         super.onDestroy()

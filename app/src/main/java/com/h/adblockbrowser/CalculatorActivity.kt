@@ -31,6 +31,9 @@ class CalculatorActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ẩn CẢ status bar LẪN thanh điều hướng hệ thống - đồng bộ với các màn hình khác của
+        // app (xem UiUtils.hideStatusBar()) - đúng tinh thần toàn màn hình của Windows Phone.
+        hideStatusBar()
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -119,6 +122,14 @@ class CalculatorActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         navBarHandle?.resync()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Áp lại ẩn thanh trạng thái/điều hướng mỗi lần cửa sổ lấy lại focus - xem giải thích
+        // chi tiết ở MainActivity.onWindowFocusChanged(). Màn này không có ô nhập chữ nào nên
+        // không cần kiểm tra IME như MainActivity/AccountBrowserActivity/IncognitoActivity.
+        if (hasFocus) hideStatusBar()
     }
 
     override fun onDestroy() {

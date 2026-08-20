@@ -69,15 +69,23 @@ fun Activity.buildBackArrow(onBack: () -> Unit = { finish() }): TextView =
         setOnClickListener { onBack() }
     }
 
-/** Ẩn thanh trạng thái hệ thống (giờ/mạng/pin) CHO 1 MÀN CỤ THỂ - dùng ở các màn phụ (vd. Quản
- *  lý tệp) muốn dùng trọn vẹn phần không gian phía trên thay vì để trống/đè lên nội dung phía
- *  sau (ví dụ video đang mở ở app khác dạng cửa sổ nổi lộ ra phía sau vùng status bar trong suốt
- *  của app này). Thanh điều hướng hệ thống (Back/Home/Recent) GIỮ NGUYÊN, không bị ẩn - giống
- *  cách MainActivity.enableImmersiveMode() làm cho màn chính. */
+/** Ẩn CẢ thanh trạng thái (giờ/mạng/pin) LẪN thanh điều hướng hệ thống (3 phím Back/Home/Recent
+ *  hoặc gesture bar) - toàn màn hình thật sự, đúng tinh thần Windows Phone (bản thân WP không hề
+ *  có thanh điều hướng phần mềm của Android). Đa nhiệm trong app này giờ CHỈ dùng nút "Đa nhiệm"
+ *  của WpNavBar (xem WpNavBar.kt/TaskView.kt) - KHÔNG còn dựa vào nút Recent/Overview của hệ
+ *  thống Android nữa, nên thanh điều hướng hệ thống không cần (và không nên) hiện thường trực.
+ *
+ *  TRƯỚC ĐÂY hàm này (hideStatusBar) CHỈ ẩn thanh trạng thái, CỐ Ý giữ nguyên thanh điều hướng -
+ *  đã đổi lại theo yêu cầu (3 phím điều hướng Android vẫn lộ ra phá vỡ giao diện WP).
+ *
+ *  Vẫn dùng BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE (không phải ẩn tuyệt đối, không lối thoát) -
+ *  vuốt nhẹ từ mép màn hình vẫn hiện TẠM thời thanh điều hướng thật, làm lối thoát khẩn cấp an
+ *  toàn (ví dụ 1 màn hình lỗi/treo không có nút Back nào dùng được) - đây là hành vi immersive
+ *  tiêu chuẩn Google khuyến nghị, không phải để dùng làm cách đa nhiệm chính. */
 fun Activity.hideStatusBar() {
     androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
     val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-    controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+    controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
     controller.systemBarsBehavior =
         androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 }

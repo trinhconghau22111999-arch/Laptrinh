@@ -100,7 +100,10 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        // Ẩn CẢ status bar LẪN thanh điều hướng hệ thống - xem giải thích đầy đủ ở
+        // UiUtils.hideStatusBar()/MainActivity.enableImmersiveMode(). Đa nhiệm ở màn này dùng
+        // nút "Đa nhiệm" của WpNavBar (xem toggleTaskView()), không cần nút Recent hệ thống.
+        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
         insetsController.systemBarsBehavior =
             androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
@@ -727,7 +730,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                 ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
             if (!imeVisible) {
                 val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             }
         }
     }

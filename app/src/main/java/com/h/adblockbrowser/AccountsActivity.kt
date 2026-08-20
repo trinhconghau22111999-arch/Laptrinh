@@ -47,7 +47,12 @@ class AccountsActivity : AppCompatActivity() {
 
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        // Ẩn CẢ status bar LẪN thanh điều hướng hệ thống - xem giải thích đầy đủ ở
+        // UiUtils.hideStatusBar()/MainActivity.enableImmersiveMode(). Màn này không có nhiều
+        // tab nên không có nút "Đa nhiệm" riêng (chỉ Back/Start) - xem WpNavBar.attach() bên dưới.
+        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        insetsController.systemBarsBehavior =
+            androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -110,6 +115,18 @@ class AccountsActivity : AppCompatActivity() {
         render()
         // Đọc lại vị trí nút Back nổi mới nhất - xem giải thích đồng bộ ở FloatingBackButton.kt.
         floatingBackButtonHandle?.resync()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Áp lại ẩn thanh trạng thái/điều hướng mỗi lần cửa sổ lấy lại focus (chuyển app đi rồi
+        // quay lại, đóng dialog hệ thống...) - xem giải thích chi tiết ở
+        // MainActivity.onWindowFocusChanged(). Màn này dùng AlertDialog hệ thống (cửa sổ riêng)
+        // cho các thao tác Thêm/Đổi tên nên không cần kiểm tra IME như MainActivity.
+        if (hasFocus) {
+            val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+            insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     override fun onDestroy() {

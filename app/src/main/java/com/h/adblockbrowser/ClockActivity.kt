@@ -85,6 +85,9 @@ class ClockActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ẩn CẢ status bar LẪN thanh điều hướng hệ thống - đồng bộ với các màn hình khác của
+        // app (xem UiUtils.hideStatusBar()) - đúng tinh thần toàn màn hình của Windows Phone.
+        hideStatusBar()
 
         val outer = FrameLayout(this).apply { setBackgroundColor(0xFF000000.toInt()) }
 
@@ -474,6 +477,15 @@ class ClockActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         navBarHandle?.resync()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Áp lại ẩn thanh trạng thái/điều hướng mỗi lần cửa sổ lấy lại focus - xem giải thích
+        // chi tiết ở MainActivity.onWindowFocusChanged(). Ô nhập (đặt tên báo thức, EditText)
+        // nằm trong AlertDialog - CỬA SỔ RIÊNG tách biệt với cửa sổ chính - nên không cần kiểm
+        // tra IME như MainActivity/AccountBrowserActivity/IncognitoActivity.
+        if (hasFocus) hideStatusBar()
     }
 
     override fun onDestroy() {

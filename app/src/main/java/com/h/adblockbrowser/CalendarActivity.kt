@@ -44,6 +44,9 @@ class CalendarActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ẩn CẢ status bar LẪN thanh điều hướng hệ thống - đồng bộ với các màn hình khác của
+        // app (xem UiUtils.hideStatusBar()) - đúng tinh thần toàn màn hình của Windows Phone.
+        hideStatusBar()
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -155,6 +158,16 @@ class CalendarActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         navBarHandle?.resync()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Áp lại ẩn thanh trạng thái/điều hướng mỗi lần cửa sổ lấy lại focus - xem giải thích
+        // chi tiết ở MainActivity.onWindowFocusChanged(). Ô nhập ghi chú (EditText) nằm trong
+        // AlertDialog - CỬA SỔ RIÊNG tách biệt với cửa sổ chính của Activity - nên không cần
+        // kiểm tra IME như MainActivity/AccountBrowserActivity/IncognitoActivity (những nơi có
+        // ô nhập NẰM TRỰC TIẾP trên cửa sổ chính, tranh chấp với việc ẩn thanh hệ thống).
+        if (hasFocus) hideStatusBar()
     }
 
     override fun onDestroy() {

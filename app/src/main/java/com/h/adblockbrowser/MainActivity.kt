@@ -64,14 +64,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun enableImmersiveMode() {
-        // CHỈ ẩn thanh trạng thái (giờ/mạng/pin) để có thêm không gian màn hình. Thanh điều
-        // hướng hệ thống (3 phím Back/Home/Recent hoặc gesture bar) được GIỮ NGUYÊN, LUÔN HIỆN
-        // MẶC ĐỊNH, không còn bị ẩn đi như trước (trước đây dùng Type.systemBars() ẩn cả hai).
+        // Ẩn CẢ thanh trạng thái (giờ/mạng/pin) LẪN thanh điều hướng hệ thống (3 phím
+        // Back/Home/Recent hoặc gesture bar) - toàn màn hình thật sự, đúng tinh thần Windows
+        // Phone (bản thân WP không có thanh điều hướng phần mềm của Android). Đa nhiệm trong
+        // app giờ CHỈ dùng nút "Đa nhiệm" của WpNavBar (xem WpNavBar.kt/TaskView.kt), KHÔNG còn
+        // dựa vào nút Recent/Overview hệ thống nữa.
+        //
+        // TRƯỚC ĐÂY hàm này CHỈ ẩn thanh trạng thái, CỐ Ý giữ nguyên thanh điều hướng hệ thống -
+        // đã đổi lại theo yêu cầu (3 phím điều hướng Android vẫn lộ ra phá vỡ giao diện WP).
+        //
         // Dùng WindowInsetsControllerCompat của androidx để hoạt động đúng trên mọi phiên bản
         // Android (kể cả các máy Android cũ hơn không có API ẩn thanh điều hướng mới).
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.hide(WindowInsetsCompat.Type.statusBars())
+        controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
