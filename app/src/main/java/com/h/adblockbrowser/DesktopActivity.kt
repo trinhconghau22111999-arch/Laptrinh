@@ -55,6 +55,30 @@ class DesktopActivity : AppCompatActivity() {
     private lateinit var tvTime: TextView
     private lateinit var tvDate: TextView
 
+    // Dòng chữ hướng dẫn "Giữ 1 ứng dụng... để nó xuất hiện ở đây" CHỈ hiện trong 10 giây ĐẦU
+    // TIÊN của LẦN MỞ trang Điện thoại ĐẦU TIÊN sau khi cài app (không hiện lại ở những lần mở
+    // sau, kể cả khi trang vẫn đang trống) - đúng ý người dùng: hướng dẫn 1 lần cho biết cách
+    // dùng, không lặp lại gây rối mắt mỗi lần vào trang trống. Cờ [showEmptyHint] chỉ đặt true
+    // ở onCreate() (không đặt lại ở layoutPinnedIcons() - hàm đó có thể gọi lại nhiều lần mỗi
+    // khi onResume/ghim thêm app), và cờ "đã từng mở" lưu VĨNH VIỄN qua SharedPreferences nên
+    // dù đóng app hẳn rồi mở lại cũng không hiện lại nữa.
+    private var showEmptyHint = false
+    private val hideHintRunnable = Runnable {
+        showEmptyHint = false
+        layoutPinnedIcons()
+    }
+
+    /** true nếu đây là lần ĐẦU TIÊN trang Điện thoại được mở kể từ khi cài app (hoặc từ khi cài
+     *  đè bản mới - dữ liệu SharedPreferences không mất khi cập nhật app, chỉ mất khi gỡ cài).
+     *  Đánh dấu "đã mở" NGAY LẬP TỨC (không đợi hết 10 giây) để dù người dùng thoát app giữa
+     *  chừng trong 10 giây đó, lần mở KẾ TIẾP vẫn không tính là "lần đầu" nữa. */
+    private fun consumeFirstOpenFlag(): Boolean {
+        val prefs = getSharedPreferences("desktop_prefs", MODE_PRIVATE)
+        val isFirst = !prefs.getBoolean("opened_once", false)
+        if (isFirst) prefs.edit().putBoolean("opened_once", true).apply()
+        return isFirst
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         hideStatusBar()
@@ -171,7 +195,14 @@ class DesktopActivity : AppCompatActivity() {
             onStart = { onBackPressed() }
         )
 
+        showEmptyHint = consumeFirstOpenFlag()
         desktopArea.post { layoutPinnedIcons() }
+        if (showEmptyHint) {
+            // Sau đúng 10 giây kể từ lúc mở trang này lần đầu tiên - tắt hẳn dòng hướng dẫn (kể
+            // cả khi người dùng vẫn đang đứng yên ở trang trống xem nó), vẽ lại layoutPinnedIcons()
+            // để dòng chữ biến mất, không cần người dùng thao tác gì thêm.
+            desktopArea.postDelayed(hideHintRunnable, 10000)
+        }
     }
 
     override fun onResume() {
@@ -192,6 +223,7 @@ class DesktopActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        desktopArea.removeCallbacks(hideHintRunnable)
         navBarHandle?.detach()
         super.onDestroy()
     }
@@ -235,16 +267,18 @@ class DesktopActivity : AppCompatActivity() {
         val pm = packageManager
         val pinned = DesktopAppsStore.getAll(this)
         if (pinned.isEmpty()) {
-            desktopArea.addView(TextView(this).apply {
-                text = "Giữ 1 ứng dụng trong trang \"ứng dụng\" ở Start rồi bấm \"Thêm vào Điện thoại\"\nđể nó xuất hiện ở đây."
-                setTextColor(0xFFDDDDDD.toInt())
-                textSize = 13f
-                gravity = Gravity.CENTER
-                setShadowLayer(dp(4).toFloat(), 0f, dp(1).toFloat(), 0x99000000.toInt())
-                setPadding(dp(24), dp(24), dp(24), dp(24))
-            }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
-                it.gravity = Gravity.CENTER
-            })
+            if (showEmptyHint) {
+                desktopArea.addView(TextView(this).apply {
+                    text = "Giữ 1 ứng dụng trong trang \"ứng dụng\" ở Start rồi bấm \"Thêm vào Điện thoại\"\nđể nó xuất hiện ở đây."
+                    setTextColor(0xFFDDDDDD.toInt())
+                    textSize = 13f
+                    gravity = Gravity.CENTER
+                    setShadowLayer(dp(4).toFloat(), 0f, dp(1).toFloat(), 0x99000000.toInt())
+                    setPadding(dp(24), dp(24), dp(24), dp(24))
+                }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
+                    it.gravity = Gravity.CENTER
+                })
+            }
             return
         }
 
