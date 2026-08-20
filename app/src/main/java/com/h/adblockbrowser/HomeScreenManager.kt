@@ -378,7 +378,7 @@ class HomeScreenManager(
     /** Tiêu đề chữ cái phân nhóm A-Z trong danh sách app, kiểu WP App List: chữ to, màu accent,
      *  đứng riêng 1 dòng làm mốc phân cách trực quan giữa các nhóm chữ cái. */
     private fun alphabetHeader(letter: String): View = TextView(context).apply {
-        text = letter.lowercase()
+        text = letter.uppercase()
         textSize = 22f
         setTextColor(ThemePrefs.accent(context))
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
