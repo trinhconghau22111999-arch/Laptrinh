@@ -2,13 +2,20 @@ package com.h.adblockbrowser
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.text.TextUtils
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
+import android.widget.BaseAdapter
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
@@ -98,8 +105,12 @@ class FilesActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val btnShare = TextView(this).apply {
-            text = "☑ Tất cả"
+            // "☑" (ballot-box-with-check) trước đây hiển thị dạng emoji màu tuỳ máy - đổi thành
+            // chữ thường không icon, đúng kiểu WP App Bar mở rộng (chỉ chữ, không cần icon cho
+            // mọi hành động - xem WpAppBar.expandedPanel).
+            text = "chọn tất cả"
             setTextColor(ThemePrefs.accent(this@FilesActivity))
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             setPadding(dp(12), dp(6), dp(12), dp(6))
             isClickable = true
             setOnClickListener { selectAll() }
@@ -208,14 +219,73 @@ class FilesActivity : AppCompatActivity() {
         refreshAdapter()
     }
 
+    /** 1 dòng dữ liệu cho danh sách tệp: [entryIndex] = -1 cho dòng ".." (lên thư mục cha),
+     *  ngược lại là chỉ số thật trong [entries]. */
+    private data class Row(val name: String, val isDir: Boolean, val entryIndex: Int, val selected: Boolean)
+
+    /** Dựng lại danh sách tệp bằng ADAPTER TUỲ CHỈNH kiểu WP (icon thư mục/tệp phẳng đơn sắc +
+     *  tên, nền đen, không viền/ripple tròn) THAY CHO android.R.layout.simple_list_item_1 - hàng
+     *  danh sách MẶC ĐỊNH của hệ thống Android (chữ đen/kiểu chữ hệ thống, không icon, ripple
+     *  tròn Material) hoàn toàn LẠC TÔNG so với phần còn lại của app (đã tự vẽ UI phẳng kiểu WP ở
+     *  mọi màn khác) - đây là màn duy nhất còn "trông như 1 app Android bình thường" thay vì
+     *  giống File Explorer thật của Windows 10 Mobile. Icon 📁/📄 dạng emoji trước đây cũng hiển
+     *  thị màu sặc sỡ tuỳ font từng máy - giờ thay bằng vector đơn sắc trắng (ic_wp_folder /
+     *  ic_wp_file), dấu chọn "✓" đổi thành icon ic_wp_check hiện ở lề phải thay vì chèn vào đầu
+     *  tên tệp (đúng kiểu WP: dấu tick nằm RIÊNG Ở GÓC, không đổi chính tên hiển thị). */
     private fun refreshAdapter() {
-        val names = ArrayList<String>()
-        if (hasParentRow()) names.add(".. (Lên thư mục cha)")
+        val rows = ArrayList<Row>()
+        if (hasParentRow()) rows.add(Row("..", true, -1, false))
         entries.forEachIndexed { idx, f ->
-            val mark = if (selected.contains(idx)) "✓ " else ""
-            names.add(mark + (if (f.isDirectory) "📁 ${f.name}" else "📄 ${f.name}"))
+            rows.add(Row(f.name, f.isDirectory, idx, selected.contains(idx)))
         }
-        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, names)
+
+        val adapter = object : BaseAdapter() {
+            override fun getCount(): Int = rows.size
+            override fun getItem(position: Int): Any = rows[position]
+            override fun getItemId(position: Int): Long = position.toLong()
+
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val row = rows[position]
+                val container = LinearLayout(this@FilesActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(4), dp(11), dp(12), dp(11))
+                    isClickable = true
+                    isFocusable = true
+                    // Chạm tối nhẹ hình chữ nhật - đúng cảm giác "bấm phẳng" Metro, không ripple
+                    // tròn Material mặc định của ListView hệ thống (xem lý giải tương tự ở
+                    // HomeScreenManager.pressedOverlay).
+                    val pressed = GradientDrawable().apply { setColor(0x22FFFFFF) }
+                    val normal = GradientDrawable().apply { setColor(Color.TRANSPARENT) }
+                    background = android.graphics.drawable.StateListDrawable().apply {
+                        addState(intArrayOf(android.R.attr.state_pressed), pressed)
+                        addState(intArrayOf(), normal)
+                    }
+                }
+                container.addView(ImageView(this@FilesActivity).apply {
+                    setImageResource(if (row.isDir) R.drawable.ic_wp_folder else R.drawable.ic_wp_file)
+                    setColorFilter(if (row.entryIndex == -1) 0xFF888888.toInt() else Color.WHITE)
+                    layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).also { it.rightMargin = dp(16) }
+                })
+                container.addView(TextView(this@FilesActivity).apply {
+                    text = if (row.entryIndex == -1) "Lên thư mục cha" else row.name
+                    textSize = 16f
+                    setTextColor(if (row.entryIndex == -1) 0xFFAAAAAA.toInt() else Color.WHITE)
+                    typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.MIDDLE
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                })
+                if (row.selected) {
+                    container.addView(ImageView(this@FilesActivity).apply {
+                        setImageResource(R.drawable.ic_wp_check)
+                        setColorFilter(ThemePrefs.accent(this@FilesActivity))
+                        layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).also { it.leftMargin = dp(8) }
+                    })
+                }
+                return container
+            }
+        }
         listView.adapter = adapter
     }
 
