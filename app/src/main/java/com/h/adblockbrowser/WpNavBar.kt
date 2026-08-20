@@ -54,6 +54,25 @@ object WpNavBar {
     ) {
         fun resync() = resyncCallback()
 
+        /** ẨN thanh Back/Start/Đa nhiệm - dùng khi xem video HTML5 toàn màn hình (xem
+         *  onShowCustomView() ở MainActivity/AccountBrowserActivityBase) để thanh (vốn là 1
+         *  CỬA SỔ HỆ THỐNG riêng, luôn nổi trên cùng - xem attach() bên dưới) không đè lên video.
+         *  GONE thay vì removeView hẳn: giữ nguyên cửa sổ đã cấp token, [show] lại tức thì không
+         *  cần cấp token/addView lại (addView 2 lần trên cùng 1 token dễ lỗi WindowManager). */
+        fun hide() {
+            bar.visibility = View.GONE
+        }
+
+        /** HIỆN lại thanh - vuốt lên từ cạnh đáy trong lúc xem video toàn màn hình sẽ gọi hàm
+         *  này (xem setupFullscreenSwipeReveal() ở MainActivity/AccountBrowserActivityBase). */
+        fun show() {
+            bar.visibility = View.VISIBLE
+        }
+
+        /** true nếu thanh đang bị ẩn (đang xem video toàn màn hình) - dùng để quyết định có nên
+         *  tự ẩn lại sau vài giây khi người dùng vuốt lên xem thoáng qua hay không. */
+        val isHidden: Boolean get() = bar.visibility != View.VISIBLE
+
         fun detach() {
             try { wm.removeViewImmediate(bar) } catch (e: Exception) { }
         }
