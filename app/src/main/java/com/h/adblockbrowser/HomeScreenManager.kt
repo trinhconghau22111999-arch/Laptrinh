@@ -965,16 +965,16 @@ class HomeScreenManager(
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 setColor(tileColor)
-                cornerRadius = dp(3).toFloat()
+                cornerRadius = dp(4).toFloat()
             }
-            layoutParams = FrameLayout.LayoutParams(dp(52), dp(52)).also {
+            layoutParams = FrameLayout.LayoutParams(dp(67), dp(67)).also {
                 it.gravity = Gravity.TOP or Gravity.START
-                it.leftMargin = dp(8); it.topMargin = dp(8)
+                it.leftMargin = dp(10); it.topMargin = dp(10)
             }
         }
         val icon = ImageView(context).apply {
             setImageResource(iconRes)
-            val pad = dp(8)
+            val pad = dp(10)
             setPadding(pad, pad, pad, pad)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
@@ -1014,16 +1014,16 @@ class HomeScreenManager(
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 setColor(tileColor)
-                cornerRadius = dp(3).toFloat()
+                cornerRadius = dp(4).toFloat()
             }
-            layoutParams = FrameLayout.LayoutParams(dp(52), dp(52)).also {
+            layoutParams = FrameLayout.LayoutParams(dp(67), dp(67)).also {
                 it.gravity = Gravity.TOP or Gravity.START
-                it.leftMargin = dp(8); it.topMargin = dp(8)
+                it.leftMargin = dp(10); it.topMargin = dp(10)
             }
         }
         val iconView = ImageView(context).apply {
             setImageDrawable(icon)
-            val pad = dp(6)
+            val pad = dp(8)
             setPadding(pad, pad, pad, pad)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
