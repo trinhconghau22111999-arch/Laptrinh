@@ -598,25 +598,29 @@ class HomeScreenManager(
         popup.showAsDropDown(anchor, 0, dp(4))
     }
 
-    /** Trạng thái đang ở "chế độ đổi cỡ" của 1 tile - lưu tay cầm + nền foreground GỐC (để
-     *  khôi phục khi thoát chế độ) - gắn vào [View.setTag] của chính tile đó. */
-    private data class ResizeState(val handle: View, val originalForeground: Drawable?)
+    /** Trạng thái đang ở "chế độ đổi cỡ" của 1 tile - lưu CẢ 2 tay cầm (cạnh dưới + cạnh phải)
+     *  + nền foreground GỐC (để khôi phục khi thoát chế độ) - gắn vào [View.setTag] của chính
+     *  tile đó. */
+    private data class ResizeState(val handleBottom: View, val handleRight: View, val originalForeground: Drawable?)
 
-    /** NHẤN GIỮ 1 tile để BẬT "chế độ đổi cỡ": hiện viền trắng bao quanh tile + 1 tay cầm tròn
-     *  trắng ở góc dưới-phải - RÊ tay cầm đó để phóng to/thu nhỏ tile THEO THỜI GIAN THỰC
-     *  (không phải chọn từ danh sách cỡ có sẵn như trước). Thả tay -> tự CHỐT về cỡ HỢP LỆ gần
-     *  nhất trong 4 cỡ [TileSize] (lưới hiện tại chỉ hỗ trợ đúng 4 cỡ rời rạc Nhỏ/Rộng/Cao/To,
-     *  CHƯA phải tự do hoàn toàn theo từng pixel - kéo giữa chừng sẽ tự nhảy về cỡ gần nhất khi
-     *  thả tay, không giữ nguyên kích thước tuỳ ý bất kỳ), rồi lưu qua [onCommit] (tự lưu +
-     *  refreshPages() ở nơi gọi). NHẤN GIỮ LẦN NỮA trong lúc đang ở chế độ đổi cỡ -> HUỶ, không
-     *  lưu gì, khôi phục nguyên trạng. */
+    /** NHẤN GIỮ 1 tile để BẬT "chế độ đổi cỡ": hiện viền trắng bao quanh tile + 2 TAY CẦM RIÊNG
+     *  BIỆT - 1 ở GIỮA CẠNH DƯỚI (kéo lên/xuống để đổi CHIỀU CAO) và 1 ở GIỮA CẠNH PHẢI (kéo
+     *  trái/phải để đổi CHIỀU RỘNG) - THAY VÌ 1 tay cầm duy nhất ở góc dưới-phải điều khiển CẢ
+     *  HAI chiều cùng lúc như trước, để người dùng chỉnh riêng từng chiều chính xác hơn, không
+     *  bị đổi nhầm chiều kia khi chỉ muốn sửa 1 chiều. Thả tay cầm nào -> tự CHỐT chiều đó về cỡ
+     *  HỢP LỆ gần nhất trong 4 cỡ [TileSize] (lưới hiện tại chỉ hỗ trợ đúng 4 cỡ rời rạc
+     *  Nhỏ/Rộng/Cao/To, CHƯA phải tự do hoàn toàn theo từng pixel - kéo giữa chừng sẽ tự nhảy về
+     *  cỡ gần nhất khi thả tay), rồi lưu qua [onCommit] (tự lưu + refreshPages() ở nơi gọi).
+     *  NHẤN GIỮ LẦN NỮA trong lúc đang ở chế độ đổi cỡ -> HUỶ, không lưu gì, khôi phục nguyên
+     *  trạng. */
     private fun enterResizeMode(
         tileView: View, gridContainer: FrameLayout, cellPitchPx: Int, onCommit: (TileSize) -> Unit
     ) {
         val existing = tileView.tag as? ResizeState
         if (existing != null) {
-            // Đang ở chế độ đổi cỡ rồi -> nhấn giữ lần nữa để HUỶ, gỡ viền + tay cầm, không lưu.
-            gridContainer.removeView(existing.handle)
+            // Đang ở chế độ đổi cỡ rồi -> nhấn giữ lần nữa để HUỶ, gỡ viền + 2 tay cầm, không lưu.
+            gridContainer.removeView(existing.handleBottom)
+            gridContainer.removeView(existing.handleRight)
             tileView.foreground = existing.originalForeground
             tileView.tag = null
             return
@@ -629,68 +633,97 @@ class HomeScreenManager(
         }
 
         val handleSizePx = dp(28)
-        val handle = View(context).apply {
+        fun makeHandle(): View = View(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.WHITE)
             }
         }
+        val handleBottom = makeHandle() // giữa cạnh dưới - chỉ đổi CHIỀU CAO
+        val handleRight = makeHandle()  // giữa cạnh phải - chỉ đổi CHIỀU RỘNG
 
         fun tileLp() = tileView.layoutParams as FrameLayout.LayoutParams
-        // Tay cầm luôn "dính" đúng góc dưới-phải tile - gọi lại mỗi khi tile đổi kích thước
-        // trong lúc kéo, để tay cầm di chuyển theo cùng ngón tay chứ không đứng yên 1 chỗ.
-        fun positionHandle() {
+        // 2 tay cầm luôn "dính" đúng giữa cạnh dưới / giữa cạnh phải của tile - gọi lại mỗi khi
+        // tile đổi kích thước trong lúc kéo, để tay cầm di chuyển theo cùng ngón tay chứ không
+        // đứng yên 1 chỗ.
+        fun positionHandles() {
             val lp = tileLp()
-            handle.layoutParams = FrameLayout.LayoutParams(handleSizePx, handleSizePx).also {
-                it.leftMargin = lp.leftMargin + lp.width - handleSizePx / 2
+            handleBottom.layoutParams = FrameLayout.LayoutParams(handleSizePx, handleSizePx).also {
+                it.leftMargin = lp.leftMargin + lp.width / 2 - handleSizePx / 2
                 it.topMargin = lp.topMargin + lp.height - handleSizePx / 2
             }
+            handleRight.layoutParams = FrameLayout.LayoutParams(handleSizePx, handleSizePx).also {
+                it.leftMargin = lp.leftMargin + lp.width - handleSizePx / 2
+                it.topMargin = lp.topMargin + lp.height / 2 - handleSizePx / 2
+            }
         }
-        gridContainer.addView(handle)
-        positionHandle()
-        tileView.tag = ResizeState(handle, originalForeground)
+        gridContainer.addView(handleBottom)
+        gridContainer.addView(handleRight)
+        positionHandles()
+        tileView.tag = ResizeState(handleBottom, handleRight, originalForeground)
 
-        var startTouchX = 0f
+        val minPx = cellPitchPx - dp(4)
+        val maxPx = cellPitchPx * 2 - dp(4)
+        val threshold = (cellPitchPx * 1.5f).toInt()
+
+        // Chốt 1 chiều (rộng HOẶC cao) về cỡ hợp lệ gần nhất rồi báo [onCommit] - dùng chung cho
+        // cả 2 tay cầm, mỗi tay cầm chỉ đổi ĐÚNG 1 chiều nên chiều còn lại giữ nguyên giá trị cỡ
+        // đã chốt trước đó (lấy từ [TileSizeStore] gián tiếp qua kích thước layoutParams hiện tại).
+        fun commit() {
+            val lp = tileLp()
+            val w = if (lp.width >= threshold) 2 else 1
+            val h = if (lp.height >= threshold) 2 else 1
+            val picked = TileSize.values().first { it.w == w && it.h == h }
+            gridContainer.removeView(handleBottom)
+            gridContainer.removeView(handleRight)
+            tileView.foreground = originalForeground
+            tileView.tag = null
+            onCommit(picked)
+        }
+
         var startTouchY = 0f
-        var startWidthPx = 0
         var startHeightPx = 0
-        handle.setOnTouchListener { _, event ->
+        handleBottom.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
-                    startTouchX = event.rawX; startTouchY = event.rawY
-                    startWidthPx = tileLp().width; startHeightPx = tileLp().height
+                    startTouchY = event.rawY
+                    startHeightPx = tileLp().height
                     true
                 }
                 android.view.MotionEvent.ACTION_MOVE -> {
-                    // Bề rộng/cao MỚI = bề rộng/cao lúc bắt đầu kéo + khoảng ngón tay đã di
-                    // chuyển - GIỚI HẠN trong khoảng [1 đơn vị, 2 đơn vị] (cỡ nhỏ nhất/to nhất
-                    // lưới hỗ trợ), phóng to/thu nhỏ NGAY khi ngón tay di chuyển để người dùng
-                    // thấy trực quan kích thước sẽ ra sao trước khi thả tay.
-                    val dx = (event.rawX - startTouchX).toInt()
                     val dy = (event.rawY - startTouchY).toInt()
-                    val minPx = cellPitchPx - dp(4)
-                    val maxPx = cellPitchPx * 2 - dp(4)
                     val lp = tileLp()
-                    lp.width = (startWidthPx + dx).coerceIn(minPx, maxPx)
                     lp.height = (startHeightPx + dy).coerceIn(minPx, maxPx)
                     tileView.layoutParams = lp
-                    positionHandle()
+                    positionHandles()
                     true
                 }
                 android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
-                    // CHỐT về cỡ hợp lệ gần nhất - so kích thước hiện tại với NGƯỠNG GIỮA của 1
-                    // và 2 đơn vị (1.5 x cỡ 1 ô): quá nửa thì làm tròn LÊN 2 đơn vị, chưa tới nửa
-                    // thì làm tròn VỀ 1 đơn vị - áp dụng RIÊNG cho bề rộng và bề cao.
-                    val lp = tileLp()
-                    val threshold = (cellPitchPx * 1.5f).toInt()
-                    val w = if (lp.width >= threshold) 2 else 1
-                    val h = if (lp.height >= threshold) 2 else 1
-                    val picked = TileSize.values().first { it.w == w && it.h == h }
-                    gridContainer.removeView(handle)
-                    tileView.foreground = originalForeground
-                    tileView.tag = null
-                    onCommit(picked)
+                    commit(); true
+                }
+                else -> false
+            }
+        }
+
+        var startTouchX = 0f
+        var startWidthPx = 0
+        handleRight.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    startTouchX = event.rawX
+                    startWidthPx = tileLp().width
                     true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val dx = (event.rawX - startTouchX).toInt()
+                    val lp = tileLp()
+                    lp.width = (startWidthPx + dx).coerceIn(minPx, maxPx)
+                    tileView.layoutParams = lp
+                    positionHandles()
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    commit(); true
                 }
                 else -> false
             }
