@@ -340,7 +340,7 @@ class DesktopActivity : AppCompatActivity() {
                 // Tooltip khi chạm vào "icon hướng dẫn"
                 hintCell.setOnClickListener {
                     android.widget.Toast.makeText(this,
-                        "Giữ app trong "DS Ứng Dụng" → chọn "Thêm vào Điện thoại"",
+                        "Giữ app trong \"DS Ứng Dụng\" → chọn \"Thêm vào Điện thoại\"",
                         android.widget.Toast.LENGTH_LONG).show()
                 }
                 desktopArea.addView(hintCell, android.widget.FrameLayout.LayoutParams(dp(76), dp(92)).also {
