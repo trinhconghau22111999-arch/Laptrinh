@@ -1,53 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lớp TRƯỚC icon app - phiên bản tối giản chỉ 2 màu (xanh dương nền + trắng lớp trước):
-     quả địa cầu (vòng tròn + 2 nét "kinh tuyến" cong + 1 "vĩ tuyến" dọc) tượng trưng trình
-     duyệt web, kèm huy hiệu tròn nhỏ có gạch chéo ở góc dưới-phải tượng trưng "chặn quảng
-     cáo". Toàn bộ nằm trong vùng an toàn (~66dp) giữa canvas 108x108. -->
+<!-- Lớp TRƯỚC icon app - ĐÚNG logo "Start" 4 ô vuông trắng (2x2, khe hở nhỏ ở giữa) của
+     Windows Phone/Windows 10 Mobile thật, giống hệt [R.drawable.ic_wp_start] dùng cho nút
+     "Start" trong dock ở trang Điện thoại (xem DesktopActivity.kt) - THAY CHO icon quả địa
+     cầu+huy hiệu chặn trước đây, để icon app trên màn hình chính CŨNG mang đúng bản sắc WP
+     thay vì kiểu icon "trình duyệt chặn quảng cáo" chung chung. Toạ độ nhân đôi từ bản 24x24
+     gốc (x6, giữ nguyên tỉ lệ) để vừa khớp vùng an toàn ~66dp giữa canvas 108x108 của icon
+     "adaptive" (Android 8.0+). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Vòng ngoài quả địa cầu -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3"
-        android:pathData="M48,48 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0" />
-
-    <!-- Vĩ tuyến dọc -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.6"
-        android:strokeLineCap="round"
-        android:pathData="M48,30 L48,66" />
-
-    <!-- 2 kinh tuyến cong -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.6"
-        android:strokeLineCap="round"
-        android:pathData="M30,48 Q48,38 66,48" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.6"
-        android:strokeLineCap="round"
-        android:pathData="M30,48 Q48,58 66,48" />
-
-    <!-- Huy hiệu "chặn" - đè lên góc dưới-phải quả địa cầu -->
-    <path
-        android:fillColor="#0078D7"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3"
-        android:pathData="M70,70 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.6"
-        android:strokeLineCap="round"
-        android:pathData="M64,64 L76,76" />
+    <path android:fillColor="#FFFFFF" android:pathData="M27,27h30v30h-30z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M63,27h30v30h-30z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M27,63h30v30h-30z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M63,63h30v30h-30z" />
 </vector>
