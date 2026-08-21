@@ -159,11 +159,11 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         // Nút "✕" kế bên nút chia 3 màn hình - ĐÓNG NGAY hồ sơ đang xem, quay thẳng về màn
         // "Nhiều tài khoản" (khác với Back: Back lùi từng trang lịch sử trong tab, còn nút này
         // thoát hẳn 1 phát không cần lùi hết lịch sử).
-        val btnCloseProfile = TextView(this).apply {
-            text = "✕"
-            textSize = 16f
-            setTextColor(0xFFCCCCCC.toInt())
-            gravity = Gravity.CENTER
+        val btnCloseProfile = ImageView(this).apply {
+            setImageResource(R.drawable.ic_wp_close)
+            imageTintList = ColorStateList.valueOf(0xFFCCCCCC.toInt())
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(12), dp(12), dp(12), dp(12))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setStroke(dp(2), 0xFFCCCCCC.toInt())
@@ -172,6 +172,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
                 marginStart = dp(10)
             }
+            contentDescription = "Đóng hồ sơ"
             isClickable = true
             setOnClickListener {
                 saveSession()
@@ -648,13 +649,15 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                 textSize = 11f
                 setTextColor(if (i == activeIndex) 0xFF29B6F6.toInt() else 0xFFAAAAAA.toInt())
             })
-            cell.addView(TextView(this).apply {
-                text = " ✕"
-                textSize = 11f
-                setTextColor(0xFF888888.toInt())
+            cell.addView(ImageView(this).apply {
+                setImageResource(R.drawable.ic_wp_close)
+                imageTintList = ColorStateList.valueOf(0xFF888888.toInt())
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setPadding(dp(4), dp(4), dp(4), dp(4))
+                contentDescription = "Đóng tab"
                 isClickable = true
                 setOnClickListener { closeTab(i) }
-            })
+            }, LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(2) })
             tabBar.addView(cell)
         }
         tabBar.addView(TextView(this).apply {

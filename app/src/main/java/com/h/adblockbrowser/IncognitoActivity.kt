@@ -501,13 +501,15 @@ class IncognitoActivity : AppCompatActivity() {
                 textSize = 12f
                 setTextColor(if (i == activeIndex) ThemePrefs.accent(this@IncognitoActivity) else 0xFFAAAAAA.toInt())
             })
-            cell.addView(TextView(this).apply {
-                text = " ✕"
-                textSize = 12f
-                setTextColor(0xFF888888.toInt())
+            cell.addView(ImageView(this).apply {
+                setImageResource(R.drawable.ic_wp_close)
+                imageTintList = ColorStateList.valueOf(0xFF888888.toInt())
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setPadding(dp(4), dp(4), dp(4), dp(4))
+                contentDescription = "Đóng tab"
                 isClickable = true
                 setOnClickListener { closeTab(i) }
-            })
+            }, LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(2) })
             tabBar.addView(cell)
         }
         // KHÔNG còn giới hạn số tab - nút "+ Tab" luôn hiện
