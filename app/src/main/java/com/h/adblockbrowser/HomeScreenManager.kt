@@ -364,7 +364,14 @@ class HomeScreenManager(
      *  [pkgName] = null cho 12 mục cố định (không phải app thật nên KHÔNG đánh dấu sao được). */
     private data class AppEntry(
         val label: String, val icon: Drawable, val pkgName: String?,
-        val onClick: () -> Unit, val onLongPress: ((View) -> Unit)?
+        val onClick: () -> Unit, val onLongPress: ((View) -> Unit)?,
+        // Package THẬT mà mục cố định này TRỎ TỚI khi bấm (vd "Cuộc gọi" trỏ tới app Điện
+        // thoại thật, "Thư viện" trỏ tới app Ảnh thật) - null nếu mục này mở màn hình NỘI BỘ
+        // của chính app (Lịch/Đồng hồ/Máy tính/Quản lý tệp riêng, không phải app ngoài) hoặc
+        // không xác định được. Dùng để LOẠI TRÙNG "app ảo" chính xác hơn so khớp theo TÊN CHỮ -
+        // 2 mục có TÊN KHÁC NHAU (vd "Cuộc gọi" vs "Gọi Điện") nhưng cùng TRỎ TỚI 1 app thật đã
+        // cài thì vẫn bị coi là trùng, chỉ giữ lại đúng 1 (ưu tiên app thật).
+        val dedupPkg: String? = null
     )
 
     /** Dựng TRANG "ứng dụng" (trang phải - vuốt sang mới thấy): 1 DANH SÁCH DUY NHẤT, LIÊN TỤC,
@@ -412,14 +419,21 @@ class HomeScreenManager(
                 onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
             )
         }
-        // ── LOẠI TRÙNG "app ảo": nếu máy đã có SẴN app THẬT trùng tên với 1 trong 12 mục cố
-        // định (vd máy đã cài app "Camera"/"Danh bạ" thật thì KHÔNG cần thêm mục cố định "Camera"
-        // /"Danh bạ" nữa) - trước đây LUÔN cộng thêm cả 12 mục bất kể máy đã có app thật hay
-        // chưa, gây ra tình trạng "Camera"/"Danh bạ" hiện tới 2-3 lần y hệt nhau (1 lần app THẬT
-        // + 1 lần mục CỐ ĐỊNH dùng icon giả) - so khớp theo TÊN HIỂN THỊ (không phân biệt hoa/
-        // thường) vì mục cố định không có packageName cụ thể để so khớp package. ──
+        // ── LOẠI TRÙNG "app ảo": nếu máy đã có SẴN app THẬT trùng với 1 trong 12 mục cố định
+        // thì KHÔNG cộng thêm mục cố định đó nữa - so khớp theo 2 CÁCH:
+        //  1) TÊN HIỂN THỊ giống hệt (không phân biệt hoa/thường) - vd máy đã cài app tên
+        //     "Camera"/"Danh bạ" thật.
+        //  2) PACKAGE THẬT mà mục cố định TRỎ TỚI (xem [AppEntry.dedupPkg]) trùng với package
+        //     của 1 app thật đã cài - bắt được cả trường hợp TÊN KHÁC NHAU nhưng CÙNG 1 app (vd
+        //     mục cố định "Cuộc gọi"/"Thư viện" tên khác app Điện thoại/Ảnh thật trên máy nhưng
+        //     bấm vào lại mở ĐÚNG app đó - trước đây chỉ so tên nên bị sót, hiện trùng 2-3 lần). ──
         val realLabelsLower = realEntries.map { it.label.trim().lowercase() }.toSet()
-        val fixedEntries = buildFixedEntries().filter { it.label.trim().lowercase() !in realLabelsLower }
+        val realPkgSet = realEntries.mapNotNull { it.pkgName }.toSet()
+        val fixedEntries = buildFixedEntries().filter { entry ->
+            val labelDup = entry.label.trim().lowercase() in realLabelsLower
+            val pkgDup = entry.dedupPkg != null && entry.dedupPkg in realPkgSet
+            !labelDup && !pkgDup
+        }
         val allEntries = (realEntries + fixedEntries).sortedBy { it.label.lowercase() }
 
         // Dùng chung 1 closure dựng dòng app (tránh lặp lại) cho cả nhóm "ghim lên đầu trang" lẫn
@@ -466,49 +480,60 @@ class HomeScreenManager(
                 Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
             }
         }
-        fun entry(label: String, iconRes: Int, onClick: () -> Unit): AppEntry =
-            AppEntry(label, context.getDrawable(iconRes)!!, null, onClick, null)
+        // Dò xem 1 Intent NGẦM (implicit) sẽ được hệ thống chuyển tới APP THẬT nào (package
+        // name) NẾU bấm vào - dùng để so khớp loại trùng với danh sách app thật đã cài (xem
+        // [AppEntry.dedupPkg]), KHÔNG dùng để mở app (việc mở vẫn qua [launchSystem] như cũ,
+        // giữ nguyên hành vi bấm nút kể cả khi dò gói thất bại/không có quyền).
+        fun resolvePkg(intent: Intent): String? = try {
+            context.packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName
+        } catch (e: Exception) { null }
+
+        fun entry(label: String, iconRes: Int, dedupPkg: String? = null, onClick: () -> Unit): AppEntry =
+            AppEntry(label, context.getDrawable(iconRes)!!, null, onClick, null, dedupPkg)
+
+        val dialIntent = Intent(Intent.ACTION_DIAL)
+        val callLogIntent = Intent(Intent.ACTION_VIEW, Uri.parse("content://call_log/calls"))
+        val messagingIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING)
+        val contactsIntent = Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI)
+        val cameraIntent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+        val galleryIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_GALLERY)
+        val recorderIntent = Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION)
+        val noteCandidates = listOf(
+            "com.google.android.keep", "com.samsung.android.app.notes",
+            "com.miui.notes", "com.samsung.android.memo"
+        )
+        val installedNotePkg = noteCandidates.firstOrNull {
+            context.packageManager.getLaunchIntentForPackage(it) != null
+        }
 
         return listOf(
-            entry("Gọi điện", R.drawable.ic_shortcut_phonecall) {
-                launchSystem(Intent(Intent.ACTION_DIAL), "Không tìm thấy ứng dụng Gọi điện")
+            entry("Gọi điện", R.drawable.ic_shortcut_phonecall, dedupPkg = resolvePkg(dialIntent)) {
+                launchSystem(dialIntent, "Không tìm thấy ứng dụng Gọi điện")
             },
-            entry("Cuộc gọi", R.drawable.ic_shortcut_phonecall) {
-                launchSystem(
-                    Intent(Intent.ACTION_VIEW, Uri.parse("content://call_log/calls")),
-                    "Không tìm thấy nhật ký Cuộc gọi"
-                )
+            // "Cuộc gọi" (nhật ký) và "Gọi điện" (bàn phím quay số) ở TRÊN thường do CÙNG 1 app
+            // Điện thoại thật xử lý - dò riêng package của call_log (không dùng lại kết quả của
+            // dialIntent) để chính xác, phòng trường hợp hiếm 2 app khác nhau đảm nhiệm.
+            entry("Cuộc gọi", R.drawable.ic_shortcut_phonecall, dedupPkg = resolvePkg(callLogIntent)) {
+                launchSystem(callLogIntent, "Không tìm thấy nhật ký Cuộc gọi")
             },
-            entry("Nhắn tin", R.drawable.ic_shortcut_messaging) {
-                launchSystem(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING),
-                    "Không tìm thấy ứng dụng Nhắn tin"
-                )
+            entry("Nhắn tin", R.drawable.ic_shortcut_messaging, dedupPkg = resolvePkg(messagingIntent)) {
+                launchSystem(messagingIntent, "Không tìm thấy ứng dụng Nhắn tin")
             },
-            entry("Danh bạ", R.drawable.ic_shortcut_contacts) {
-                launchSystem(
-                    Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI),
-                    "Không tìm thấy ứng dụng Danh bạ"
-                )
+            entry("Danh bạ", R.drawable.ic_shortcut_contacts, dedupPkg = resolvePkg(contactsIntent)) {
+                launchSystem(contactsIntent, "Không tìm thấy ứng dụng Danh bạ")
             },
-            entry("Camera", R.drawable.ic_shortcut_camera) {
-                launchSystem(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA), "Không tìm thấy ứng dụng Camera")
+            entry("Camera", R.drawable.ic_shortcut_camera, dedupPkg = resolvePkg(cameraIntent)) {
+                launchSystem(cameraIntent, "Không tìm thấy ứng dụng Camera")
             },
-            entry("Thư viện", R.drawable.ic_shortcut_gallery) {
-                launchSystem(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_GALLERY),
-                    "Không tìm thấy ứng dụng Thư viện ảnh"
-                )
+            entry("Thư viện", R.drawable.ic_shortcut_gallery, dedupPkg = resolvePkg(galleryIntent)) {
+                launchSystem(galleryIntent, "Không tìm thấy ứng dụng Thư viện ảnh")
             },
-            entry("Ghi âm", R.drawable.ic_shortcut_recorder) {
-                launchSystem(Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION), "Không tìm thấy ứng dụng Ghi âm")
+            entry("Ghi âm", R.drawable.ic_shortcut_recorder, dedupPkg = resolvePkg(recorderIntent)) {
+                launchSystem(recorderIntent, "Không tìm thấy ứng dụng Ghi âm")
             },
-            entry("Ghi chú", R.drawable.ic_shortcut_notes) {
-                val candidates = listOf(
-                    "com.google.android.keep", "com.samsung.android.app.notes",
-                    "com.miui.notes", "com.samsung.android.memo"
-                )
-                val launch = candidates.firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) }
+            entry("Ghi chú", R.drawable.ic_shortcut_notes, dedupPkg = installedNotePkg) {
+                val launch = installedNotePkg?.let { context.packageManager.getLaunchIntentForPackage(it) }
                 if (launch != null) {
                     launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     context.startActivity(launch)
@@ -516,6 +541,9 @@ class HomeScreenManager(
                     Toast.makeText(context, "Chưa cài ứng dụng Ghi chú nào", Toast.LENGTH_SHORT).show()
                 }
             },
+            // Lịch/Đồng hồ/Máy tính/Quản lý tệp mở màn hình NỘI BỘ của CHÍNH app này (xem
+            // ShortcutsRepository), không trỏ tới app ngoài nào -> KHÔNG có dedupPkg, chỉ loại
+            // trùng theo tên chữ như trước (vd máy đã có app "Máy tính" thật cùng tên).
             entry("Lịch", R.drawable.ic_shortcut_calendar) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calendar")) },
             entry("Đồng hồ", R.drawable.ic_shortcut_clock) { onOpenShortcut(ShortcutsRepository.ALL.getValue("clock")) },
             entry("Máy tính", R.drawable.ic_shortcut_calculator) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calculator")) },
