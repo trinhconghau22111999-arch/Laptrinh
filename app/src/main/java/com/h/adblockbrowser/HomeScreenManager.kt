@@ -505,19 +505,7 @@ class HomeScreenManager(
      *  PopupMenu hệ thống luôn tự vẽ nền TRẮNG BO GÓC + ĐỔ BÓNG (Material Card) bất kể theme app
      *  đặt gì - hiện lên giữa 1 màn hình đen phẳng tuyệt đối sẽ rất chỏi, sai hẳn cảm giác context
      *  menu phẳng, không bóng, nền đen của WP/Windows 10 Mobile thật. */
-    /** [gridContainer]/[cellPitchPx] chỉ có ý nghĩa khi gọi TỪ LƯỚI TILE thật (trang Start) -
-     *  mục "Đổi kích cỡ" CẦN 2 giá trị này để vẽ tay cầm kéo đúng vị trí trong lưới. Gọi từ
-     *  NGỮ CẢNH KHÁC không có lưới (vd. trang "DS Ứng Dụng" - danh sách dọc thường, không phải
-     *  lưới) thì để mặc định null - hàm sẽ TỰ ẨN mục "Đổi kích cỡ" khỏi menu thay vì hiện ra 1
-     *  chức năng không có tác dụng gì trong ngữ cảnh danh sách dọc.
-     *
-     *  SỬA LỖI BUILD: trước đây 2 tham số này BẮT BUỘC (không có giá trị mặc định), nhưng lệnh
-     *  gọi từ trang "DS Ứng Dụng" (dòng addAppRow bên trên) vẫn gọi hàm này với ĐÚNG 2 tham số
-     *  cũ (anchor, pkgName) - thiếu 2 tham số mới -> lỗi biên dịch "No value passed for
-     *  parameter" ở CẢ 2 tham số, gãy toàn bộ build. Đổi thành tham số CÓ MẶC ĐỊNH null/0 để
-     *  tương thích ngược với lệnh gọi cũ, đồng thời ẩn đúng mục "Đổi kích cỡ" khi không có lưới
-     *  để dùng (xem cách ẩn itemResize bên dưới). */
-    private fun showPinContextMenu(anchor: View, pkgName: String, gridContainer: FrameLayout? = null, cellPitchPx: Int = 0) {
+    private fun showPinContextMenu(anchor: View, pkgName: String, gridContainer: FrameLayout, cellPitchPx: Int) {
         val pinned = PinnedAppsStore.isPinned(context, pkgName)
         val onDesktop = DesktopAppsStore.isAdded(context, pkgName)
         val starred = StarredAppsStore.isStarred(context, pkgName)
@@ -552,10 +540,7 @@ class HomeScreenManager(
         // tap vào phải ĐÓNG popup này rồi vào NGAY chế độ "đổi cỡ bằng cách kéo" (hiện viền +
         // tay cầm trên chính tile [anchor]) - xem [enterResizeMode]. Lưu + dựng lại lưới chỉ
         // xảy ra SAU KHI người dùng thả tay cầm.
-        //
-        // = null khi KHÔNG có lưới thật để đổi cỡ (gridContainer == null, vd. gọi từ trang "DS
-        // Ứng Dụng" dạng danh sách dọc) - xem giải thích ở khai báo tham số hàm.
-        val itemResize: TextView? = if (gridContainer == null) null else TextView(context).apply {
+        val itemResize = TextView(context).apply {
             text = "Đổi kích cỡ"
             textSize = 16f
             setTextColor(Color.WHITE)
@@ -599,10 +584,8 @@ class HomeScreenManager(
             addView(itemDesktop)
             addView(divider2)
             addView(itemStar)
-            if (itemResize != null) {
-                addView(divider3)
-                addView(itemResize)
-            }
+            addView(divider3)
+            addView(itemResize)
         }
 
         popup = PopupWindow(

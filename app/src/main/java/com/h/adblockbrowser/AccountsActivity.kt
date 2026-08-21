@@ -61,7 +61,7 @@ class AccountsActivity : AppCompatActivity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "Nhiều tài khoản"
+            text = "nhiều tài khoản"
             textSize = 30f
             setTextColor(Color.WHITE)
             typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
