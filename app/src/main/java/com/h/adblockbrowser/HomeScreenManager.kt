@@ -547,6 +547,16 @@ class HomeScreenManager(
         gridContainer: FrameLayout, cellPitchPx: Int
     ) {
         lateinit var popup: PopupWindow
+        // Dấu ✕ góc trên-trái CHỈ hiện với tile KHÔNG cố định (app người dùng tự ghim) - tile cố
+        // định (YouTube, Cài đặt...) không có khái niệm "loại bỏ khỏi start", giống hành vi cũ
+        // của mục "Bỏ ghim khỏi start" trong menu (cũng chỉ hiện khi !isFixed).
+        val removeBadge: View? = if (!isFixed && tile is FrameLayout) {
+            addRemoveBadge(tile) {
+                PinnedAppsStore.unpin(context, id)
+                if (::popup.isInitialized) popup.dismiss()
+                refreshPages()
+            }
+        } else null
         fun item(label: String, onTap: () -> Unit): TextView = TextView(context).apply {
             text = label; textSize = 16f; setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
@@ -575,6 +585,11 @@ class HomeScreenManager(
         popup = PopupWindow(menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
             elevation = 0f; animationStyle = 0; isOutsideTouchable = true
         }
+        // Dấu ✕ chỉ tồn tại trong lúc menu này còn mở - đóng menu bằng BẤT KỲ đường nào (chọn 1
+        // mục, chạm ra ngoài, hay tự bấm ✕) đều phải dọn nó đi, nếu không sẽ dính lại vĩnh viễn
+        // trên tile (vd chọn "Đổi vị trí" rồi huỷ giữa chừng, không mục nào gọi refreshPages()
+        // để tự dựng lại tile mới không có ✕).
+        popup.setOnDismissListener { removeBadge?.let { (tile as? FrameLayout)?.removeView(it) } }
         popup.showAsDropDown(tile, 0, dp(4))
     }
 
@@ -954,6 +969,34 @@ class HomeScreenManager(
             }
             false
         }
+    }
+
+    /** Dấu "✕" nhỏ ở góc trên-trái 1 tile/icon (kiểu "chế độ chỉnh sửa" quen thuộc) - chạm vào
+     *  để LOẠI BỎ app đó khỏi trang hiện tại (bỏ ghim khỏi start / bỏ khỏi Điện thoại), NHANH
+     *  hơn hẳn so với phải mở menu rồi tìm đúng dòng chữ. Trả về chính view dấu ✕ để nơi gọi có
+     *  thể removeView() khi cần huỷ (nhấn ra ngoài, hoặc đã xong việc khác trong menu).
+     *  Đặt margin DƯƠNG (không âm) để dấu ✕ nằm gọn TRONG viền tile, tránh bị viền/ScrollView
+     *  cha cắt mất 1 phần nếu dùng margin âm (tràn ra ngoài bounds của tile). */
+    private fun addRemoveBadge(tile: FrameLayout, onRemove: () -> Unit): View {
+        val badge = TextView(context).apply {
+            text = "✕"
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xFFE81123.toInt()) // đỏ - màu "xoá/cảnh báo" chuẩn trong bảng màu Windows
+            }
+            layoutParams = FrameLayout.LayoutParams(dp(22), dp(22)).also {
+                it.gravity = Gravity.TOP or Gravity.START
+                it.leftMargin = dp(4); it.topMargin = dp(4)
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onRemove() }
+        }
+        tile.addView(badge)
+        return badge
     }
 
     private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {

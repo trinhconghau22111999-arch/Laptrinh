@@ -53,6 +53,10 @@ class DesktopActivity : AppCompatActivity() {
 
     private var navBarHandle: WpNavBar.Handle? = null
     private lateinit var desktopArea: FrameLayout
+    // Dấu ✕ (loại bỏ app khỏi Điện thoại) đang hiện, nếu có - xem showRemoveBadge(). Giữ tham
+    // chiếu để: (1) tự dọn dấu ✕ CŨ khi nhấn giữ 1 icon KHÁC (chỉ 1 dấu ✕ hiện tại 1 lúc), (2)
+    // dọn khi chạm ra khoảng trống (xem setOnClickListener của desktopArea bên dưới).
+    private var activeRemoveBadge: View? = null
     private lateinit var tvTime: TextView
     private lateinit var tvDate: TextView
 
@@ -135,6 +139,12 @@ class DesktopActivity : AppCompatActivity() {
 
         // ── Vùng desktop: icon tự do kéo-thả. Chừa lề phải cho dock, lề trên cho widget giờ. ──
         desktopArea = FrameLayout(this)
+        // Chạm vào khoảng TRỐNG (không trúng icon nào) trên trang - nếu đang hiện dấu ✕ (vừa
+        // nhấn giữ 1 icon) thì huỷ nó đi, coi như "bấm ra ngoài để thoát chế độ xoá".
+        desktopArea.setOnClickListener {
+            activeRemoveBadge?.let { badge -> desktopArea.removeView(badge) }
+            activeRemoveBadge = null
+        }
         outer.addView(desktopArea, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT).also {
             it.rightMargin = dp(56)  // dock gọn hơn, không chiếm quá nhiều không gian desktop
         })
@@ -291,6 +301,7 @@ class DesktopActivity : AppCompatActivity() {
      *  trống trơn khó hiểu. Nhấn giữ 1 icon đã có ở đây để gỡ khỏi trang này. */
     private fun layoutPinnedIcons() {
         desktopArea.removeAllViews()
+        activeRemoveBadge = null  // removeAllViews() vừa xoá luôn dấu ✕ nếu đang hiện
         val pm = packageManager
         val pinned = DesktopAppsStore.getAll(this)
         if (pinned.isEmpty()) {
@@ -412,7 +423,7 @@ class DesktopActivity : AppCompatActivity() {
                     val launchIntent = pm.getLaunchIntentForPackage(pkgName)
                     if (launchIntent != null) startActivity(launchIntent)
                 },
-                onLongPress = { showRemoveFromDesktopMenu(cell, pkgName) }
+                onLongPress = { showRemoveBadge(cell, pkgName) }
             )
         }
     }
@@ -488,38 +499,40 @@ class DesktopActivity : AppCompatActivity() {
      *  icon NGAY TRÊN trang Điện thoại - chỉ 1 lựa chọn "Bỏ khỏi Điện thoại" (không có "Ghim
      *  vào start"/"Đánh dấu sao" ở đây, vì đó là hành động của trang Start, giữ 2 trang tách
      *  biệt rạch ròi đúng yêu cầu). */
-    private fun showRemoveFromDesktopMenu(anchor: View, pkgName: String) {
-        lateinit var popup: android.widget.PopupWindow
-        val item = TextView(this).apply {
-            text = "Bỏ khỏi Điện thoại"
-            textSize = 16f
+    /** Dấu "✕" nhỏ hiện ở góc trên-trái 1 icon trên trang Điện thoại khi NHẤN GIỮ vào nó - chạm
+     *  vào dấu này để loại bỏ app đó khỏi trang (thay cho menu chữ "Bỏ khỏi Điện thoại" cũ, đồng
+     *  bộ với cách làm mới ở [HomeScreenManager.addRemoveBadge] cho trang Start).
+     *
+     *  [cell] nằm trong [desktopArea] (FrameLayout) với vị trí TỰ DO qua [View.x]/[View.y] (xem
+     *  [attachDrag]) chứ KHÔNG dùng layout gravity cố định như tile lưới ở Start - nên dấu ✕
+     *  được thêm làm SIBLING của [cell] (con trực tiếp của [desktopArea]), đặt x/y NGAY TẠI vị
+     *  trí góc trên-trái hiện tại của [cell] (đọc trực tiếp cell.x/cell.y - lúc hàm này chạy,
+     *  nhấn giữ nghĩa là icon đã hiện ra và có toạ độ thật, không cần chờ post{} như lúc dựng
+     *  ban đầu), thay vì thêm làm con của [cell] (LinearLayout, không hỗ trợ định vị tự do). */
+    private fun showRemoveBadge(cell: View, pkgName: String) {
+        activeRemoveBadge?.let { desktopArea.removeView(it) }
+        val badge = TextView(this).apply {
+            text = "✕"
+            textSize = 12f
             setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            setPadding(dp(22), dp(16), dp(22), dp(16))
-            minWidth = dp(200)
+            gravity = Gravity.CENTER
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(0xFFE81123.toInt()) // đỏ - màu "xoá/cảnh báo" chuẩn của Windows
+            }
             isClickable = true
             isFocusable = true
-            setOnClickListener {
-                DesktopAppsStore.remove(this@DesktopActivity, pkgName)
-                desktopArea.post { layoutPinnedIcons() }
-                popup.dismiss()
-            }
         }
-        val menuBox = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(0xFF1A1A1A.toInt())
-                setStroke(dp(1), 0xFF3A3A3A.toInt())
-            }
-            addView(item)
+        val size = dp(22)
+        desktopArea.addView(badge, FrameLayout.LayoutParams(size, size))
+        badge.x = cell.x + dp(2)
+        badge.y = cell.y + dp(2)
+        activeRemoveBadge = badge
+        badge.setOnClickListener {
+            desktopArea.removeView(badge)
+            activeRemoveBadge = null
+            DesktopAppsStore.remove(this@DesktopActivity, pkgName)
+            desktopArea.post { layoutPinnedIcons() }
         }
-        popup = android.widget.PopupWindow(
-            menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true
-        ).apply {
-            elevation = 0f
-            animationStyle = 0
-            isOutsideTouchable = true
-        }
-        popup.showAsDropDown(anchor, 0, 0)
     }
 }
