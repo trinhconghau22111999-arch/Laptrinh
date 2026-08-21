@@ -505,7 +505,12 @@ class HomeScreenManager(
      *  PopupMenu hệ thống luôn tự vẽ nền TRẮNG BO GÓC + ĐỔ BÓNG (Material Card) bất kể theme app
      *  đặt gì - hiện lên giữa 1 màn hình đen phẳng tuyệt đối sẽ rất chỏi, sai hẳn cảm giác context
      *  menu phẳng, không bóng, nền đen của WP/Windows 10 Mobile thật. */
-    private fun showPinContextMenu(anchor: View, pkgName: String, gridContainer: FrameLayout, cellPitchPx: Int) {
+    private fun showPinContextMenu(
+        anchor: View,
+        pkgName: String,
+        gridContainer: FrameLayout? = null,
+        cellPitchPx: Int = 0
+    ) {
         val pinned = PinnedAppsStore.isPinned(context, pkgName)
         val onDesktop = DesktopAppsStore.isAdded(context, pkgName)
         val starred = StarredAppsStore.isStarred(context, pkgName)
@@ -540,7 +545,10 @@ class HomeScreenManager(
         // tap vào phải ĐÓNG popup này rồi vào NGAY chế độ "đổi cỡ bằng cách kéo" (hiện viền +
         // tay cầm trên chính tile [anchor]) - xem [enterResizeMode]. Lưu + dựng lại lưới chỉ
         // xảy ra SAU KHI người dùng thả tay cầm.
-        val itemResize = TextView(context).apply {
+        // "Đổi kích cỡ" CHỈ áp dụng khi menu này mở từ 1 tile TRONG LƯỚI Start (có gridContainer
+        // thật) - trang "DS Ứng Dụng" (danh sách phẳng, không phải lưới tile) gọi hàm này KHÔNG
+        // truyền gridContainer nên mục này sẽ tự ẩn, tránh crash vì không có lưới để đổi cỡ.
+        val itemResize = if (gridContainer != null) TextView(context).apply {
             text = "Đổi kích cỡ"
             textSize = 16f
             setTextColor(Color.WHITE)
@@ -557,7 +565,7 @@ class HomeScreenManager(
                     refreshPages()
                 }
             }
-        }
+        } else null
         val divider = View(context).apply {
             setBackgroundColor(0xFF3A3A3A.toInt())
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
@@ -584,8 +592,10 @@ class HomeScreenManager(
             addView(itemDesktop)
             addView(divider2)
             addView(itemStar)
-            addView(divider3)
-            addView(itemResize)
+            if (itemResize != null) {
+                addView(divider3)
+                addView(itemResize)
+            }
         }
 
         popup = PopupWindow(
