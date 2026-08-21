@@ -150,7 +150,7 @@ class HomeScreenManager(
             // Đáy chừa thêm đúng chiều cao WpNavBar (xem WpNavBar.HEIGHT_DP) - thanh điều
             // hướng nổi là cửa sổ hệ thống riêng luôn đè lên trên cùng, nếu chỉ để dp(24) như
             // trước thì tile cuối cùng của lưới Live Tile bị nó che khuất mất 1 phần.
-            setPadding(dp(20), dp(40), dp(20), dp(24) + dp(WpNavBar.HEIGHT_DP))
+            setPadding(dp(20), dp(8), dp(20), dp(4) + dp(WpNavBar.HEIGHT_DP))
             overScrollMode = View.OVER_SCROLL_NEVER
         }
 
@@ -174,7 +174,7 @@ class HomeScreenManager(
         // dụng - tile sau đó được ĐẶT VỊ TRÍ TUYỆT ĐỐI (FrameLayout, toạ độ tính bằng "đơn vị
         // ô" x kích thước 1 ô) thay vì thả trôi theo layout tự động, để chiều cao lồng nhiều
         // hàng của tile "Cao"/"To" không làm vỡ layout các tile lân cận.
-        val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "phone", "calendar", "calculator", "clock", "settings")
+        val pinnedKeys = listOf("youtube", "settings", "incognito", "accounts", "files", "phone", "calendar", "calculator", "clock")
         // Cỡ MẶC ĐỊNH khi người dùng CHƯA từng tự đổi kích cỡ tile đó - YouTube/Nhiều T.khoản
         // mặc định "Rộng" ngay từ đầu (giữ nguyên hành vi cũ), các ô còn lại mặc định "Nhỏ".
         val wideKeys = setOf("youtube", "accounts")
