@@ -220,7 +220,15 @@ class HomeScreenManager(
         // bằng cách KÉO (xem [enterResizeMode]) thay vì mở popup chọn cỡ cố định.
         pinnedKeys.forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
-                val tileColor = tilePalette[colorIndex % tilePalette.size]; colorIndex++
+                // Ô "YouTube": LUÔN nền đỏ cố định (đúng màu thương hiệu YouTube thật), KHÔNG
+                // xoay vòng theo tilePalette như các ô khác - và KHÔNG tăng colorIndex, để các
+                // ô cố định còn lại vẫn xoay màu đúng thứ tự palette như trước (không bị lệch
+                // 1 màu do "mất chỗ" của YouTube).
+                val tileColor = if (key == "youtube") {
+                    ThemePrefs.PALETTE[11] // 0xFFE51400 - "Đỏ (Red)"
+                } else {
+                    tilePalette[colorIndex % tilePalette.size].also { colorIndex++ }
+                }
                 val defaultSize = if (key in wideKeys) TileSize.RONG else TileSize.NHO
                 val size = TileSizeStore.get(context, key, defaultSize)
                 val tile = buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }

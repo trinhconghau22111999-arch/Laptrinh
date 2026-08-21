@@ -160,7 +160,15 @@ class DesktopActivity : AppCompatActivity() {
         val dockKeys = listOf("youtube", "files", "settings", "calculator", "clock")
         dockKeys.forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
-                val tileColor = dockTilePalette[dockColorIndex % dockTilePalette.size]; dockColorIndex++
+                // Icon "YouTube" trong dock: LUÔN nền đỏ cố định (khớp icon "youtube" trên
+                // trang start, xem HomeScreenManager) - không xoay vòng palette, không chiếm
+                // 1 lượt màu để các icon dock còn lại (files/settings/calculator/clock) không
+                // bị lệch màu so với trước.
+                val tileColor = if (key == "youtube") {
+                    ThemePrefs.PALETTE[11] // 0xFFE51400 - "Đỏ (Red)"
+                } else {
+                    dockTilePalette[dockColorIndex % dockTilePalette.size].also { dockColorIndex++ }
+                }
                 dock.addView(FrameLayout(this).apply {
                     background = GradientDrawable().apply {
                         setColor(tileColor)
