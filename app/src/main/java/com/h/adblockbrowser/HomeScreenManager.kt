@@ -370,9 +370,10 @@ class HomeScreenManager(
     /** Dựng TRANG "ứng dụng" (trang phải - vuốt sang mới thấy): 1 DANH SÁCH DUY NHẤT, LIÊN TỤC,
      *  sắp xếp A-Z theo tên hiển thị, GỘP CHUNG app thật đã cài + 12 mục cố định "Điện thoại" -
      *  KHÔNG còn tiêu đề phân nhóm nào (không danh mục, không chữ cái A/B/C...) - chỉ có ĐÚNG 1
-     *  ngoại lệ: nhóm "★ ĐÃ ĐÁNH DẤU SAO" ở đầu trang, CHỈ hiện khi có ít nhất 1 app được đánh
-     *  dấu sao (xem [StarredAppsStore]) - nhấn giữ 1 app rồi chọn "Đánh dấu sao" ở menu bật lên
-     *  (showPinContextMenu) để thêm vào đó. App đánh dấu sao vẫn hiện NGUYÊN VẸN ở đúng vị trí
+     *  ngoại lệ: nhóm app đã "ghim lên đầu trang" hiện Ở ĐẦU trang, CHỈ hiện khi có ít nhất 1 app
+     *  đã ghim (xem [StarredAppsStore]) - nhấn giữ 1 app rồi chọn "Ghim lên đầu trang" ở menu bật
+     *  lên (showPinContextMenu) để thêm vào đó - KHÔNG còn tiêu đề chữ báo hiệu phía trên nhóm
+     *  này nữa (trước đây là "★ ĐÃ ĐÁNH DẤU SAO"). App đã ghim vẫn hiện NGUYÊN VẸN ở đúng vị trí
      *  A-Z của nó trong danh sách chính bên dưới - nhóm đầu trang chỉ là 1 BẢN SAO/lối tắt nổi
      *  lên trên, không di chuyển hay xoá app khỏi danh sách chính. */
     private fun buildAppListPage(): View {
@@ -421,7 +422,7 @@ class HomeScreenManager(
         val fixedEntries = buildFixedEntries().filter { it.label.trim().lowercase() !in realLabelsLower }
         val allEntries = (realEntries + fixedEntries).sortedBy { it.label.lowercase() }
 
-        // Dùng chung 1 closure dựng dòng app (tránh lặp lại) cho cả nhóm "★ ĐÃ ĐÁNH DẤU SAO" lẫn
+        // Dùng chung 1 closure dựng dòng app (tránh lặp lại) cho cả nhóm "ghim lên đầu trang" lẫn
         // danh sách chính bên dưới.
         fun addRow(entry: AppEntry) {
             content.addView(buildAppListRow(
@@ -431,15 +432,14 @@ class HomeScreenManager(
             ))
         }
 
-        // ── Nhóm "★ ĐÃ ĐÁNH DẤU SAO" - LUÔN Ở ĐẦU trang, CHỈ hiện khi có ít nhất 1 app đã đánh
-        // dấu. Đây là NGOẠI LỆ DUY NHẤT ngoài danh sách chính liên tục bên dưới. ──
+        // ── Nhóm app "ghim lên đầu trang" - LUÔN Ở ĐẦU trang, CHỈ hiện khi có ít nhất 1 app đã
+        // ghim, KHÔNG còn tiêu đề chữ "★ ĐÃ ĐÁNH DẤU SAO" phía trên nữa (theo yêu cầu - app ghim
+        // cứ thế nổi lên đầu, không cần nhãn chữ báo hiệu) - vẫn đúng NGOẠI LỆ DUY NHẤT ngoài
+        // danh sách chính liên tục bên dưới, chỉ bớt phần tiêu đề hiển thị. ──
         val starredPkgs = StarredAppsStore.getAll(context).toSet()
         if (starredPkgs.isNotEmpty()) {
             val starredEntries = allEntries.filter { it.pkgName != null && it.pkgName in starredPkgs }
-            if (starredEntries.isNotEmpty()) {
-                content.addView(groupHeaderStarred("ĐÃ ĐÁNH DẤU SAO"))
-                starredEntries.forEach { addRow(it) }
-            }
+            starredEntries.forEach { addRow(it) }
         }
 
         // ── Danh sách chính: 1 LIST DUY NHẤT, LIÊN TỤC, A-Z, KHÔNG tiêu đề phân nhóm nào. ──
@@ -680,7 +680,7 @@ class HomeScreenManager(
                 if (onDesktop) DesktopAppsStore.remove(context, pkgName) else DesktopAppsStore.add(context, pkgName)
             }
         }
-        val itemStar = menuItem(if (starred) "Bỏ đánh dấu sao" else "Đánh dấu sao") {
+        val itemStar = menuItem(if (starred) "Bỏ ghim đầu trang" else "Ghim lên đầu trang") {
             if (starred) StarredAppsStore.unstar(context, pkgName) else StarredAppsStore.star(context, pkgName)
         }
         // "Đổi kích cỡ" KHÔNG dùng menuItem() (dismiss+refresh ngay khi tap) như 3 dòng trên -
@@ -940,27 +940,6 @@ class HomeScreenManager(
         // nhãn tile...) vẫn giữ nguyên "sans-serif-light" mảnh như cũ.
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         setPadding(dp(2), dp(8), dp(2), dp(10))
-    }
-
-    /** Giống tiêu đề nhóm thường (chữ to, màu accent) nhưng có thêm ICON DẤU SAO (★) đứng trước
-     *  chữ - dùng RIÊNG cho nhóm "ĐÃ ĐÁNH DẤU SAO" ở đầu trang "ứng dụng" - NGOẠI LỆ DUY NHẤT
-     *  còn tiêu đề trong trang này, vì danh sách chính bên dưới giờ là 1 list liên tục không còn
-     *  phân nhóm theo danh mục hay chữ cái A/B/C... nữa (xem [buildAppListPage]). */
-    private fun groupHeaderStarred(text: String): View = LinearLayout(context).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(4), dp(14), dp(4), dp(4))
-        addView(ImageView(context).apply {
-            setImageResource(R.drawable.ic_wp_star_filled)
-            setColorFilter(ThemePrefs.accent(context))
-            layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).also { it.marginEnd = dp(8) }
-        })
-        addView(TextView(context).apply {
-            this.text = text
-            textSize = 22f
-            setTextColor(ThemePrefs.accent(context))
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        })
     }
 
     /** 1 ô "Live Tile" vuông kiểu WP cho các mục CỐ ĐỊNH (dùng icon vector có sẵn trong app):
