@@ -136,5 +136,5 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 1m 42s
+BUILD SUCCESSFUL in 1m 56s
 40 actionable tasks: 40 executed
