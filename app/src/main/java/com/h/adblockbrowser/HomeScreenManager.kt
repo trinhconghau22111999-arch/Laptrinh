@@ -1121,10 +1121,31 @@ class HomeScreenManager(
             isLongClickable = true
             foreground = pressedOverlay()
         }
-        val icon = ImageView(context).apply {
-            setImageDrawable(iconDrawable)
+        // ── Nền THẺ VUÔNG VỨC trắng phía sau icon - 1 số app hệ thống đã tự trả về icon TRÒN
+        // hoặc bo góc khác nhau tuỳ launcher/hãng máy (loadIcon() trả về ĐÚNG hình dạng mà OS đã
+        // "nướng sẵn" vào ảnh, không can thiệp được), khiến danh sách lẫn lộn hình vuông/tròn rất
+        // rối mắt - giờ LUÔN bọc icon trong 1 khung nền HÌNH CHỮ NHẬT VUÔNG GÓC (không bo tròn)
+        // màu trắng phía sau, để MỌI icon - dù bản thân nó tròn, vuông, hay bo góc - đều hiện ra
+        // với ĐƯỜNG VIỀN NGOÀI vuông vức, đồng nhất tuyệt đối trên toàn danh sách. Với icon vốn
+        // đã có sẵn khung vuông/bo góc trắng riêng (đa số app) thì gần như không thấy khác biệt
+        // (2 lớp trắng chồng khít lên nhau); với icon tròn (như "Camera" tím) thì phần góc vuông
+        // còn trống quanh hình tròn sẽ hiện màu trắng thay vì lộ hình nền phía sau app, TỰ ĐỘNG
+        // "vuông hoá" icon đó mà không cần can thiệp/crop từng ảnh cụ thể. ──
+        val iconCard = FrameLayout(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.WHITE)
+            }
             layoutParams = LinearLayout.LayoutParams(dp(64), dp(64)).also { it.rightMargin = dp(20) }
         }
+        val icon = ImageView(context).apply {
+            setImageDrawable(iconDrawable)
+            val inset = dp(4)
+            layoutParams = FrameLayout.LayoutParams(dp(64) - inset * 2, dp(64) - inset * 2).also {
+                it.gravity = Gravity.CENTER
+            }
+        }
+        iconCard.addView(icon)
         val text = TextView(context).apply {
             text = label
             textSize = 17f
@@ -1133,7 +1154,7 @@ class HomeScreenManager(
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
         }
-        row.addView(icon)
+        row.addView(iconCard)
         row.addView(text)
         row.setOnClickListener { onClick() }
         row.setOnLongClickListener { anchor -> onLongPress(anchor); true }
