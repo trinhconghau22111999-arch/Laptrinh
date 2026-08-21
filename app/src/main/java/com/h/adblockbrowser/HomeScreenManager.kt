@@ -678,11 +678,24 @@ class HomeScreenManager(
                 popup.dismiss()
             }
         }
-        val itemPin = menuItem(if (pinned) "Bỏ ghim khỏi start" else "Ghim vào start") {
-            if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
+        val itemPin = if (gridContainer == null) {
+            // Trang "DS Ứng Dụng": CHỈ CHO PHÉP THÊM vào Start, KHÔNG cho bỏ ghim từ đây (theo
+            // yêu cầu - xoá khỏi Start chỉ làm được TỪ CHÍNH trang Start: nhấn giữ tile rồi bấm
+            // "Bỏ ghim khỏi start" hoặc dấu ✕, xem nhánh gridContainer != null bên dưới). App
+            // ĐÃ ghim rồi thì ẩn hẳn dòng này (không còn gì để "thêm" nữa, và không cho bỏ).
+            if (pinned) null else menuItem("Ghim vào start") { PinnedAppsStore.pin(context, pkgName) }
+        } else {
+            menuItem(if (pinned) "Bỏ ghim khỏi start" else "Ghim vào start") {
+                if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
+            }
         }
-        val itemDesktop = menuItem(if (onDesktop) "Bỏ khỏi Điện thoại" else "Thêm vào Điện thoại") {
-            if (onDesktop) DesktopAppsStore.remove(context, pkgName) else DesktopAppsStore.add(context, pkgName)
+        val itemDesktop = if (gridContainer == null) {
+            // Cùng lý do như itemPin ở trên - trang "DS Ứng Dụng" chỉ cho THÊM vào Điện thoại.
+            if (onDesktop) null else menuItem("Thêm vào Điện thoại") { DesktopAppsStore.add(context, pkgName) }
+        } else {
+            menuItem(if (onDesktop) "Bỏ khỏi Điện thoại" else "Thêm vào Điện thoại") {
+                if (onDesktop) DesktopAppsStore.remove(context, pkgName) else DesktopAppsStore.add(context, pkgName)
+            }
         }
         val itemStar = menuItem(if (starred) "Bỏ đánh dấu sao" else "Đánh dấu sao") {
             if (starred) StarredAppsStore.unstar(context, pkgName) else StarredAppsStore.star(context, pkgName)
@@ -712,15 +725,7 @@ class HomeScreenManager(
                 }
             }
         } else null
-        val divider = View(context).apply {
-            setBackgroundColor(0xFF3A3A3A.toInt())
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
-        }
-        val divider2 = View(context).apply {
-            setBackgroundColor(0xFF3A3A3A.toInt())
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
-        }
-        val divider3 = View(context).apply {
+        fun divider() = View(context).apply {
             setBackgroundColor(0xFF3A3A3A.toInt())
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
         }
@@ -754,10 +759,6 @@ class HomeScreenManager(
                 } catch (e: Exception) { }
             }
         } else null
-        val divider4 = View(context).apply {
-            setBackgroundColor(0xFF3A3A3A.toInt())
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
-        }
         val menuBox = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             // Nền đen tuyệt đối phẳng, viền mảnh màu xám đậm thay vì bóng đổ - đúng cảm giác
@@ -767,18 +768,14 @@ class HomeScreenManager(
                 setColor(0xFF1A1A1A.toInt())
                 setStroke(dp(1), 0xFF3A3A3A.toInt())
             }
-            addView(itemPin)
-            addView(divider)
-            addView(itemDesktop)
-            addView(divider2)
-            addView(itemStar)
-            if (itemResize != null) {
-                addView(divider3)
-                addView(itemResize)
-            }
-            if (itemUninstall != null) {
-                addView(divider4)
-                addView(itemUninstall)
+            // itemPin/itemDesktop có thể là null (trang "DS Ứng Dụng", app đã ghim/đã thêm rồi
+            // - xem 2 nhánh if ở trên) - dùng listOfNotNull() + chèn divider() MỚI (view riêng
+            // mỗi lần, không tái dùng) giữa các dòng THỰC SỰ có mặt, tránh 2 divider dính liền
+            // nhau hoặc divider ở đầu khi dòng đầu tiên bị ẩn.
+            val rows = listOfNotNull(itemPin, itemDesktop, itemStar, itemResize, itemUninstall)
+            rows.forEachIndexed { i, row ->
+                if (i > 0) addView(divider())
+                addView(row)
             }
         }
 
