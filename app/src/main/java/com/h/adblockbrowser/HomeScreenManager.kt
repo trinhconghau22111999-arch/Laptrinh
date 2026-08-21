@@ -552,14 +552,20 @@ class HomeScreenManager(
         fixedKeys: MutableList<String>, userKeys: MutableList<String>,
         gridContainer: FrameLayout, cellPitchPx: Int
     ) {
-        lateinit var popup: PopupWindow
+        // "var...= null" (KHÔNG dùng lateinit) - vì removeBadge (dựng NGAY dưới đây) cần đọc
+        // popup TỪ BÊN TRONG 1 lambda cục bộ trước khi popup được gán giá trị thật (gán ở cuối
+        // hàm) - lateinit + "::popup.isInitialized" KHÔNG dùng được cho BIẾN CỤC BỘ (chỉ dùng
+        // được cho property member của class/object; dùng cho biến cục bộ là lỗi cú pháp
+        // "References to variables and parameters are unsupported", từng làm build thất bại).
+        // Biến nullable + "?." là cách chuẩn, an toàn cho trường hợp này.
+        var popup: PopupWindow? = null
         // Dấu ✕ góc trên-trái CHỈ hiện với tile KHÔNG cố định (app người dùng tự ghim) - tile cố
         // định (YouTube, Cài đặt...) không có khái niệm "loại bỏ khỏi start", giống hành vi cũ
         // của mục "Bỏ ghim khỏi start" trong menu (cũng chỉ hiện khi !isFixed).
         val removeBadge: View? = if (!isFixed && tile is FrameLayout) {
             addRemoveBadge(tile) {
                 PinnedAppsStore.unpin(context, id)
-                if (::popup.isInitialized) popup.dismiss()
+                popup?.dismiss()
                 refreshPages()
             }
         } else null
@@ -568,7 +574,7 @@ class HomeScreenManager(
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             setPadding(dp(22), dp(16), dp(22), dp(16)); minWidth = dp(200)
             isClickable = true; isFocusable = true; background = pressedOverlay()
-            setOnClickListener { popup.dismiss(); onTap() }
+            setOnClickListener { popup?.dismiss(); onTap() }
         }
         fun div() = View(context).apply {
             setBackgroundColor(0xFF3A3A3A.toInt())
@@ -595,8 +601,9 @@ class HomeScreenManager(
         // mục, chạm ra ngoài, hay tự bấm ✕) đều phải dọn nó đi, nếu không sẽ dính lại vĩnh viễn
         // trên tile (vd chọn "Đổi vị trí" rồi huỷ giữa chừng, không mục nào gọi refreshPages()
         // để tự dựng lại tile mới không có ✕).
-        popup.setOnDismissListener { removeBadge?.let { (tile as? FrameLayout)?.removeView(it) } }
-        popup.showAsDropDown(tile, 0, dp(4))
+        val builtPopup = popup!!
+        builtPopup.setOnDismissListener { removeBadge?.let { (tile as? FrameLayout)?.removeView(it) } }
+        builtPopup.showAsDropDown(tile, 0, dp(4))
     }
 
     /** Chế độ đổi vị trí: tile đang giữ mờ đi, chạm vào tile khác → SWAP, chạm ngoài → huỷ. */
