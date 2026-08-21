@@ -174,7 +174,11 @@ class HomeScreenManager(
         // dụng - tile sau đó được ĐẶT VỊ TRÍ TUYỆT ĐỐI (FrameLayout, toạ độ tính bằng "đơn vị
         // ô" x kích thước 1 ô) thay vì thả trôi theo layout tự động, để chiều cao lồng nhiều
         // hàng của tile "Cao"/"To" không làm vỡ layout các tile lân cận.
-        val pinnedKeys = listOf("youtube", "settings", "incognito", "accounts", "files", "phone", "calendar", "calculator", "clock")
+        // Thứ tự mặc định - có thể thay đổi khi người dùng kéo-thả
+        val defaultFixedKeys = listOf("youtube", "settings", "incognito", "accounts", "files", "phone", "calendar", "calculator", "clock")
+        val pinnedKeys = PinnedOrderStore.getFixedOrder(context, defaultFixedKeys).toMutableList()
+        val defaultUserKeys = PinnedAppsStore.getAll(context)
+        val userKeys = PinnedOrderStore.getUserOrder(context, defaultUserKeys).toMutableList()
         // Cỡ MẶC ĐỊNH khi người dùng CHƯA từng tự đổi kích cỡ tile đó - YouTube/Nhiều T.khoản
         // mặc định "Rộng" ngay từ đầu (giữ nguyên hành vi cũ), các ô còn lại mặc định "Nhỏ".
         val wideKeys = setOf("youtube", "accounts")
@@ -216,38 +220,61 @@ class HomeScreenManager(
             }
         }
 
-        // Các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản, ...) - NHẤN GIỮ để vào chế độ đổi cỡ
-        // bằng cách KÉO (xem [enterResizeMode]) thay vì mở popup chọn cỡ cố định.
+        // ── Gom tất cả tile vào 1 danh sách có thể swap thứ tự khi kéo-thả ──
+        data class TileEntry(
+            val id: String,           // key hoặc pkgName
+            val isFixed: Boolean,     // true = tile cố định, false = tile user ghim
+            val buildFn: () -> View   // factory tạo view (gọi lại sau khi swap)
+        )
+        val allEntries = mutableListOf<TileEntry>()
+
+        // Tile clock widget
+        if (clockWidget != null) {
+            (clockWidget.parent as? ViewGroup)?.removeView(clockWidget)
+            val size = TileSizeStore.get(context, "clock_widget", TileSize.TO)
+            (clockWidget as? ClockWidgetView)?.applySize(size)
+            val (row, col) = placer.place(size.w, size.h)
+            val lp = FrameLayout.LayoutParams(cellPitchPx * size.w - dp(4), cellPitchPx * size.h - dp(4))
+            lp.leftMargin = col * cellPitchPx + dp(2); lp.topMargin = row * cellPitchPx + dp(2)
+            gridContainer.addView(clockWidget, lp)
+            clockWidget.setOnLongClickListener {
+                enterResizeMode(clockWidget, gridContainer, cellPitchPx) { picked ->
+                    TileSizeStore.set(context, "clock_widget", picked)
+                    refreshPages()
+                }
+                true
+            }
+        }
+
+        // Tile cố định
         pinnedKeys.forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
-                // Ô "YouTube": LUÔN nền đỏ cố định (đúng màu thương hiệu YouTube thật), KHÔNG
-                // xoay vòng theo tilePalette như các ô khác - và KHÔNG tăng colorIndex, để các
-                // ô cố định còn lại vẫn xoay màu đúng thứ tự palette như trước (không bị lệch
-                // 1 màu do "mất chỗ" của YouTube).
-                val tileColor = if (key == "youtube") {
-                    ThemePrefs.PALETTE[11] // 0xFFE51400 - "Đỏ (Red)"
-                } else {
-                    tilePalette[colorIndex % tilePalette.size].also { colorIndex++ }
-                }
+                val tileColor = if (key == "youtube") ThemePrefs.PALETTE[11]
+                                else tilePalette[colorIndex % tilePalette.size].also { colorIndex++ }
                 val defaultSize = if (key in wideKeys) TileSize.RONG else TileSize.NHO
                 val size = TileSizeStore.get(context, key, defaultSize)
                 val tile = buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }
+                tile.tag = key  // tag để enterDragMode nhận diện khi swap
                 addTile(tile, size)
+                // Nhấn giữ: nếu đang resize mode → cancel; còn không → hiện menu resize/drag
                 tile.setOnLongClickListener {
-                    enterResizeMode(tile, gridContainer, cellPitchPx) { picked ->
-                        TileSizeStore.set(context, key, picked)
-                        refreshPages()
+                    val existing = tile.tag
+                    if (existing is ResizeState) {
+                        gridContainer.removeView(existing.handleBottom)
+                        gridContainer.removeView(existing.handleRight)
+                        tile.foreground = existing.originalForeground
+                        tile.tag = null
+                    } else {
+                        startTileDrag(tile, key, true, pinnedKeys, userKeys, gridContainer, cellPitchPx)
                     }
                     true
                 }
             }
         }
 
-        // ── Các app người dùng đã NHẤN GIỮ trong trang "ứng dụng" rồi chọn "Ghim vào start" ──
-        // (mặc định cỡ vuông 1x1 khi mới ghim - đúng mặc định của WP thật - đổi cỡ bằng KÉO tay
-        // cầm góc dưới-phải sau khi chọn "Đổi kích cỡ" trong menu, xem [showPinContextMenu]).
+        // Tile user ghim
         val pm = context.packageManager
-        PinnedAppsStore.getAll(context).forEach { pkgName ->
+        userKeys.forEach { pkgName ->
             val appIcon = try { pm.getApplicationIcon(pkgName) } catch (e: Exception) { null }
             val appLabel = try { pm.getApplicationInfo(pkgName, 0).loadLabel(pm).toString() } catch (e: Exception) { null }
             if (appIcon != null && appLabel != null) {
@@ -256,13 +283,13 @@ class HomeScreenManager(
                 val tile = buildAppTile(appLabel, appIcon, tileColor,
                     onClick = {
                         val launch = pm.getLaunchIntentForPackage(pkgName)
-                        if (launch != null) {
-                            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(launch)
-                        }
+                        if (launch != null) { launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); context.startActivity(launch) }
                     },
-                    onLongPress = { anchor -> showPinContextMenu(anchor, pkgName, gridContainer, cellPitchPx) }
+                    onLongPress = { anchor ->
+                        startTileDrag(anchor, pkgName, false, pinnedKeys, userKeys, gridContainer, cellPitchPx)
+                    }
                 )
+                tile.tag = pkgName  // tag để enterDragMode nhận diện
                 addTile(tile, size)
             }
         }
@@ -502,7 +529,86 @@ class HomeScreenManager(
         return scrollView
     }
 
-    /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
+    /** Nhấn giữ tile → hiện menu "Đổi vị trí" / "Đổi kích cỡ" / "Bỏ ghim". */
+    private fun startTileDrag(
+        tile: View, id: String, isFixed: Boolean,
+        fixedKeys: MutableList<String>, userKeys: MutableList<String>,
+        gridContainer: FrameLayout, cellPitchPx: Int
+    ) {
+        lateinit var popup: PopupWindow
+        fun item(label: String, onTap: () -> Unit): TextView = TextView(context).apply {
+            text = label; textSize = 16f; setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(dp(22), dp(16), dp(22), dp(16)); minWidth = dp(200)
+            isClickable = true; isFocusable = true; background = pressedOverlay()
+            setOnClickListener { popup.dismiss(); onTap() }
+        }
+        fun div() = View(context).apply {
+            setBackgroundColor(0xFF3A3A3A.toInt())
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+        }
+        val menuBox = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(0xFF1A1A1A.toInt()); setStroke(dp(1), 0xFF3A3A3A.toInt()) }
+            addView(item("Đổi vị trí") { enterDragMode(tile, id, isFixed, fixedKeys, userKeys, gridContainer) })
+            addView(div())
+            addView(item("Đổi kích cỡ") {
+                enterResizeMode(tile, gridContainer, cellPitchPx) { picked ->
+                    if (isFixed) TileSizeStore.set(context, id, picked)
+                    else TileSizeStore.setForPackage(context, id, picked)
+                    refreshPages()
+                }
+            })
+            if (!isFixed) { addView(div()); addView(item("Bỏ ghim khỏi start") { PinnedAppsStore.unpin(context, id); refreshPages() }) }
+        }
+        popup = PopupWindow(menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            elevation = 0f; animationStyle = 0; isOutsideTouchable = true
+        }
+        popup.showAsDropDown(tile, 0, dp(4))
+    }
+
+    /** Chế độ đổi vị trí: tile đang giữ mờ đi, chạm vào tile khác → SWAP, chạm ngoài → huỷ. */
+    private fun enterDragMode(
+        dragTile: View, dragId: String, isFixed: Boolean,
+        fixedKeys: MutableList<String>, userKeys: MutableList<String>,
+        gridContainer: FrameLayout
+    ) {
+        dragTile.alpha = 0.35f
+        val overlay = FrameLayout(context).apply { setBackgroundColor(0x33000000); isClickable = true }
+        val hint = TextView(context).apply {
+            text = "Chạm vào tile muốn đổi chỗ"
+            textSize = 14f; setTextColor(Color.WHITE); gravity = android.view.Gravity.CENTER
+            setBackgroundColor(0xBB000000.toInt()); setPadding(dp(16), dp(8), dp(16), dp(8))
+        }
+        overlay.addView(hint, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.gravity = android.view.Gravity.CENTER })
+
+        fun cleanup() { dragTile.alpha = 1f; gridContainer.removeView(overlay) }
+
+        val count = gridContainer.childCount
+        for (i in 0 until count) {
+            val child = gridContainer.getChildAt(i)
+            if (child === dragTile || child === overlay) continue
+            val targetId = (child.tag as? String) ?: continue
+            child.setOnClickListener {
+                // SWAP trong danh sách
+                val fa = fixedKeys.indexOf(dragId); val fb = fixedKeys.indexOf(targetId)
+                val ua = userKeys.indexOf(dragId);  val ub = userKeys.indexOf(targetId)
+                when {
+                    fa >= 0 && fb >= 0 -> { fixedKeys[fa] = targetId; fixedKeys[fb] = dragId }
+                    ua >= 0 && ub >= 0 -> { userKeys[ua] = targetId; userKeys[ub] = dragId }
+                    fa >= 0 && ub >= 0 -> { fixedKeys[fa] = targetId; userKeys[ub] = dragId }
+                    ua >= 0 && fb >= 0 -> { userKeys[ua] = targetId; fixedKeys[fb] = dragId }
+                }
+                PinnedOrderStore.saveFixedOrder(context, fixedKeys)
+                PinnedOrderStore.saveUserOrder(context, userKeys)
+                cleanup(); refreshPages()
+            }
+        }
+        overlay.setOnClickListener { cleanup() }
+        gridContainer.addView(overlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+    }
+
+        /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
      *  "start") - 3 dòng: "Ghim/Bỏ ghim vào start", "Thêm/Bỏ khỏi Điện thoại" và "Đánh dấu/Bỏ
      *  đánh dấu sao", tự đổi nhãn tuỳ trạng thái hiện tại, rồi dựng lại 2 trang ngay để tile/nhóm
      *  "★" mới hiện/mất tức thì. "Ghim vào start" và "Thêm vào Điện thoại" là 2 hành động ĐỘC

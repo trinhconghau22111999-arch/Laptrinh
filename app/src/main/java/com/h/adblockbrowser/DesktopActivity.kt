@@ -136,7 +136,7 @@ class DesktopActivity : AppCompatActivity() {
         // ── Vùng desktop: icon tự do kéo-thả. Chừa lề phải cho dock, lề trên cho widget giờ. ──
         desktopArea = FrameLayout(this)
         outer.addView(desktopArea, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT).also {
-            it.rightMargin = dp(64)
+            it.rightMargin = dp(56)  // dock gọn hơn, không chiếm quá nhiều không gian desktop
         })
 
         // ── Dock dọc cạnh phải - lối tắt cố định tới chức năng riêng của app. Nút "Start" (icon
@@ -206,7 +206,7 @@ class DesktopActivity : AppCompatActivity() {
                 setPadding(pad, pad, pad, pad)
             })
         }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
-        outer.addView(dock, FrameLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.MATCH_PARENT).also {
+        outer.addView(dock, FrameLayout.LayoutParams(dp(56), ViewGroup.LayoutParams.MATCH_PARENT).also {
             it.gravity = Gravity.END
         })
 
@@ -254,9 +254,13 @@ class DesktopActivity : AppCompatActivity() {
     private fun updateClock() {
         val cal = Calendar.getInstance()
         tvTime.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(cal.time)
-        val dayNames = arrayOf("CN", "T2", "T3", "T4", "T5", "T6", "T7")
+        // Định dạng đúng WP: "thứ sáu, 21 tháng 8 2026" (chữ thường, viết đầy đủ)
+        val dayNames = arrayOf("chủ nhật", "thứ hai", "thứ ba", "thứ tư", "thứ năm", "thứ sáu", "thứ bảy")
         val dayName = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
-        tvDate.text = "$dayName, ${SimpleDateFormat("d/M/yyyy", Locale.getDefault()).format(cal.time)}"
+        val dom = cal.get(Calendar.DAY_OF_MONTH)
+        val month = cal.get(Calendar.MONTH) + 1
+        val year = cal.get(Calendar.YEAR)
+        tvDate.text = "$dayName, $dom tháng $month $year"
     }
 
     private fun openShortcut(key: String) {
