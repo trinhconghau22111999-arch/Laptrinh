@@ -169,7 +169,7 @@ object StarredView {
                 animationStyle = 0
                 isOutsideTouchable = true
             }
-            popup.showAsDropDown(anchor, 0, dp(4))
+            popup.showSmartDropDown(anchor)
         }
 
         // TỰ XẾP HÀNG THỦ CÔNG bằng LinearLayout lồng nhau, đúng kỹ thuật addTileToGrid() ở

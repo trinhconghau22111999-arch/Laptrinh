@@ -579,7 +579,7 @@ class HomeScreenManager(
         // để tự dựng lại tile mới không có ✕).
         val builtPopup = popup!!
         builtPopup.setOnDismissListener { removeBadge?.let { (tile as? FrameLayout)?.removeView(it) } }
-        builtPopup.showAsDropDown(tile, 0, dp(4))
+        builtPopup.showSmartDropDown(tile)
     }
 
     /** Chế độ đổi vị trí: tile đang giữ mờ đi, chạm vào tile khác → SWAP, chạm ngoài → huỷ. */
@@ -769,7 +769,7 @@ class HomeScreenManager(
             animationStyle = 0 // bỏ hiệu ứng mờ dần mặc định, hiện tức thì như context menu WP thật
             isOutsideTouchable = true
         }
-        popup.showAsDropDown(anchor, 0, dp(4))
+        popup.showSmartDropDown(anchor)
     }
 
     /** Trạng thái đang ở "chế độ đổi cỡ" của 1 tile - lưu CẢ 2 tay cầm (cạnh dưới + cạnh phải)
