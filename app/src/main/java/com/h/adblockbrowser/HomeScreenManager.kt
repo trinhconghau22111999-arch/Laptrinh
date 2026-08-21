@@ -159,22 +159,12 @@ class HomeScreenManager(
         }
 
         // ── Tiêu đề "start" kiểu Hub/Pivot header của WP: chữ thường, mảnh, rất to - ĐẶT LÊN
-        // TRÊN CÙNG (trước đây widget giờ/ngày nằm trên tiêu đề, giờ đảo lại theo yêu cầu). ──
+        // TRÊN CÙNG. ──
         content.addView(sectionHeader("start"))
-
-        // ── Widget giờ/ngày (nếu có) - NẰM DƯỚI tiêu đề "start" ──
-        // MATCH_PARENT (thay vì WRAP_CONTENT + căn giữa trước đây) để khung nền của widget trải
-        // hết bề ngang, đúng như các ô Live Tile bên dưới - xem [MainActivity.buildClockWidget].
-        if (clockWidget != null) {
-            (clockWidget.parent as? ViewGroup)?.removeView(clockWidget)
-            content.addView(clockWidget, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).also { it.bottomMargin = dp(12) })
-        }
 
         // ── Lưới Live Tile - ĐÚNG kiểu Start Screen WP thật: 4 CỠ tile khác nhau (Nhỏ 1x1,
         // Rộng 2x1, Cao 1x2, To 2x2) trong lưới 3 cột - NHẤN GIỮ bất kỳ tile nào (kể cả ô cố
-        // định) rồi chọn "Đổi kích cỡ" để tự chọn, lưu vĩnh viễn qua [TileSizeStore].
+        // định VÀ widget giờ/ngày) rồi kéo tay cầm để đổi cỡ, lưu vĩnh viễn qua [TileSizeStore].
         //
         // DÙNG LƯỚI CHIẾM-DỤNG-Ô THỰC SỰ (occupancy grid, xem [GridPlacer]) THAY VÌ xếp hàng
         // ngang bằng LinearLayout lồng nhau như trước: cách xếp hàng cũ CHỈ xử lý được tile
@@ -206,6 +196,24 @@ class HomeScreenManager(
             lp.leftMargin = col * cellPitchPx + dp(2)
             lp.topMargin = row * cellPitchPx + dp(2)
             gridContainer.addView(tileView, lp)
+        }
+
+        // ── Widget giờ/ngày (nếu có) - GIỜ LÀ TILE ĐẦU TIÊN trong chính lưới này (không còn
+        // nằm riêng phía trên lưới như trước) - mặc định cỡ "To" (giữ đúng cảm giác nổi bật như
+        // thiết kế gốc), NHẤN GIỮ rồi kéo tay cầm để đổi cỡ y hệt mọi tile khác. Nội dung bên
+        // trong ([ClockWidgetView]) tự đổi cỡ chữ + ẩn/hiện dòng ngày tương ứng - xem [applySize].
+        if (clockWidget != null) {
+            (clockWidget.parent as? ViewGroup)?.removeView(clockWidget)
+            val size = TileSizeStore.get(context, "clock_widget", TileSize.TO)
+            (clockWidget as? ClockWidgetView)?.applySize(size)
+            addTile(clockWidget, size)
+            clockWidget.setOnLongClickListener {
+                enterResizeMode(clockWidget, gridContainer, cellPitchPx) { picked ->
+                    TileSizeStore.set(context, "clock_widget", picked)
+                    refreshPages()
+                }
+                true
+            }
         }
 
         // Các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản, ...) - NHẤN GIỮ để vào chế độ đổi cỡ

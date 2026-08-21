@@ -478,109 +478,18 @@ class MainActivity : AppCompatActivity() {
     // cho 2 màn hình thật sự có nhiều tab để chuyển qua lại: Ẩn danh (IncognitoActivity) và 1
     // hồ sơ Nhiều tài khoản (AccountBrowserActivityBase) - xem toggleTaskView() ở 2 file đó.
 
-    /** Widget giờ/ngày ở trang chủ:
-     *  - Nằm NGAY TRONG luồng layout ở trang chủ (do [HomeScreenManager.build] chèn lên đầu),
-     *    "dính" cố định phía trên hàng icon.
-     *  - Có KHUNG NỀN kiểu Live Tile (hình chữ nhật phẳng, màu accent, trải hết bề ngang) giống
-     *    hệt các ô icon bên dưới, thay vì chữ trôi nổi không khung như trước.
-     *  - CHỤM/DÃN 2 ngón để phóng to - thu nhỏ tuỳ ý (qua [PinchZoomLayout]), nhỏ nhất đúng bằng
-     *    cỡ chữ mặc định hiện tại (48/14 - không cho thu nhỏ hơn nữa), tỉ lệ phóng to được LƯU
-     *    lại nên mở app lại vẫn giữ nguyên cỡ đã chỉnh.
-     *  - Vì widget nằm trong luồng layout bình thường (không phải toạ độ x/y tự do), phóng to nó
-     *    ra sẽ tự động ĐẨY hàng shortcut + lưới app phía dưới xuống theo - đúng hiệu ứng "di
-     *    chuyển/phóng to nó thì đẩy các icon khác" mà không cần code riêng gì thêm.
-     *  - Giờ/phút và ngày/tháng tách thành 2 vùng bấm riêng: bấm giờ/phút mở trang Đồng hồ, bấm
-     *    ngày/tháng mở trang Lịch (thay vì cả khối chỉ để kéo như trước). */
-    private fun buildClockWidget(): View {
-        val prefs = getSharedPreferences("clock_widget_prefs", 0)
-        val handler = android.os.Handler(android.os.Looper.getMainLooper())
-
-        // 90sp cho giờ - đúng kiểu đồng hồ Lock Screen Windows Phone / Win10 Mobile thật.
-        // 48sp (bản cũ) quá nhỏ, đặc trưng nổi bật nhất của WP là số giờ RẤT TO + font cực mảnh.
-        val baseTimeSize = 90f
-        // 18sp cho ngày - dễ đọc hơn, tương đương WP thật.
-        val baseDateSize = 18f
-        val minScale = 1f
-        val maxScale = 2f  // maxScale giảm từ 3x vì baseSize đã lớn hơn rồi
-        var scale = prefs.getFloat("scale", minScale).coerceIn(minScale, maxScale)
-
-        val widget = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            gravity = android.view.Gravity.START  // căn TRÁI - đúng kiểu đồng hồ WP thật
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            // Khung nền phẳng kiểu Live Tile (hình chữ nhật, không bo góc) giống hệt các ô icon
-            // bên dưới, thay vì trong suốt như trước - dùng đúng màu nhấn (accent) người dùng đã
-            // chọn ở Cài đặt > Giao diện để đồng bộ với ô địa chỉ/thanh tiến trình.
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                setColor(ThemePrefs.accent(this@MainActivity))
-            }
-        }
-
-        // Font mảnh (sans-serif-thin) cho số giờ - đúng kiểu đồng hồ khoá màn hình của Windows
-        // Phone/Windows 10 Mobile (số rất to, nét cực mảnh, không đổ bóng đậm kiểu iOS/Android).
-        val tvTime = android.widget.TextView(this).apply {
-            textSize = baseTimeSize * scale
-            setTextColor(0xFFFFFFFF.toInt())
-            gravity = android.view.Gravity.START  // căn TRÁI như WP thật
-            typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
-            includeFontPadding = false
-            isClickable = true
-            isFocusable = true
-        }
-        val tvDate = android.widget.TextView(this).apply {
-            textSize = baseDateSize * scale
-            setTextColor(0xFFFFFFFF.toInt())  // trắng thuần (bỏ xám 0xFFDDDDDD)
-            gravity = android.view.Gravity.START  // căn TRÁI
-            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
-            isClickable = true
-            isFocusable = true
-        }
-        // Bấm vào giờ/phút -> mở trang Đồng hồ.
-        tvTime.setOnClickListener { openShortcutByKey("clock") }
-        // Bấm vào ngày/tháng -> mở trang Lịch.
-        tvDate.setOnClickListener { openShortcutByKey("calendar") }
-        widget.addView(tvTime)
-        widget.addView(tvDate)
-
-        // Cập nhật giờ mỗi giây
-        val updateClock = object : Runnable {
-            override fun run() {
-                val now = java.util.Calendar.getInstance()
-                tvTime.text = String.format("%02d:%02d", now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE))
-                // Định dạng đúng WP thật: "thứ tư, 20 tháng 8 2026" (viết đầy đủ, chữ thường)
-                val days = arrayOf("chủ nhật","thứ hai","thứ ba","thứ tư","thứ năm","thứ sáu","thứ bảy")
-                val day = days[now.get(java.util.Calendar.DAY_OF_WEEK) - 1]
-                val dom = now.get(java.util.Calendar.DAY_OF_MONTH)
-                val month = now.get(java.util.Calendar.MONTH) + 1
-                val year = now.get(java.util.Calendar.YEAR)
-                tvDate.text = "$day, $dom tháng $month $year"
-                handler.postDelayed(this, 1000)
-            }
-        }
-        handler.post(updateClock)
-
-        // Bọc trong PinchZoomLayout để chụm/dãn 2 ngón phóng to - thu nhỏ mà không chặn mất
-        // sự kiện bấm (tap) riêng lẻ trên tvTime/tvDate ở trên.
-        // Chiều rộng MATCH_PARENT (thay vì WRAP_CONTENT trước đây) để khung trải hết bề ngang,
-        // đúng như các ô Live Tile bên dưới - xem [HomeScreenManager.buildStartPage] nơi gọi
-        // hàm này cũng đã đổi LayoutParams tương ứng để khớp.
-        val pinchWrapper = PinchZoomLayout(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            onScale = { factor ->
-                scale = (scale * factor).coerceIn(minScale, maxScale)
-                tvTime.textSize = baseTimeSize * scale
-                tvDate.textSize = baseDateSize * scale
-                prefs.edit().putFloat("scale", scale).apply()
-            }
-        }
-        pinchWrapper.addView(widget, ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
-
-        return pinchWrapper
+    /** Widget giờ/ngày ở trang chủ - giờ được coi là 1 Live Tile BÌNH THƯỜNG trong lưới tile
+     *  trang "start", tham gia đầy đủ hệ thống chung: NHẤN GIỮ + KÉO tay cầm để đổi cỡ giống
+     *  HỆT các tile khác (xem [ClockWidgetView] và [HomeScreenManager.buildStartPage]) - không
+     *  còn là widget đặc biệt nằm riêng phía trên lưới với kiểu resize khác (chụm/dãn 2 ngón)
+     *  như trước. Giờ/phút và ngày/tháng vẫn tách 2 vùng bấm riêng: bấm giờ/phút mở trang Đồng
+     *  hồ, bấm ngày/tháng mở trang Lịch. */
+    private fun buildClockWidget(): ClockWidgetView {
+        val widget = ClockWidgetView(this)
+        widget.setOnTimeClick { openShortcutByKey("clock") }
+        widget.setOnDateClick { openShortcutByKey("calendar") }
+        widget.startTicking()
+        return widget
     }
 
     private fun clearAllSessionData() {
