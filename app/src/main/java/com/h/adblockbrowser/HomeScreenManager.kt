@@ -132,12 +132,23 @@ class HomeScreenManager(
     }
 
     /** Dựng lại nội dung CẢ 2 trang và báo cho ViewPager2 refresh - gọi ngay sau khi người dùng
-     *  ghim hoặc bỏ ghim 1 app, để tile mới hiện/mất trên trang "start" NGAY LẬP TỨC. */
+     *  ghim/bỏ ghim/đánh dấu sao 1 app, để tile hoặc nhóm mới hiện/mất trên trang NGAY LẬP TỨC.
+     *
+     *  GIỮ NGUYÊN vị trí đang cuộn của cả 2 trang: dựng lại nghĩa là tạo hẳn 1 [ScrollView] MỚI
+     *  (xem [buildStartPage]/[buildAppListPage]), luôn bắt đầu ở vị trí cuộn = 0 - nếu không lưu
+     *  lại và cuộn về đúng chỗ cũ, người dùng đang xem giữa/cuối danh sách (vd đang ở nhóm "Mạng
+     *  xã hội" phía dưới) mà chọn 1 mục trong menu nhấn giữ sẽ bị "giật" ngược lên đầu trang -
+     *  đúng lỗi người dùng gặp phải. post{} vì scrollTo() cần chạy SAU khi View mới đã layout
+     *  xong (biết chiều cao thật), gọi ngay lúc addView xong sẽ không có tác dụng. */
     private fun refreshPages() {
         val adapter = pageAdapterRef ?: return
+        val prevStartScrollY = (adapter.pages.getOrNull(0) as? ScrollView)?.scrollY ?: 0
+        val prevAppListScrollY = (adapter.pages.getOrNull(1) as? ScrollView)?.scrollY ?: 0
         adapter.pages[0] = buildStartPage(clockWidgetRef)
         adapter.pages[1] = buildAppListPage()
         adapter.notifyDataSetChanged()
+        (adapter.pages[0] as? ScrollView)?.let { sv -> sv.post { sv.scrollTo(0, prevStartScrollY) } }
+        (adapter.pages[1] as? ScrollView)?.let { sv -> sv.post { sv.scrollTo(0, prevAppListScrollY) } }
     }
 
     /** Dựng TRANG "start" (trang trái - hiện mặc định): widget giờ/ngày + tiêu đề "start" +
