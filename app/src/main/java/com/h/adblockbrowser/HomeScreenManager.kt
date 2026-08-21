@@ -172,66 +172,63 @@ class HomeScreenManager(
             ).also { it.bottomMargin = dp(12) })
         }
 
-        // ── Lưới Live Tile - ĐÚNG kiểu Start Screen WP thật: TRỘN cỡ vuông (1 đơn vị) và
-        // "wide" hình chữ nhật dài (2 đơn vị, gấp đôi bề ngang) trong lưới ngang 3 cột, thay vì
-        // toàn bộ tile cùng 1 cỡ vuông như trước (khác biệt hình ảnh rõ nhất so với WP thật).
+        // ── Lưới Live Tile - ĐÚNG kiểu Start Screen WP thật: 4 CỠ tile khác nhau (Nhỏ 1x1,
+        // Rộng 2x1, Cao 1x2, To 2x2) trong lưới 3 cột - NHẤN GIỮ bất kỳ tile nào (kể cả ô cố
+        // định) rồi chọn "Đổi kích cỡ" để tự chọn, lưu vĩnh viễn qua [TileSizeStore].
         //
-        // TỰ XẾP HÀNG THỦ CÔNG bằng LinearLayout lồng nhau (cộng dồn "đơn vị" từng tile theo thứ
-        // tự, đủ 3 đơn vị/hàng thì xuống hàng mới) THAY VÌ dùng GridLayout tự động dồn ô +
-        // columnSpec: GridLayout tự đặt vị trí (row/col = UNDEFINED) rất dễ vỡ layout (hở ô,
-        // lệch hàng) khi trộn nhiều columnSpec span khác nhau trong cùng lưới - rủi ro không
-        // đáng, trong khi cách xếp hàng thủ công này luôn cho kết quả chắc chắn, dễ kiểm chứng.
+        // DÙNG LƯỚI CHIẾM-DỤNG-Ô THỰC SỰ (occupancy grid, xem [GridPlacer]) THAY VÌ xếp hàng
+        // ngang bằng LinearLayout lồng nhau như trước: cách xếp hàng cũ CHỈ xử lý được tile
+        // rộng theo CHIỀU NGANG (mỗi hàng cao cố định dp(110)) - không thể cho 1 tile "Cao"/"To"
+        // chiếm 2 HÀNG cùng lúc. GridPlacer duyệt từng ô lưới theo thứ tự trái->phải, trên-
+        // >dưới, tìm vị trí trống đầu tiên vừa đủ cho tile (w x h đơn vị) rồi đánh dấu chiếm
+        // dụng - tile sau đó được ĐẶT VỊ TRÍ TUYỆT ĐỐI (FrameLayout, toạ độ tính bằng "đơn vị
+        // ô" x kích thước 1 ô) thay vì thả trôi theo layout tự động, để chiều cao lồng nhiều
+        // hàng của tile "Cao"/"To" không làm vỡ layout các tile lân cận.
         val pinnedKeys = listOf("youtube", "incognito", "accounts", "files", "phone", "calendar", "calculator", "clock", "settings")
-        // Các ô này chiếm 2/3 lưới (tile "wide") - YouTube vì là chức năng dùng nhiều nhất
-        // (giống Store/Photos hay được đặt wide trên Start Screen thật), "Nhiều T.khoản" vì tên
-        // dài, đặt wide giúp chữ không bị ngắt dòng xấu trong ô vuông chật.
+        // Cỡ MẶC ĐỊNH khi người dùng CHƯA từng tự đổi kích cỡ tile đó - YouTube/Nhiều T.khoản
+        // mặc định "Rộng" ngay từ đầu (giữ nguyên hành vi cũ), các ô còn lại mặc định "Nhỏ".
         val wideKeys = setOf("youtube", "accounts")
-        val tileUnitsPerRow = 3
+        val gridColumns = 3
+        // Cỡ 1 "đơn vị" ô lưới = (bề ngang khả dụng của trang)/3 - lấy theo bề ngang MÀN HÌNH
+        // THẬT (không cần đợi layout đo xong) trừ đi padding 2 bên dp(20) của scrollView, để ô
+        // 1x1 luôn VUÔNG THỰC SỰ (bề ngang = bề cao), khớp đúng tỉ lệ Live Tile WP thật.
+        val screenWidthPx = context.resources.displayMetrics.widthPixels
+        val cellPitchPx = (screenWidthPx - dp(20) * 2) / gridColumns
         var colorIndex = 0
 
-        val tilesContainer = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        val placer = GridPlacer(gridColumns)
+        val gridContainer = FrameLayout(context)
+        fun addTile(tileView: View, size: TileSize) {
+            val (row, col) = placer.place(size.w, size.h)
+            val lp = FrameLayout.LayoutParams(
+                cellPitchPx * size.w - dp(4), cellPitchPx * size.h - dp(4)
             )
-        }
-        var currentRow: LinearLayout? = null
-        var unitsInRow = 0
-        fun addTileToGrid(tileView: View, units: Int) {
-            if (currentRow == null || unitsInRow + units > tileUnitsPerRow) {
-                currentRow = LinearLayout(context).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                }
-                tilesContainer.addView(currentRow, LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(110) // 96→110dp: tile to hơn, đúng WP thật
-                ))
-                unitsInRow = 0
-            }
-            currentRow!!.addView(tileView, LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, units.toFloat()
-            ).also { it.setMargins(dp(2), dp(2), dp(2), dp(2)) })
-            unitsInRow += units
+            lp.leftMargin = col * cellPitchPx + dp(2)
+            lp.topMargin = row * cellPitchPx + dp(2)
+            gridContainer.addView(tileView, lp)
         }
 
         // Các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản, ...)
         pinnedKeys.forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
                 val tileColor = tilePalette[colorIndex % tilePalette.size]; colorIndex++
-                val units = if (key in wideKeys) 2 else 1
-                val tile = buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }
-                addTileToGrid(tile, units)
+                val defaultSize = if (key in wideKeys) TileSize.RONG else TileSize.NHO
+                val size = TileSizeStore.get(context, key, defaultSize)
+                val tile = buildLiveTile(item.label, item.iconRes, tileColor, key, defaultSize) { onOpenShortcut(item) }
+                addTile(tile, size)
             }
         }
 
         // ── Các app người dùng đã NHẤN GIỮ trong trang "ứng dụng" rồi chọn "Ghim vào start" ──
-        // (luôn cỡ vuông 1 đơn vị - đúng mặc định của WP thật khi ghim mới 1 app, muốn đổi cỡ
-        // phải tự vào menu "Đổi kích thước" riêng, ngoài phạm vi sửa lần này).
+        // (mặc định cỡ vuông 1x1 khi mới ghim - đúng mặc định của WP thật - đổi cỡ bằng NHẤN
+        // GIỮ tile rồi chọn "Đổi kích cỡ" trong menu, xem [showPinContextMenu]).
         val pm = context.packageManager
         PinnedAppsStore.getAll(context).forEach { pkgName ->
             val appIcon = try { pm.getApplicationIcon(pkgName) } catch (e: Exception) { null }
             val appLabel = try { pm.getApplicationInfo(pkgName, 0).loadLabel(pm).toString() } catch (e: Exception) { null }
             if (appIcon != null && appLabel != null) {
                 val tileColor = tilePalette[colorIndex % tilePalette.size]; colorIndex++
+                val size = TileSizeStore.getForPackage(context, pkgName, TileSize.NHO)
                 val tile = buildAppTile(appLabel, appIcon, tileColor,
                     onClick = {
                         val launch = pm.getLaunchIntentForPackage(pkgName)
@@ -242,14 +239,50 @@ class HomeScreenManager(
                     },
                     onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
                 )
-                addTileToGrid(tile, 1)
+                addTile(tile, size)
             }
         }
 
-        content.addView(tilesContainer)
+        // Chiều cao lưới = đúng số hàng đã dùng x cỡ 1 ô - PHẢI set SAU KHI đặt hết tile (lúc
+        // này [placer] mới biết chính xác tổng số hàng cần dùng).
+        gridContainer.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, placer.totalRows() * cellPitchPx
+        )
+        content.addView(gridContainer)
 
         scrollView.addView(content)
         return scrollView
+    }
+
+    /** Thuật toán xếp lưới "chiếm dụng ô" (occupancy grid) tối giản cho lưới N cột: duyệt từng
+     *  ô theo thứ tự trái->phải rồi trên->dưới, tìm vị trí (hàng, cột) TRỐNG ĐẦU TIÊN đủ chỗ
+     *  cho khối kích thước [w] x [h] đơn vị (không chồng lên tile đã đặt trước đó), tự thêm
+     *  hàng mới khi cần. Dùng cho lưới Live Tile trên trang "start" để hỗ trợ tile "Cao"/"To"
+     *  chiếm nhiều hàng cùng lúc - điều mà cách xếp hàng ngang đơn giản (LinearLayout lồng
+     *  nhau, mỗi hàng cao cố định) KHÔNG làm được. */
+    private class GridPlacer(private val columns: Int) {
+        private val occupied = mutableListOf<BooleanArray>()
+        private fun ensureRow(r: Int) { while (occupied.size <= r) occupied.add(BooleanArray(columns)) }
+        fun place(w: Int, h: Int): Pair<Int, Int> {
+            var row = 0
+            while (true) {
+                ensureRow(row + h - 1)
+                for (col in 0..columns - w) {
+                    var fits = true
+                    loop@ for (rr in row until row + h) {
+                        for (cc in col until col + w) {
+                            if (occupied[rr][cc]) { fits = false; break@loop }
+                        }
+                    }
+                    if (fits) {
+                        for (rr in row until row + h) for (cc in col until col + w) occupied[rr][cc] = true
+                        return row to col
+                    }
+                }
+                row++
+            }
+        }
+        fun totalRows(): Int = occupied.size
     }
 
     /** Thứ tự các danh mục app hiển thị trên trang "ứng dụng" - danh mục nào không có app nào
@@ -487,11 +520,37 @@ class HomeScreenManager(
         val itemStar = menuItem(if (starred) "Bỏ đánh dấu sao" else "Đánh dấu sao") {
             if (starred) StarredAppsStore.unstar(context, pkgName) else StarredAppsStore.star(context, pkgName)
         }
+        // "Đổi kích cỡ" KHÔNG dùng menuItem() (dismiss+refresh ngay khi tap) như 3 dòng trên -
+        // tap vào phải ĐÓNG popup này rồi MỞ TIẾP popup chọn cỡ (showSizeMenu), refresh chỉ xảy
+        // ra SAU KHI người dùng chọn xong 1 cỡ cụ thể trong popup con đó.
+        val itemResize = TextView(context).apply {
+            text = "Đổi kích cỡ"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(dp(22), dp(16), dp(22), dp(16))
+            minWidth = dp(200)
+            isClickable = true
+            isFocusable = true
+            background = pressedOverlay()
+            setOnClickListener {
+                popup.dismiss()
+                val current = TileSizeStore.getForPackage(context, pkgName, TileSize.NHO)
+                showSizeMenu(anchor, current) { picked ->
+                    TileSizeStore.setForPackage(context, pkgName, picked)
+                    refreshPages()
+                }
+            }
+        }
         val divider = View(context).apply {
             setBackgroundColor(0xFF3A3A3A.toInt())
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
         }
         val divider2 = View(context).apply {
+            setBackgroundColor(0xFF3A3A3A.toInt())
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+        }
+        val divider3 = View(context).apply {
             setBackgroundColor(0xFF3A3A3A.toInt())
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
         }
@@ -509,6 +568,8 @@ class HomeScreenManager(
             addView(itemDesktop)
             addView(divider2)
             addView(itemStar)
+            addView(divider3)
+            addView(itemResize)
         }
 
         popup = PopupWindow(
@@ -521,7 +582,46 @@ class HomeScreenManager(
         popup.showAsDropDown(anchor, 0, dp(4))
     }
 
-    /** Adapter tối giản cho ViewPager2: 2 trang (có thể được [refreshPages] dựng lại), bọc mỗi
+    /** Menu chọn kích cỡ tile - 4 dòng "Nhỏ"/"Rộng"/"Cao"/"To" (xem enum [TileSize]), đánh dấu
+     *  "✓" trước cỡ ĐANG dùng để người dùng biết mình đang chọn cỡ nào. Bấm 1 dòng bất kỳ ->
+     *  gọi [onPick] với cỡ vừa chọn rồi đóng popup NGAY (việc lưu + dựng lại trang do [onPick]
+     *  tự lo, xem 2 nơi gọi hàm này ở [buildLiveTile] và [showPinContextMenu]).
+     *  DÙNG CHUNG cho CẢ tile cố định (YouTube, Cài đặt...) LẪN tile app người dùng tự ghim -
+     *  chỉ khác nhau ở [onPick] đọc/ghi qua khoá nào trong [TileSizeStore]. */
+    private fun showSizeMenu(anchor: View, current: TileSize, onPick: (TileSize) -> Unit) {
+        lateinit var popup: PopupWindow
+        fun sizeItem(size: TileSize): TextView = TextView(context).apply {
+            text = (if (size == current) "✓  " else "     ") + size.label
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(dp(22), dp(16), dp(22), dp(16))
+            minWidth = dp(200)
+            isClickable = true
+            isFocusable = true
+            background = pressedOverlay()
+            setOnClickListener {
+                onPick(size)
+                popup.dismiss()
+            }
+        }
+        val menuBox = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(0xFF1A1A1A.toInt())
+                setStroke(dp(1), 0xFF3A3A3A.toInt())
+            }
+            TileSize.values().forEach { addView(sizeItem(it)) }
+        }
+        popup = PopupWindow(
+            menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true
+        ).apply {
+            elevation = 0f
+            animationStyle = 0
+            isOutsideTouchable = true
+        }
+        popup.showAsDropDown(anchor, 0, dp(4))
+    } 2 trang (có thể được [refreshPages] dựng lại), bọc mỗi
      *  View có sẵn vào 1 FrameLayout chứa cho từng vị trí. */
     private class PageAdapter(val pages: MutableList<View>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -610,7 +710,11 @@ class HomeScreenManager(
         }
     }
 
-    private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
+    /** [tileKey]/[defaultSize]: dùng để NHẤN GIỮ tile cố định mở menu "Đổi kích cỡ" (xem
+     *  [showSizeMenu]) - lưu/đọc qua [TileSizeStore] theo đúng khoá [tileKey]. */
+    private fun buildLiveTile(
+        label: String, iconRes: Int, tileColor: Int, tileKey: String, defaultSize: TileSize, onClick: () -> Unit
+    ): View {
         val tile = FrameLayout(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
@@ -618,6 +722,7 @@ class HomeScreenManager(
             }
             isClickable = true
             isFocusable = true
+            isLongClickable = true
             foreground = pressedOverlay()
         }
         applyWpTilePressAnim(tile)
@@ -636,6 +741,14 @@ class HomeScreenManager(
         tile.addView(icon)
         tile.addView(labelView)
         tile.setOnClickListener { onClick() }
+        tile.setOnLongClickListener { anchor ->
+            val current = TileSizeStore.get(context, tileKey, defaultSize)
+            showSizeMenu(anchor, current) { picked ->
+                TileSizeStore.set(context, tileKey, picked)
+                refreshPages()
+            }
+            true
+        }
         return tile
     }
 
