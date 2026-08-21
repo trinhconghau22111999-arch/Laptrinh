@@ -208,20 +208,28 @@ class HomeScreenManager(
             gridContainer.addView(tileView, lp)
         }
 
-        // Các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản, ...)
+        // Các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản, ...) - NHẤN GIỮ để vào chế độ đổi cỡ
+        // bằng cách KÉO (xem [enterResizeMode]) thay vì mở popup chọn cỡ cố định.
         pinnedKeys.forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
                 val tileColor = tilePalette[colorIndex % tilePalette.size]; colorIndex++
                 val defaultSize = if (key in wideKeys) TileSize.RONG else TileSize.NHO
                 val size = TileSizeStore.get(context, key, defaultSize)
-                val tile = buildLiveTile(item.label, item.iconRes, tileColor, key, defaultSize) { onOpenShortcut(item) }
+                val tile = buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }
                 addTile(tile, size)
+                tile.setOnLongClickListener {
+                    enterResizeMode(tile, gridContainer, cellPitchPx) { picked ->
+                        TileSizeStore.set(context, key, picked)
+                        refreshPages()
+                    }
+                    true
+                }
             }
         }
 
         // ── Các app người dùng đã NHẤN GIỮ trong trang "ứng dụng" rồi chọn "Ghim vào start" ──
-        // (mặc định cỡ vuông 1x1 khi mới ghim - đúng mặc định của WP thật - đổi cỡ bằng NHẤN
-        // GIỮ tile rồi chọn "Đổi kích cỡ" trong menu, xem [showPinContextMenu]).
+        // (mặc định cỡ vuông 1x1 khi mới ghim - đúng mặc định của WP thật - đổi cỡ bằng KÉO tay
+        // cầm góc dưới-phải sau khi chọn "Đổi kích cỡ" trong menu, xem [showPinContextMenu]).
         val pm = context.packageManager
         PinnedAppsStore.getAll(context).forEach { pkgName ->
             val appIcon = try { pm.getApplicationIcon(pkgName) } catch (e: Exception) { null }
@@ -237,7 +245,7 @@ class HomeScreenManager(
                             context.startActivity(launch)
                         }
                     },
-                    onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
+                    onLongPress = { anchor -> showPinContextMenu(anchor, pkgName, gridContainer, cellPitchPx) }
                 )
                 addTile(tile, size)
             }
@@ -489,7 +497,7 @@ class HomeScreenManager(
      *  PopupMenu hệ thống luôn tự vẽ nền TRẮNG BO GÓC + ĐỔ BÓNG (Material Card) bất kể theme app
      *  đặt gì - hiện lên giữa 1 màn hình đen phẳng tuyệt đối sẽ rất chỏi, sai hẳn cảm giác context
      *  menu phẳng, không bóng, nền đen của WP/Windows 10 Mobile thật. */
-    private fun showPinContextMenu(anchor: View, pkgName: String) {
+    private fun showPinContextMenu(anchor: View, pkgName: String, gridContainer: FrameLayout, cellPitchPx: Int) {
         val pinned = PinnedAppsStore.isPinned(context, pkgName)
         val onDesktop = DesktopAppsStore.isAdded(context, pkgName)
         val starred = StarredAppsStore.isStarred(context, pkgName)
@@ -521,8 +529,9 @@ class HomeScreenManager(
             if (starred) StarredAppsStore.unstar(context, pkgName) else StarredAppsStore.star(context, pkgName)
         }
         // "Đổi kích cỡ" KHÔNG dùng menuItem() (dismiss+refresh ngay khi tap) như 3 dòng trên -
-        // tap vào phải ĐÓNG popup này rồi MỞ TIẾP popup chọn cỡ (showSizeMenu), refresh chỉ xảy
-        // ra SAU KHI người dùng chọn xong 1 cỡ cụ thể trong popup con đó.
+        // tap vào phải ĐÓNG popup này rồi vào NGAY chế độ "đổi cỡ bằng cách kéo" (hiện viền +
+        // tay cầm trên chính tile [anchor]) - xem [enterResizeMode]. Lưu + dựng lại lưới chỉ
+        // xảy ra SAU KHI người dùng thả tay cầm.
         val itemResize = TextView(context).apply {
             text = "Đổi kích cỡ"
             textSize = 16f
@@ -535,8 +544,7 @@ class HomeScreenManager(
             background = pressedOverlay()
             setOnClickListener {
                 popup.dismiss()
-                val current = TileSizeStore.getForPackage(context, pkgName, TileSize.NHO)
-                showSizeMenu(anchor, current) { picked ->
+                enterResizeMode(anchor, gridContainer, cellPitchPx) { picked ->
                     TileSizeStore.setForPackage(context, pkgName, picked)
                     refreshPages()
                 }
@@ -582,45 +590,103 @@ class HomeScreenManager(
         popup.showAsDropDown(anchor, 0, dp(4))
     }
 
-    /** Menu chọn kích cỡ tile - 4 dòng "Nhỏ"/"Rộng"/"Cao"/"To" (xem enum [TileSize]), đánh dấu
-     *  "✓" trước cỡ ĐANG dùng để người dùng biết mình đang chọn cỡ nào. Bấm 1 dòng bất kỳ ->
-     *  gọi [onPick] với cỡ vừa chọn rồi đóng popup NGAY (việc lưu + dựng lại trang do [onPick]
-     *  tự lo, xem 2 nơi gọi hàm này ở [buildLiveTile] và [showPinContextMenu]).
-     *  DÙNG CHUNG cho CẢ tile cố định (YouTube, Cài đặt...) LẪN tile app người dùng tự ghim -
-     *  chỉ khác nhau ở [onPick] đọc/ghi qua khoá nào trong [TileSizeStore]. */
-    private fun showSizeMenu(anchor: View, current: TileSize, onPick: (TileSize) -> Unit) {
-        lateinit var popup: PopupWindow
-        fun sizeItem(size: TileSize): TextView = TextView(context).apply {
-            text = (if (size == current) "✓  " else "     ") + size.label
-            textSize = 16f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            setPadding(dp(22), dp(16), dp(22), dp(16))
-            minWidth = dp(200)
-            isClickable = true
-            isFocusable = true
-            background = pressedOverlay()
-            setOnClickListener {
-                onPick(size)
-                popup.dismiss()
-            }
+    /** Trạng thái đang ở "chế độ đổi cỡ" của 1 tile - lưu tay cầm + nền foreground GỐC (để
+     *  khôi phục khi thoát chế độ) - gắn vào [View.setTag] của chính tile đó. */
+    private data class ResizeState(val handle: View, val originalForeground: Drawable?)
+
+    /** NHẤN GIỮ 1 tile để BẬT "chế độ đổi cỡ": hiện viền trắng bao quanh tile + 1 tay cầm tròn
+     *  trắng ở góc dưới-phải - RÊ tay cầm đó để phóng to/thu nhỏ tile THEO THỜI GIAN THỰC
+     *  (không phải chọn từ danh sách cỡ có sẵn như trước). Thả tay -> tự CHỐT về cỡ HỢP LỆ gần
+     *  nhất trong 4 cỡ [TileSize] (lưới hiện tại chỉ hỗ trợ đúng 4 cỡ rời rạc Nhỏ/Rộng/Cao/To,
+     *  CHƯA phải tự do hoàn toàn theo từng pixel - kéo giữa chừng sẽ tự nhảy về cỡ gần nhất khi
+     *  thả tay, không giữ nguyên kích thước tuỳ ý bất kỳ), rồi lưu qua [onCommit] (tự lưu +
+     *  refreshPages() ở nơi gọi). NHẤN GIỮ LẦN NỮA trong lúc đang ở chế độ đổi cỡ -> HUỶ, không
+     *  lưu gì, khôi phục nguyên trạng. */
+    private fun enterResizeMode(
+        tileView: View, gridContainer: FrameLayout, cellPitchPx: Int, onCommit: (TileSize) -> Unit
+    ) {
+        val existing = tileView.tag as? ResizeState
+        if (existing != null) {
+            // Đang ở chế độ đổi cỡ rồi -> nhấn giữ lần nữa để HUỶ, gỡ viền + tay cầm, không lưu.
+            gridContainer.removeView(existing.handle)
+            tileView.foreground = existing.originalForeground
+            tileView.tag = null
+            return
         }
-        val menuBox = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
+
+        val originalForeground = tileView.foreground
+        tileView.foreground = GradientDrawable().apply {
+            setStroke(dp(3), Color.WHITE)
+            setColor(Color.TRANSPARENT)
+        }
+
+        val handleSizePx = dp(28)
+        val handle = View(context).apply {
             background = GradientDrawable().apply {
-                setColor(0xFF1A1A1A.toInt())
-                setStroke(dp(1), 0xFF3A3A3A.toInt())
+                shape = GradientDrawable.OVAL
+                setColor(Color.WHITE)
             }
-            TileSize.values().forEach { addView(sizeItem(it)) }
         }
-        popup = PopupWindow(
-            menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true
-        ).apply {
-            elevation = 0f
-            animationStyle = 0
-            isOutsideTouchable = true
+
+        fun tileLp() = tileView.layoutParams as FrameLayout.LayoutParams
+        // Tay cầm luôn "dính" đúng góc dưới-phải tile - gọi lại mỗi khi tile đổi kích thước
+        // trong lúc kéo, để tay cầm di chuyển theo cùng ngón tay chứ không đứng yên 1 chỗ.
+        fun positionHandle() {
+            val lp = tileLp()
+            handle.layoutParams = FrameLayout.LayoutParams(handleSizePx, handleSizePx).also {
+                it.leftMargin = lp.leftMargin + lp.width - handleSizePx / 2
+                it.topMargin = lp.topMargin + lp.height - handleSizePx / 2
+            }
         }
-        popup.showAsDropDown(anchor, 0, dp(4))
+        gridContainer.addView(handle)
+        positionHandle()
+        tileView.tag = ResizeState(handle, originalForeground)
+
+        var startTouchX = 0f
+        var startTouchY = 0f
+        var startWidthPx = 0
+        var startHeightPx = 0
+        handle.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    startTouchX = event.rawX; startTouchY = event.rawY
+                    startWidthPx = tileLp().width; startHeightPx = tileLp().height
+                    true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    // Bề rộng/cao MỚI = bề rộng/cao lúc bắt đầu kéo + khoảng ngón tay đã di
+                    // chuyển - GIỚI HẠN trong khoảng [1 đơn vị, 2 đơn vị] (cỡ nhỏ nhất/to nhất
+                    // lưới hỗ trợ), phóng to/thu nhỏ NGAY khi ngón tay di chuyển để người dùng
+                    // thấy trực quan kích thước sẽ ra sao trước khi thả tay.
+                    val dx = (event.rawX - startTouchX).toInt()
+                    val dy = (event.rawY - startTouchY).toInt()
+                    val minPx = cellPitchPx - dp(4)
+                    val maxPx = cellPitchPx * 2 - dp(4)
+                    val lp = tileLp()
+                    lp.width = (startWidthPx + dx).coerceIn(minPx, maxPx)
+                    lp.height = (startHeightPx + dy).coerceIn(minPx, maxPx)
+                    tileView.layoutParams = lp
+                    positionHandle()
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    // CHỐT về cỡ hợp lệ gần nhất - so kích thước hiện tại với NGƯỠNG GIỮA của 1
+                    // và 2 đơn vị (1.5 x cỡ 1 ô): quá nửa thì làm tròn LÊN 2 đơn vị, chưa tới nửa
+                    // thì làm tròn VỀ 1 đơn vị - áp dụng RIÊNG cho bề rộng và bề cao.
+                    val lp = tileLp()
+                    val threshold = (cellPitchPx * 1.5f).toInt()
+                    val w = if (lp.width >= threshold) 2 else 1
+                    val h = if (lp.height >= threshold) 2 else 1
+                    val picked = TileSize.values().first { it.w == w && it.h == h }
+                    gridContainer.removeView(handle)
+                    tileView.foreground = originalForeground
+                    tileView.tag = null
+                    onCommit(picked)
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     /** Adapter tối giản cho ViewPager2: 2 trang (có thể được [refreshPages] dựng lại), bọc mỗi
@@ -712,11 +778,7 @@ class HomeScreenManager(
         }
     }
 
-    /** [tileKey]/[defaultSize]: dùng để NHẤN GIỮ tile cố định mở menu "Đổi kích cỡ" (xem
-     *  [showSizeMenu]) - lưu/đọc qua [TileSizeStore] theo đúng khoá [tileKey]. */
-    private fun buildLiveTile(
-        label: String, iconRes: Int, tileColor: Int, tileKey: String, defaultSize: TileSize, onClick: () -> Unit
-    ): View {
+    private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
         val tile = FrameLayout(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
@@ -724,7 +786,6 @@ class HomeScreenManager(
             }
             isClickable = true
             isFocusable = true
-            isLongClickable = true
             foreground = pressedOverlay()
         }
         applyWpTilePressAnim(tile)
@@ -743,14 +804,6 @@ class HomeScreenManager(
         tile.addView(icon)
         tile.addView(labelView)
         tile.setOnClickListener { onClick() }
-        tile.setOnLongClickListener { anchor ->
-            val current = TileSizeStore.get(context, tileKey, defaultSize)
-            showSizeMenu(anchor, current) { picked ->
-                TileSizeStore.set(context, tileKey, picked)
-                refreshPages()
-            }
-            true
-        }
         return tile
     }
 
