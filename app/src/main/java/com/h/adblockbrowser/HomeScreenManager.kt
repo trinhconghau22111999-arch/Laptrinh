@@ -411,7 +411,15 @@ class HomeScreenManager(
                 onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
             )
         }
-        val allEntries = (realEntries + buildFixedEntries()).sortedBy { it.label.lowercase() }
+        // ── LOẠI TRÙNG "app ảo": nếu máy đã có SẴN app THẬT trùng tên với 1 trong 12 mục cố
+        // định (vd máy đã cài app "Camera"/"Danh bạ" thật thì KHÔNG cần thêm mục cố định "Camera"
+        // /"Danh bạ" nữa) - trước đây LUÔN cộng thêm cả 12 mục bất kể máy đã có app thật hay
+        // chưa, gây ra tình trạng "Camera"/"Danh bạ" hiện tới 2-3 lần y hệt nhau (1 lần app THẬT
+        // + 1 lần mục CỐ ĐỊNH dùng icon giả) - so khớp theo TÊN HIỂN THỊ (không phân biệt hoa/
+        // thường) vì mục cố định không có packageName cụ thể để so khớp package. ──
+        val realLabelsLower = realEntries.map { it.label.trim().lowercase() }.toSet()
+        val fixedEntries = buildFixedEntries().filter { it.label.trim().lowercase() !in realLabelsLower }
+        val allEntries = (realEntries + fixedEntries).sortedBy { it.label.lowercase() }
 
         // Dùng chung 1 closure dựng dòng app (tránh lặp lại) cho cả nhóm "★ ĐÃ ĐÁNH DẤU SAO" lẫn
         // danh sách chính bên dưới.
@@ -1172,6 +1180,12 @@ class HomeScreenManager(
         val pm = context.packageManager
         return pm.queryIntentActivities(intent, 0)
             .filter { it.activityInfo.packageName != context.packageName }
+            // LOẠI TRÙNG theo packageName - 1 số app khai báo NHIỀU launcher activity trong CÙNG
+            // 1 package (vd icon phụ/alias), khiến queryIntentActivities() trả về NHIỀU ResolveInfo
+            // cho CÙNG 1 app thật, hiện lặp lại y hệt tên+icon trong danh sách "ứng dụng" (vd
+            // "Camera" xuất hiện 2 lần giống hệt nhau) - chỉ giữ lại activity ĐẦU TIÊN gặp cho mỗi
+            // package, distinctBy giữ đúng thứ tự xuất hiện ban đầu của danh sách gốc.
+            .distinctBy { it.activityInfo.packageName }
             .sortedBy { it.loadLabel(pm).toString().lowercase() }
     }
 
