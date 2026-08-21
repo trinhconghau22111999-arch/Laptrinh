@@ -395,7 +395,30 @@ class HomeScreenManager(
         "com.google.android.keep", "com.samsung.android.app.notes", "com.miui.notes",
         "com.samsung.android.memo", "com.google.android.apps.notebooklm",
         // Microsoft To Do, OneNote (ghi chú/task - xếp cùng nhóm điện thoại)
-        "com.microsoft.todos", "com.microsoft.office.onenote"
+        "com.microsoft.todos", "com.microsoft.office.onenote",
+        // Quản lý tập tin
+        "com.google.android.apps.nbu.files", "com.sec.android.app.myfiles",
+        "com.miui.filemanager", "com.mi.android.globalFileexplorer",
+        "com.android.documentsui", "com.android.fileexplorer"
+    )
+    /** DANH SÁCH PACKAGE cố định ở trên KHÔNG PHỦ HẾT mọi máy - mỗi hãng/mỗi bản ROM lại tự đặt
+     *  package riêng cho các app hệ thống này (Điện thoại/Tin nhắn/Danh bạ/Camera/Thư viện/Ghi
+     *  âm/Lịch/Đồng hồ/Máy tính/Quản lý tệp), khiến nhiều máy app KHÔNG khớp package nào ở trên
+     *  và bị rơi nhầm vào "Khác". Thêm lớp nhận diện THEO TỪ KHOÁ TÊN HIỂN THỊ (không phân biệt
+     *  hoa/thường, cả tiếng Việt lẫn tiếng Anh) làm lưới an toàn thứ 2 - giống hệt cách
+     *  [bankKeywords]/[officeKeywords] đã làm cho "Ngân hàng"/"Office". KHÔNG dùng từ khoá quá
+     *  chung chung dễ đụng nhóm khác (vd bỏ "ảnh"/"photos" vì sẽ bắt nhầm cả "Ảnh Google". */
+    private val phoneKeywords = listOf(
+        "dialer", "gọi điện", "cuộc gọi",
+        "messaging", " sms", "nhắn tin", "tin nhắn",
+        "contacts", "danh bạ",
+        "camera", "máy ảnh",
+        "gallery", "thư viện ảnh",
+        "sound recorder", "voice recorder", "ghi âm",
+        "calendar", "lịch",
+        "clock", "đồng hồ", "báo thức", "alarm",
+        "calculator", "máy tính",
+        "file manager", "quản lý tệp", "quản lý tập tin", "trình quản lý tệp", "file explorer"
     )
     /** Mua sắm: package name của các app TMĐT phổ biến ở Việt Nam */
     private val shoppingPackages = setOf(
@@ -437,7 +460,9 @@ class HomeScreenManager(
     /** Xác định danh mục hiển thị của 1 app - so khớp package name trước (chắc chắn nhất), rồi
      *  mới tới chữ khoá trong tên hiển thị, cuối cùng còn lại rơi vào "Khác":
      *   1) "Điện thoại": các app hệ thống cốt lõi (Cuộc gọi, Tin nhắn, Danh bạ, Camera, Thư
-     *      viện, Ghi âm, Máy phát nhạc, Máy tính, Đồng hồ, Lịch, Ghi chú...).
+     *      viện, Ghi âm, Máy phát nhạc, Máy tính, Đồng hồ, Lịch, Quản lý tệp, Ghi chú...) - so
+     *      khớp package TRƯỚC ([phonePackages]), KHÔNG khớp package nào thì thử tiếp từ khoá tên
+     *      hiển thị ([phoneKeywords]) - máy nào có package lạ (OEM riêng) vẫn được xếp đúng.
      *   2) "Mạng xã hội": YouTube, Zalo, Facebook, TikTok.
      *   3) "Trình duyệt": Google (app tìm kiếm), Chrome - CỘNG THÊM bất kỳ app nào khác có đăng
      *      ký xử lý link web (http://), để các trình duyệt khác (Cốc Cốc, Firefox, Samsung
@@ -453,6 +478,7 @@ class HomeScreenManager(
         val label = info.loadLabel(context.packageManager).toString().lowercase()
 
         if (pkgName in phonePackages) return "Điện thoại"
+        if (phoneKeywords.any { label.contains(it) }) return "Điện thoại"
         if (pkgName in socialPackages) return "Mạng xã hội"
         if (pkgName in browserPackagesExplicit || pkgName in browserPackages) return "Trình duyệt"
         if (pkgName in googlePackages || pkgName.startsWith("com.google.")) return "Ứng dụng Google"
@@ -536,10 +562,23 @@ class HomeScreenManager(
             }
         }
 
+        // Các app "ghi chú" (Keep/Samsung Notes/MIUI Notes/OneNote...) trong nhóm "Điện thoại"
+        // LUÔN đẩy xuống DƯỚI CÙNG của nhóm - các app còn lại (Gọi điện/Nhắn tin/Danh bạ/
+        // Camera/Thư viện/Ghi âm/Lịch/Đồng hồ/Máy tính/Quản lý tệp...) vẫn giữ đúng thứ tự A-Z
+        // như bình thường ở TRÊN nhóm ghi chú.
+        val notesPackages = setOf(
+            "com.google.android.keep", "com.samsung.android.app.notes", "com.miui.notes",
+            "com.samsung.android.memo", "com.google.android.apps.notebooklm",
+            "com.microsoft.todos", "com.microsoft.office.onenote"
+        )
         categoryOrder.forEach { category ->
             val appsInCategory = grouped[category] ?: return@forEach
             content.addView(groupHeader(category))
-            appsInCategory.forEach { addAppRow(it) }
+            val ordered = if (category == "Điện thoại") {
+                val (notes, rest) = appsInCategory.partition { it.activityInfo.packageName in notesPackages }
+                rest + notes
+            } else appsInCategory
+            ordered.forEach { addAppRow(it) }
         }
 
         scrollView.addView(content)
