@@ -245,7 +245,38 @@ class FilesActivity : AppCompatActivity() {
         tvPath.text = dir.absolutePath
         exitSelectionMode()
 
-        val list = (dir.listFiles()?.toMutableList() ?: mutableListOf())
+        // BỌC TRY-CATCH: 1 số thư mục hệ thống bảo vệ (Android/data, Android/obb...) hoặc thiết
+        // bị/hãng máy đặc biệt có thể NÉM SecurityException khi liệt kê thay vì chỉ trả về null
+        // như tài liệu Android mô tả - trước đây không bọc gì nên gặp trường hợp này sẽ CRASH
+        // thẳng cả app, đúng cảm giác "lỗi không truy cập được tệp" mà không rõ lý do gì.
+        val rawList = try {
+            dir.listFiles()
+        } catch (e: SecurityException) {
+            null
+        }
+        // rawList == null có 2 khả năng: (1) dir không phải thư mục/không tồn tại (hiếm, do
+        // luồng điều hướng trong app luôn dẫn tới thư mục hợp lệ), hoặc PHỔ BIẾN HƠN NHIỀU -
+        // (2) THIẾU quyền "Truy cập mọi tệp" (MANAGE_EXTERNAL_STORAGE) trên Android 11+, khiến hệ
+        // thống ÂM THẦM chặn mà không báo lỗi rõ ràng gì cho app - đây CHÍNH LÀ nguyên nhân phổ
+        // biến nhất của lỗi "không truy cập được tệp": trước đây rơi vào trường hợp này sẽ chỉ
+        // hiện 1 danh sách RỖNG không rõ lý do, khiến người dùng tưởng thư mục trống thật hoặc
+        // app bị lỗi - giờ báo rõ ràng bằng Toast + gợi ý mở lại hộp thoại xin quyền.
+        if (rawList == null) {
+            val missingAllFilesAccess = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R &&
+                !android.os.Environment.isExternalStorageManager()
+            if (missingAllFilesAccess) {
+                Toast.makeText(
+                    this,
+                    "Không truy cập được thư mục này - thiếu quyền \"Truy cập mọi tệp\"",
+                    Toast.LENGTH_LONG
+                ).show()
+                checkAllFilesAccess()
+            } else {
+                Toast.makeText(this, "Không truy cập được thư mục này", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        val list = (rawList?.toMutableList() ?: mutableListOf())
         // Ẩn tệp/thư mục ẩn (tên bắt đầu bằng dấu chấm, vd. .pmtemp, .trashBin...) khỏi danh
         // sách hiển thị - đây là các thư mục dữ liệu nội bộ của hệ thống/app khác, không phải
         // thứ người dùng cần thấy hay thao tác tới trong màn Quản lý tệp này.
@@ -364,7 +395,17 @@ class FilesActivity : AppCompatActivity() {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(this, "Không mở được tệp này", Toast.LENGTH_SHORT).show()
+            // Lý do PHỔ BIẾN NHẤT khiến mở tệp thất bại: thiếu quyền "Truy cập mọi tệp"
+            // (MANAGE_EXTERNAL_STORAGE, Android 11+) - báo rõ nguyên nhân thay vì chỉ nói chung
+            // chung "không mở được", để người dùng biết cần làm gì tiếp theo.
+            val missingAllFilesAccess = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R &&
+                !android.os.Environment.isExternalStorageManager()
+            if (missingAllFilesAccess) {
+                Toast.makeText(this, "Không mở được tệp - thiếu quyền \"Truy cập mọi tệp\"", Toast.LENGTH_LONG).show()
+                checkAllFilesAccess()
+            } else {
+                Toast.makeText(this, "Không mở được tệp này (có thể chưa cài app hỗ trợ định dạng này)", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

@@ -219,26 +219,41 @@ class AccountsActivity : AppCompatActivity() {
             hint = "Ví dụ: Cá nhân, Công việc..."
             setTextColor(Color.WHITE)
             setHintTextColor(0xFF888888.toInt())
+            // Ép bàn phím hiện nút "Xong" (Done) ở góc dưới-phải THAY VÌ nút xuống dòng "↵" mặc
+            // định - trước đây EditText không khai inputType/imeOptions nên Android coi là ô
+            // NHIỀU DÒNG, bấm "↵" chỉ xuống dòng chứ không submit được gì cả.
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE
         }
         val container = FrameLayout(this).apply {
             setPadding(dp(20), dp(10), dp(20), 0)
             addView(input)
         }
-        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
+        fun submit() {
+            val name = input.text.toString().trim()
+            val profile = AccountProfileStore.add(this, name)
+            if (profile == null) {
+                Toast.makeText(this, "Đã đạt tối đa ${AccountProfileStore.MAX_PROFILES} tài khoản", Toast.LENGTH_SHORT).show()
+            } else {
+                render()
+                openProfile(profile)
+            }
+        }
+        val dialog = AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Thêm tài khoản mới")
             .setView(container)
-            .setPositiveButton("Thêm") { _, _ ->
-                val name = input.text.toString().trim()
-                val profile = AccountProfileStore.add(this, name)
-                if (profile == null) {
-                    Toast.makeText(this, "Đã đạt tối đa ${AccountProfileStore.MAX_PROFILES} tài khoản", Toast.LENGTH_SHORT).show()
-                } else {
-                    render()
-                    openProfile(profile)
-                }
-            }
+            .setPositiveButton("Thêm") { _, _ -> submit() }
             .setNegativeButton("Huỷ", null)
-            .show()
+            .create()
+        // Bấm nút "Xong" trên bàn phím sau khi gõ tên -> submit NGAY, không cần với tay bấm
+        // riêng nút "Thêm" - đúng kỳ vọng thông thường khi gõ xong 1 ô rồi bấm Enter.
+        input.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                submit(); dialog.dismiss(); true
+            } else false
+        }
+        dialog.show()
     }
 
     private fun showProfileOptions(profile: AccountProfileStore.Profile) {
@@ -257,23 +272,34 @@ class AccountsActivity : AppCompatActivity() {
         val input = EditText(this).apply {
             setText(profile.name)
             setTextColor(Color.WHITE)
+            // Cùng lý do như [showAddDialog]: ép nút "Xong" thay vì nút xuống dòng "↵".
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE
         }
         val container = FrameLayout(this).apply {
             setPadding(dp(20), dp(10), dp(20), 0)
             addView(input)
         }
-        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
+        fun submit() {
+            val newName = input.text.toString().trim()
+            if (newName.isNotBlank()) {
+                AccountProfileStore.rename(this, profile.slot, newName)
+                render()
+            }
+        }
+        val dialog = AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Đổi tên hồ sơ")
             .setView(container)
-            .setPositiveButton("Lưu") { _, _ ->
-                val newName = input.text.toString().trim()
-                if (newName.isNotBlank()) {
-                    AccountProfileStore.rename(this, profile.slot, newName)
-                    render()
-                }
-            }
+            .setPositiveButton("Lưu") { _, _ -> submit() }
             .setNegativeButton("Huỷ", null)
-            .show()
+            .create()
+        input.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                submit(); dialog.dismiss(); true
+            } else false
+        }
+        dialog.show()
     }
 
     private fun showDeleteConfirm(profile: AccountProfileStore.Profile) {
