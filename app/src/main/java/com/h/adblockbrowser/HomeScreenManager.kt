@@ -952,7 +952,10 @@ class HomeScreenManager(
         this.text = text.replaceFirstChar { it.titlecase() }
         textSize = if (smallHeader) 28f else 46f
         setTextColor(Color.WHITE)
-        typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        // "sans-serif-medium" (đậm hơn 1 nấc so với "sans-serif-light" trước đây) - chỉ áp
+        // riêng cho 2 tiêu đề "start"/"DS Ứng Dụng" theo yêu cầu, các chữ khác trong app (menu,
+        // nhãn tile...) vẫn giữ nguyên "sans-serif-light" mảnh như cũ.
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         setPadding(dp(2), dp(8), dp(2), dp(10))
     }
 
