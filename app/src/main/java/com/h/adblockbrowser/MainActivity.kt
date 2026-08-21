@@ -279,6 +279,10 @@ class MainActivity : AppCompatActivity() {
         }
         // Cho WebView chạy lại bình thường (đối xứng với onPause() ở dưới).
         if (::webView.isInitialized) webView.onResume()
+        // App vừa gỡ cài đặt (menu "Gỡ cài đặt" ở trang DS Ứng Dụng, mở hộp thoại gỡ HỆ THỐNG
+        // riêng) có thể vừa biến mất khỏi máy trong lúc màn hình này ở nền - dựng lại Start/App
+        // List để nó biến mất khỏi danh sách ngay khi quay về, không cần thoát hẳn app.
+        if (::homeScreenManager.isInitialized) homeScreenManager.refreshPages()
         // Đọc lại vị trí nút Back nổi mới nhất (có thể vừa bị kéo sang chỗ khác ở màn hình
         // khác trong lúc màn hình này ở nền) - xem giải thích đồng bộ ở FloatingBackButton.kt.
         floatingBackButtonHandle?.resync()

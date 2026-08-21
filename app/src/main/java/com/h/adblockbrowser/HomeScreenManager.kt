@@ -132,7 +132,13 @@ class HomeScreenManager(
     }
 
     /** Dựng lại nội dung CẢ 2 trang và báo cho ViewPager2 refresh - gọi ngay sau khi người dùng
-     *  ghim/bỏ ghim/đánh dấu sao 1 app, để tile hoặc nhóm mới hiện/mất trên trang NGAY LẬP TỨC.
+     *  ghim/bỏ ghim/đánh dấu sao/gỡ cài đặt 1 app, để tile hoặc nhóm mới hiện/mất trên trang
+     *  NGAY LẬP TỨC. PUBLIC (không còn private) để MainActivity.onResume() gọi được - cần thiết
+     *  riêng cho trường hợp "Gỡ cài đặt" (xem showPinContextMenu): hộp thoại gỡ cài đặt thật của
+     *  Android là 1 màn hình HỆ THỐNG riêng, app không biết chính xác lúc nào người dùng bấm
+     *  "Gỡ" xong (khác các hành động Ghim/Đánh dấu sao xử lý XONG NGAY trong app, refresh được
+     *  ngay lập tức) - nên phải refresh lại 1 lần nữa khi quay về app (onResume) để app vừa gỡ
+     *  biến mất khỏi danh sách, phòng trường hợp người dùng gỡ thành công.
      *
      *  GIỮ NGUYÊN vị trí đang cuộn của cả 2 trang: dựng lại nghĩa là tạo hẳn 1 [ScrollView] MỚI
      *  (xem [buildStartPage]/[buildAppListPage]), luôn bắt đầu ở vị trí cuộn = 0 - nếu không lưu
@@ -140,7 +146,7 @@ class HomeScreenManager(
      *  xã hội" phía dưới) mà chọn 1 mục trong menu nhấn giữ sẽ bị "giật" ngược lên đầu trang -
      *  đúng lỗi người dùng gặp phải. post{} vì scrollTo() cần chạy SAU khi View mới đã layout
      *  xong (biết chiều cao thật), gọi ngay lúc addView xong sẽ không có tác dụng. */
-    private fun refreshPages() {
+    fun refreshPages() {
         val adapter = pageAdapterRef ?: return
         val prevStartScrollY = (adapter.pages.getOrNull(0) as? ScrollView)?.scrollY ?: 0
         val prevAppListScrollY = (adapter.pages.getOrNull(1) as? ScrollView)?.scrollY ?: 0
@@ -718,6 +724,40 @@ class HomeScreenManager(
             setBackgroundColor(0xFF3A3A3A.toInt())
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
         }
+        // "Gỡ cài đặt" - CHỈ hiện khi menu này mở từ trang "DS Ứng Dụng" (gridContainer == null,
+        // xem giải thích ở "Đổi kích cỡ" ngay trên) - đúng yêu cầu "riêng trang ứng dụng phải có
+        // ô gỡ cài đặt". GỠ THẬT SỰ khỏi máy (không phải chỉ bỏ ghim/xoá khỏi 1 trang trong app
+        // này) - dùng Intent.ACTION_DELETE hệ thống để Android tự hiện đúng hộp thoại xác nhận
+        // gỡ cài đặt CHUẨN của hệ điều hành (tên app, icon, cảnh báo...) - KHÔNG tự gỡ ngầm được
+        // (và không nên - Android bắt buộc người dùng phải tự xác nhận gỡ app để đảm bảo an
+        // toàn, app khác không được phép tự ý gỡ app khác kể cả khi người dùng đồng ý trong app
+        // này). Không tự refreshPages() ngay - hộp thoại gỡ là 1 màn hình HỆ THỐNG riêng, không
+        // biết ngay lúc này người dùng đã bấm "Gỡ" xong hay chưa; sẽ tự refresh lại khi quay về
+        // app (xem MainActivity.onResume() gọi refreshPages()).
+        val itemUninstall = if (gridContainer == null && pkgName != context.packageName) TextView(context).apply {
+            text = "Gỡ cài đặt"
+            textSize = 16f
+            setTextColor(0xFFE81123.toInt()) // đỏ - hành động PHÁ HUỶ, khác các mục còn lại (trắng)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(dp(22), dp(16), dp(22), dp(16))
+            minWidth = dp(200)
+            isClickable = true
+            isFocusable = true
+            background = pressedOverlay()
+            setOnClickListener {
+                popup.dismiss()
+                try {
+                    context.startActivity(
+                        Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkgName"))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (e: Exception) { }
+            }
+        } else null
+        val divider4 = View(context).apply {
+            setBackgroundColor(0xFF3A3A3A.toInt())
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+        }
         val menuBox = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             // Nền đen tuyệt đối phẳng, viền mảnh màu xám đậm thay vì bóng đổ - đúng cảm giác
@@ -735,6 +775,10 @@ class HomeScreenManager(
             if (itemResize != null) {
                 addView(divider3)
                 addView(itemResize)
+            }
+            if (itemUninstall != null) {
+                addView(divider4)
+                addView(itemUninstall)
             }
         }
 
