@@ -947,9 +947,12 @@ class HomeScreenManager(
 
     private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
         val tile = FrameLayout(context).apply {
+            // Nền TRONG SUỐT - thấy xuyên qua wallpaper
+            // Viền trắng 1.5dp bao quanh tile
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                setColor(tileColor)
+                setColor(0x00000000)
+                setStroke(dp(1), 0xFFFFFFFF.toInt())
             }
             isClickable = true
             isFocusable = true
@@ -957,18 +960,30 @@ class HomeScreenManager(
         }
         applyWpTilePressAnim(tile)
 
-        val icon = ImageView(context).apply {
-            setImageResource(iconRes)
-            // 36dp (tăng từ 28dp) + margin 12dp - đúng tỉ lệ tile WP thật với tile 110dp
-            layoutParams = FrameLayout.LayoutParams(dp(36), dp(36)).also {
+        // Ô nền màu BÊN TRONG chứa icon - hình vuông nhỏ căn góc trên-trái
+        val iconBg = FrameLayout(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(tileColor)
+                cornerRadius = dp(3).toFloat()
+            }
+            layoutParams = FrameLayout.LayoutParams(dp(52), dp(52)).also {
                 it.gravity = Gravity.TOP or Gravity.START
-                it.leftMargin = dp(12); it.topMargin = dp(12)
+                it.leftMargin = dp(8); it.topMargin = dp(8)
             }
         }
+        val icon = ImageView(context).apply {
+            setImageResource(iconRes)
+            val pad = dp(8)
+            setPadding(pad, pad, pad, pad)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+        iconBg.addView(icon, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+        ))
 
         val labelView = buildTileLabel(label)
-
-        tile.addView(icon)
+        tile.addView(iconBg)
         tile.addView(labelView)
         tile.setOnClickListener { onClick() }
         return tile
@@ -981,9 +996,11 @@ class HomeScreenManager(
         onClick: () -> Unit, onLongPress: (View) -> Unit
     ): View {
         val tile = FrameLayout(context).apply {
+            // Nền TRONG SUỐT + viền trắng - giống buildLiveTile
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                setColor(tileColor)
+                setColor(0x00000000)
+                setStroke(dp(1), 0xFFFFFFFF.toInt())
             }
             isClickable = true
             isFocusable = true
@@ -992,17 +1009,30 @@ class HomeScreenManager(
         }
         applyWpTilePressAnim(tile)
 
-        val iconView = ImageView(context).apply {
-            setImageDrawable(icon)
-            layoutParams = FrameLayout.LayoutParams(dp(36), dp(36)).also {
+        // Ô nền màu BÊN TRONG chứa icon app thật
+        val iconBg = FrameLayout(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(tileColor)
+                cornerRadius = dp(3).toFloat()
+            }
+            layoutParams = FrameLayout.LayoutParams(dp(52), dp(52)).also {
                 it.gravity = Gravity.TOP or Gravity.START
-                it.leftMargin = dp(12); it.topMargin = dp(12)
+                it.leftMargin = dp(8); it.topMargin = dp(8)
             }
         }
+        val iconView = ImageView(context).apply {
+            setImageDrawable(icon)
+            val pad = dp(6)
+            setPadding(pad, pad, pad, pad)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+        iconBg.addView(iconView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+        ))
 
         val labelView = buildTileLabel(label)
-
-        tile.addView(iconView)
+        tile.addView(iconBg)
         tile.addView(labelView)
         tile.setOnClickListener { onClick() }
         tile.setOnLongClickListener { anchor -> onLongPress(anchor); true }
@@ -1011,8 +1041,10 @@ class HomeScreenManager(
 
     private fun buildTileLabel(label: String): TextView = TextView(context).apply {
         text = label
-        textSize = 15f  // 13f → 15f: chữ tile lớn hơn, dễ đọc hơn, đúng WP thật
+        textSize = 15f
         setTextColor(Color.WHITE)
+        // Đổ bóng đậm để chữ đọc được trên nền trong suốt (thấy wallpaper)
+        setShadowLayer(dp(4).toFloat(), 0f, dp(1).toFloat(), 0xCC000000.toInt())
         maxLines = 2
         ellipsize = TextUtils.TruncateAt.END
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
