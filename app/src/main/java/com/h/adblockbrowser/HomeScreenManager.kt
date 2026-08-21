@@ -755,9 +755,10 @@ class HomeScreenManager(
 
     /** Tiêu đề lớn kiểu Pivot/Hub header của WP.
      *  [smallHeader]=true: dùng cho trang "DS Ứng Dụng" (28sp) để không chiếm quá nhiều không gian.
-     *  [smallHeader]=false (mặc định): cỡ 46sp đặc trưng Hub header cho trang "start". */
+     *  [smallHeader]=false (mặc định): cỡ 46sp đặc trưng Hub header cho trang "start".
+     *  CHỮ CÁI ĐẦU luôn IN HOA (vd "start" -> "Start") - phần còn lại vẫn chữ thường. */
     private fun sectionHeader(text: String, smallHeader: Boolean = false): View = TextView(context).apply {
-        this.text = text
+        this.text = text.replaceFirstChar { it.titlecase() }
         textSize = if (smallHeader) 28f else 46f
         setTextColor(Color.WHITE)
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
@@ -765,9 +766,10 @@ class HomeScreenManager(
     }
 
     /** Tiêu đề phân nhóm trong danh sách app (danh mục: "Trình duyệt", "Game"...), kiểu WP App
-     *  List: chữ to, màu accent, đứng riêng 1 dòng làm mốc phân cách trực quan giữa các nhóm. */
+     *  List: chữ to, màu accent, đứng riêng 1 dòng làm mốc phân cách trực quan giữa các nhóm.
+     *  CHỮ CÁI ĐẦU luôn IN HOA (đa số danh mục đã viết hoa sẵn nên phần lớn không đổi gì). */
     private fun groupHeader(text: String): View = TextView(context).apply {
-        this.text = text
+        this.text = text.replaceFirstChar { it.titlecase() }
         textSize = 22f
         setTextColor(ThemePrefs.accent(context))
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)

@@ -100,9 +100,9 @@ class SettingsActivity : AppCompatActivity() {
         rootFrame.addView(scroll)
         setContentView(rootFrame)
 
-        // ── Tiêu đề trang: "cài đặt" - chữ to, mảnh, đúng WP Settings ──
+        // ── Tiêu đề trang: "Cài đặt" - chữ to, mảnh, đúng WP Settings ──
         root.addView(TextView(this).apply {
-            text = "cài đặt"
+            text = "Cài đặt"
             textSize = 42f  // to hơn (30f → 42f), đúng WP thật
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
@@ -166,9 +166,11 @@ class SettingsActivity : AppCompatActivity() {
     /**
      * Tiêu đề nhóm kiểu WP Settings: chữ thường, màu xám, cỡ nhỏ, khoảng cách rộng phía trên.
      * topMargin tăng từ 20dp lên 32dp để các nhóm tách rõ hơn.
+     * CHỮ CÁI ĐẦU luôn IN HOA (vd "giao diện" -> "Giao diện") - phần còn lại vẫn chữ thường,
+     * đúng kiểu tiêu đề nhóm (sentence case) chuẩn, không phải toàn chữ thường như trước.
      */
     private fun groupHeader(text: String): View = TextView(this).apply {
-        this.text = text
+        this.text = text.replaceFirstChar { it.titlecase() }
         textSize = 14f
         setTextColor(0xFF9A9A9A.toInt())
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
