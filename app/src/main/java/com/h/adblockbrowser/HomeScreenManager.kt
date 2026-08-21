@@ -356,145 +356,25 @@ class HomeScreenManager(
         fun totalRows(): Int = occupied.size
     }
 
-    /** Thứ tự các danh mục app hiển thị trên trang "ứng dụng" - danh mục nào không có app nào
-     *  thuộc về thì tự động bỏ qua, không hiện tiêu đề rỗng. "Khác" luôn đứng cuối cùng, gom
-     *  mọi app không khớp bất kỳ quy tắc nhận diện nào bên dưới. */
-    private val categoryOrder = listOf(
-        "Điện thoại", "Mạng xã hội", "Trình duyệt", "Ứng dụng Google", "Ngân hàng", "Mua sắm", "Office", "Khác"
+    /** 1 mục trong danh sách "ứng dụng" - dùng chung cho CẢ app thật đã cài (installedApps())
+     *  LẪN 12 mục cố định của "Điện thoại" (Gọi điện/Nhắn tin/Lịch/Đồng hồ...) để có thể GỘP
+     *  CHUNG rồi sắp xếp A-Z thành 1 DANH SÁCH DUY NHẤT, LIÊN TỤC - không còn phân nhóm theo
+     *  danh mục (Trình duyệt/Mạng xã hội/Ngân hàng...) hay theo chữ cái A/B/C... như các phiên
+     *  bản trước, đúng yêu cầu đơn giản hoá: "1 list liên tục thôi là đủ".
+     *  [pkgName] = null cho 12 mục cố định (không phải app thật nên KHÔNG đánh dấu sao được). */
+    private data class AppEntry(
+        val label: String, val icon: Drawable, val pkgName: String?,
+        val onClick: () -> Unit, val onLongPress: ((View) -> Unit)?
     )
 
-    /** Tên gói (package) của các app THƯỜNG GẶP theo từng danh mục - dùng để nhận diện CHẮC
-     *  CHẮN NHẤT (so khớp đúng package name), ưu tiên hơn so khớp theo tên hiển thị (label) vì
-     *  label có thể trùng chữ ở nhiều app không liên quan. Gồm cả tên gói của Android gốc (AOSP)
-     *  LẪN các bản OEM phổ biến ở Việt Nam (Samsung, Xiaomi/MIUI...) vì mỗi hãng máy thường tự
-     *  đóng gói lại app hệ thống (Điện thoại, Danh bạ, Máy ảnh...) với package riêng. */
-    private val phonePackages = setOf(
-        // Cuộc gọi
-        "com.android.dialer", "com.google.android.dialer", "com.samsung.android.dialer",
-        "com.android.incallui", "com.android.phone",
-        // Tin nhắn
-        "com.android.mms", "com.google.android.apps.messaging", "com.samsung.android.messaging",
-        // Danh bạ
-        "com.android.contacts", "com.google.android.contacts", "com.samsung.android.app.contacts",
-        // Camera
-        "com.android.camera", "com.android.camera2", "com.google.android.GoogleCamera",
-        "com.sec.android.app.camera",
-        // Thư viện (thư viện ảnh CỦA MÁY - khác "Thư viện Google"/Google Photos, xem googlePackages)
-        "com.android.gallery3d", "com.sec.android.gallery3d", "com.miui.gallery",
-        // Ghi âm
-        "com.android.soundrecorder", "com.samsung.android.app.soundrecorder", "com.miui.SoundRecorder",
-        // Máy phát nhạc
-        "com.android.music", "com.sec.android.app.music", "com.google.android.music",
-        "com.miui.player",
-        // Máy tính
-        "com.android.calculator2", "com.google.android.calculator", "com.sec.android.app.popupcalculator",
-        "com.miui.calculator",
-        // Đồng hồ
-        "com.android.deskclock", "com.google.android.deskclock", "com.sec.android.app.clockpackage",
-        "com.android.alarmclock",
-        // Lịch
-        "com.android.calendar", "com.google.android.calendar", "com.samsung.android.calendar",
-        // Ghi chú - Google Keep, Samsung Notes, MIUI Notes, NotebookLM
-        "com.google.android.keep", "com.samsung.android.app.notes", "com.miui.notes",
-        "com.samsung.android.memo", "com.google.android.apps.notebooklm",
-        // Microsoft To Do, OneNote (ghi chú/task - xếp cùng nhóm điện thoại)
-        "com.microsoft.todos", "com.microsoft.office.onenote",
-        // Quản lý tập tin
-        "com.google.android.apps.nbu.files", "com.sec.android.app.myfiles",
-        "com.miui.filemanager", "com.mi.android.globalFileexplorer",
-        "com.android.documentsui", "com.android.fileexplorer"
-    )
-    /** DANH SÁCH PACKAGE cố định ở trên KHÔNG PHỦ HẾT mọi máy - mỗi hãng/mỗi bản ROM lại tự đặt
-     *  package riêng cho các app hệ thống này (Điện thoại/Tin nhắn/Danh bạ/Camera/Thư viện/Ghi
-     *  âm/Lịch/Đồng hồ/Máy tính/Quản lý tệp), khiến nhiều máy app KHÔNG khớp package nào ở trên
-     *  và bị rơi nhầm vào "Khác". Thêm lớp nhận diện THEO TỪ KHOÁ TÊN HIỂN THỊ (không phân biệt
-     *  hoa/thường, cả tiếng Việt lẫn tiếng Anh) làm lưới an toàn thứ 2 - giống hệt cách
-     *  [bankKeywords]/[officeKeywords] đã làm cho "Ngân hàng"/"Office". KHÔNG dùng từ khoá quá
-     *  chung chung dễ đụng nhóm khác (vd bỏ "ảnh"/"photos" vì sẽ bắt nhầm cả "Ảnh Google". */
-    private val phoneKeywords = listOf(
-        "dialer", "gọi điện", "cuộc gọi",
-        "messaging", " sms", "nhắn tin", "tin nhắn",
-        "contacts", "danh bạ",
-        "camera", "máy ảnh",
-        "gallery", "thư viện ảnh",
-        "sound recorder", "voice recorder", "ghi âm",
-        "calendar", "lịch",
-        "clock", "đồng hồ", "báo thức", "alarm",
-        "calculator", "máy tính",
-        "file manager", "quản lý tệp", "quản lý tập tin", "trình quản lý tệp", "file explorer"
-    )
-    /** Mua sắm: package name của các app TMĐT phổ biến ở Việt Nam */
-    private val shoppingPackages = setOf(
-        "com.shopee.vn", "com.lazada.android", "vn.sendo.app",
-        "vn.tiki.app.tikiapp", "com.tiki.store",
-        "com.vindemia.sendo", "air.com.sendbuyapp",
-        "com.coupang.mobile", "vn.fptshop.fptshop",
-        "com.thegioididong.mshop", "com.dienmayxanh.app",
-        "vn.bachhoaxanh.app", "com.hasaki.app",
-        "com.fahasa.ebook", "vn.momo.partner"
-    )
-    private val shoppingKeywords = listOf(
-        "shopee", "lazada", "tiki", "sendo", "sen đỏ", "mua sắm", "shop",
-        "cửa hàng", "thegioididong", "dienmayxanh", "bachhoaxanh", "hasaki",
-        "fahasa", "fptshop", "coupang"
-    )
-    private val socialPackages = setOf(
-        "com.google.android.youtube", "com.zing.zalo",
-        "com.facebook.katana", "com.facebook.lite",
-        "com.zhiliaoapp.musically", "com.ss.android.ugc.trill"
-    )
-    private val browserPackagesExplicit = setOf(
-        "com.google.android.googlequicksearchbox", "com.android.chrome"
-    )
-    private val googlePackages = setOf(
-        "com.google.android.gm", "com.android.vending",
-        "com.google.android.apps.docs", "com.google.android.apps.maps",
-        "com.google.android.apps.photos"
-    )
-    /** "Ngân hàng"/"Office" KHÔNG có danh sách app cố định trước (người dùng không liệt kê tên
-     *  cụ thể) - nhận diện bằng CHỮ KHOÁ trong tên hiển thị (label), không phân biệt hoa/thường. */
-    private val bankKeywords = listOf(
-        "bank", "ngân hàng", "momo", "zalopay", "viettelpay", "shopeepay"
-    )
-    private val officeKeywords = listOf(
-        "word", "excel", "powerpoint", "office", "onedrive"
-    )
-
-    /** Xác định danh mục hiển thị của 1 app - so khớp package name trước (chắc chắn nhất), rồi
-     *  mới tới chữ khoá trong tên hiển thị, cuối cùng còn lại rơi vào "Khác":
-     *   1) "Điện thoại": các app hệ thống cốt lõi (Cuộc gọi, Tin nhắn, Danh bạ, Camera, Thư
-     *      viện, Ghi âm, Máy phát nhạc, Máy tính, Đồng hồ, Lịch, Quản lý tệp, Ghi chú...) - so
-     *      khớp package TRƯỚC ([phonePackages]), KHÔNG khớp package nào thì thử tiếp từ khoá tên
-     *      hiển thị ([phoneKeywords]) - máy nào có package lạ (OEM riêng) vẫn được xếp đúng.
-     *   2) "Mạng xã hội": YouTube, Zalo, Facebook, TikTok.
-     *   3) "Trình duyệt": Google (app tìm kiếm), Chrome - CỘNG THÊM bất kỳ app nào khác có đăng
-     *      ký xử lý link web (http://), để các trình duyệt khác (Cốc Cốc, Firefox, Samsung
-     *      Internet...) không có tên cụ thể vẫn được xếp đúng nhóm.
-     *   4) "Ứng dụng Google": Mail (Gmail), CH Play (Play Store), Drive, Maps, Thư viện Google
-     *      (Google Photos) - CỘNG THÊM mọi app khác thuộc hãng Google (package "com.google.")
-     *      chưa khớp nhóm nào ở trên.
-     *   5) "Ngân hàng"/6) "Office": nhận diện qua chữ khoá trong tên hiển thị (xem
-     *      [bankKeywords]/[officeKeywords]) vì không có danh sách app cụ thể.
-     *   7) "Khác": mọi app còn lại không khớp quy tắc nào ở trên. */
-    private fun appCategoryLabel(info: ResolveInfo, browserPackages: Set<String>): String {
-        val pkgName = info.activityInfo.packageName
-        val label = info.loadLabel(context.packageManager).toString().lowercase()
-
-        if (pkgName in phonePackages) return "Điện thoại"
-        if (phoneKeywords.any { label.contains(it) }) return "Điện thoại"
-        if (pkgName in socialPackages) return "Mạng xã hội"
-        if (pkgName in browserPackagesExplicit || pkgName in browserPackages) return "Trình duyệt"
-        if (pkgName in googlePackages || pkgName.startsWith("com.google.")) return "Ứng dụng Google"
-        if (bankKeywords.any { label.contains(it) }) return "Ngân hàng"
-        if (pkgName in shoppingPackages || shoppingKeywords.any { label.contains(it) }) return "Mua sắm"
-        if (officeKeywords.any { label.contains(it) }) return "Office"
-        return "Khác"
-    }
-
-    /** Dựng TRANG "ứng dụng" (trang phải - vuốt sang mới thấy): DANH SÁCH TOÀN BỘ app đã cài,
-     *  PHÂN NHÓM THEO DANH MỤC (Trình duyệt, Mạng xã hội, Game...) thay vì A-Z như trước - dễ
-     *  tìm app theo loại hơn. Trong mỗi nhóm, app vẫn xếp A-Z (kế thừa thứ tự đã sắp sẵn từ
-     *  [installedApps]). Mỗi dòng hỗ trợ NHẤN GIỮ để hiện menu ghim/bỏ ghim vào "start". */
+    /** Dựng TRANG "ứng dụng" (trang phải - vuốt sang mới thấy): 1 DANH SÁCH DUY NHẤT, LIÊN TỤC,
+     *  sắp xếp A-Z theo tên hiển thị, GỘP CHUNG app thật đã cài + 12 mục cố định "Điện thoại" -
+     *  KHÔNG còn tiêu đề phân nhóm nào (không danh mục, không chữ cái A/B/C...) - chỉ có ĐÚNG 1
+     *  ngoại lệ: nhóm "★ ĐÃ ĐÁNH DẤU SAO" ở đầu trang, CHỈ hiện khi có ít nhất 1 app được đánh
+     *  dấu sao (xem [StarredAppsStore]) - nhấn giữ 1 app rồi chọn "Đánh dấu sao" ở menu bật lên
+     *  (showPinContextMenu) để thêm vào đó. App đánh dấu sao vẫn hiện NGUYÊN VẸN ở đúng vị trí
+     *  A-Z của nó trong danh sách chính bên dưới - nhóm đầu trang chỉ là 1 BẢN SAO/lối tắt nổi
+     *  lên trên, không di chuyển hay xoá app khỏi danh sách chính. */
     private fun buildAppListPage(): View {
         val scrollView = ScrollView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -514,32 +394,13 @@ class HomeScreenManager(
         content.addView(sectionHeader("DS Ứng Dụng", smallHeader = true))
 
         val pm = context.packageManager
-        // Nhận diện trình duyệt: app nào ĐĂNG KÝ xử lý được link web (http://) coi như trình
-        // duyệt - resolveActivity/queryIntentActivities là cách chuẩn của Android để hỏi "ai
-        // xử lý được Intent này", không có API "isBrowser()" trực tiếp.
-        val browserPackages: Set<String> = try {
-            pm.queryIntentActivities(Intent(Intent.ACTION_VIEW, Uri.parse("http://")), 0)
-                .map { it.activityInfo.packageName }
-                .toSet()
-        } catch (e: Exception) { emptySet() }
 
-        val apps = installedApps()
-        // Gom app theo danh mục, giữ nguyên thứ tự A-Z đã sắp sẵn bên trong từng nhóm
-        // (LinkedHashMap giữ thứ tự thêm vào đầu tiên của từng key).
-        val grouped = LinkedHashMap<String, MutableList<ResolveInfo>>()
-        apps.forEach { info ->
-            val label = appCategoryLabel(info, browserPackages)
-            grouped.getOrPut(label) { mutableListOf() }.add(info)
-        }
-
-        // Dùng chung 1 closure dựng dòng app (tránh lặp lại onClick/onLongPress) cho cả nhóm
-        // "★ ĐÃ ĐÁNH DẤU SAO" lẫn các nhóm danh mục thường bên dưới.
-        fun addAppRow(info: ResolveInfo) {
-            val label = info.loadLabel(pm).toString()
-            val icon = info.loadIcon(pm)
+        val realEntries = installedApps().map { info ->
             val pkgName = info.activityInfo.packageName
-            content.addView(buildAppListRow(
-                label, icon,
+            AppEntry(
+                label = info.loadLabel(pm).toString(),
+                icon = info.loadIcon(pm),
+                pkgName = pkgName,
                 onClick = {
                     val launch = pm.getLaunchIntentForPackage(pkgName)
                     if (launch != null) {
@@ -548,60 +409,47 @@ class HomeScreenManager(
                     }
                 },
                 onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
+            )
+        }
+        val allEntries = (realEntries + buildFixedEntries()).sortedBy { it.label.lowercase() }
+
+        // Dùng chung 1 closure dựng dòng app (tránh lặp lại) cho cả nhóm "★ ĐÃ ĐÁNH DẤU SAO" lẫn
+        // danh sách chính bên dưới.
+        fun addRow(entry: AppEntry) {
+            content.addView(buildAppListRow(
+                entry.label, entry.icon,
+                onClick = entry.onClick,
+                onLongPress = entry.onLongPress ?: {}
             ))
         }
 
-        // ── Nhóm "★ ĐÃ ĐÁNH DẤU SAO" - LUÔN Ở ĐẦU trang (trước mọi danh mục khác), chỉ hiện khi
-        // có ít nhất 1 app đã đánh dấu (xem StarredAppsStore.kt) - nhấn giữ 1 app rồi chọn "Đánh
-        // dấu sao" ở menu bật lên (showPinContextMenu) để thêm vào đây. App đánh dấu sao VẪN
-        // hiện nguyên ở danh mục gốc của nó bên dưới - nhóm này chỉ là lối tắt nổi lên trên,
-        // không di chuyển/xoá app khỏi danh mục thật của nó.
+        // ── Nhóm "★ ĐÃ ĐÁNH DẤU SAO" - LUÔN Ở ĐẦU trang, CHỈ hiện khi có ít nhất 1 app đã đánh
+        // dấu. Đây là NGOẠI LỆ DUY NHẤT ngoài danh sách chính liên tục bên dưới. ──
         val starredPkgs = StarredAppsStore.getAll(context).toSet()
         if (starredPkgs.isNotEmpty()) {
-            val starredApps = apps.filter { it.activityInfo.packageName in starredPkgs }
-            if (starredApps.isNotEmpty()) {
+            val starredEntries = allEntries.filter { it.pkgName != null && it.pkgName in starredPkgs }
+            if (starredEntries.isNotEmpty()) {
                 content.addView(groupHeaderStarred("ĐÃ ĐÁNH DẤU SAO"))
-                starredApps.forEach { addAppRow(it) }
+                starredEntries.forEach { addRow(it) }
             }
         }
 
-        // Các app "ghi chú" (Keep/Samsung Notes/MIUI Notes/OneNote...) trong nhóm "Điện thoại"
-        // LUÔN đẩy xuống DƯỚI CÙNG của nhóm - các app còn lại (Gọi điện/Nhắn tin/Danh bạ/
-        // Camera/Thư viện/Ghi âm/Lịch/Đồng hồ/Máy tính/Quản lý tệp...) vẫn giữ đúng thứ tự A-Z
-        // như bình thường ở TRÊN nhóm ghi chú.
-        val notesPackages = setOf(
-            "com.google.android.keep", "com.samsung.android.app.notes", "com.miui.notes",
-            "com.samsung.android.memo", "com.google.android.apps.notebooklm",
-            "com.microsoft.todos", "com.microsoft.office.onenote"
-        )
-        categoryOrder.forEach { category ->
-            if (category == "Điện thoại") {
-                // Theo yêu cầu: mục "Điện thoại" LUÔN hiện đúng 12 mục CỐ ĐỊNH này, ĐÚNG THỨ TỰ,
-                // thay cho việc dò app thật đã cài (trước đây chỉ hiện "Keep Ghi chú" vì máy chỉ
-                // cài đúng 1 app khớp [phonePackages]) - xem [buildPhoneCategoryRows].
-                content.addView(groupHeader(category))
-                buildPhoneCategoryRows().forEach { content.addView(it) }
-                return@forEach
-            }
-            val appsInCategory = grouped[category] ?: return@forEach
-            content.addView(groupHeader(category))
-            val ordered = if (category == "Điện thoại") {
-                val (notes, rest) = appsInCategory.partition { it.activityInfo.packageName in notesPackages }
-                rest + notes
-            } else appsInCategory
-            ordered.forEach { addAppRow(it) }
-        }
+        // ── Danh sách chính: 1 LIST DUY NHẤT, LIÊN TỤC, A-Z, KHÔNG tiêu đề phân nhóm nào. ──
+        allEntries.forEach { addRow(it) }
 
         scrollView.addView(content)
         return scrollView
     }
 
-    /** 12 MỤC CỐ ĐỊNH của danh mục "Điện thoại" - ĐÚNG THỨ TỰ theo yêu cầu:
-     *  Gọi điện, Cuộc gọi, Nhắn tin, Danh bạ, Camera, Thư viện, Ghi âm, Ghi chú, Lịch, Đồng hồ,
-     *  Máy tính, Quản lý tập tin. 4 mục cuối (Lịch/Đồng hồ/Máy tính/Quản lý tập tin) mở THẲNG
-     *  màn hình có sẵn trong app qua [onOpenShortcut] (tái dùng đúng [ShortcutItem] đã định
-     *  nghĩa cho tile Start). 8 mục đầu mở app HỆ THỐNG THẬT của máy qua Intent chuẩn Android. */
-    private fun buildPhoneCategoryRows(): List<View> {
+    /** 12 MỤC CỐ ĐỊNH luôn có mặt trong danh sách "ứng dụng" dù máy có cài app tương ứng hay
+     *  không (Gọi điện, Cuộc gọi, Nhắn tin, Danh bạ, Camera, Thư viện, Ghi âm, Ghi chú, Lịch,
+     *  Đồng hồ, Máy tính, Quản lý tập tin) - trả về dạng [AppEntry] để GỘP CHUNG với app thật rồi
+     *  sắp A-Z thành 1 danh sách duy nhất (xem [buildAppListPage]), KHÔNG còn đứng riêng thành 1
+     *  khối cố định đúng thứ tự như phiên bản trước. 8 mục đầu mở app HỆ THỐNG THẬT của máy qua
+     *  Intent chuẩn Android, 4 mục cuối (Lịch/Đồng hồ/Máy tính/Quản lý tập tin) mở THẲNG màn hình
+     *  có sẵn trong app qua [onOpenShortcut]. KHÔNG đánh dấu sao được (không phải app thật, không
+     *  có packageName) nên [AppEntry.onLongPress] = null. */
+    private fun buildFixedEntries(): List<AppEntry> {
         fun launchSystem(intent: Intent, notFoundMsg: String) {
             try {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -610,44 +458,44 @@ class HomeScreenManager(
                 Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
             }
         }
-        fun row(label: String, iconRes: Int, onClick: () -> Unit): View =
-            buildAppListRow(label, context.getDrawable(iconRes)!!, onClick = onClick, onLongPress = {})
+        fun entry(label: String, iconRes: Int, onClick: () -> Unit): AppEntry =
+            AppEntry(label, context.getDrawable(iconRes)!!, null, onClick, null)
 
         return listOf(
-            row("Gọi điện", R.drawable.ic_shortcut_phonecall) {
+            entry("Gọi điện", R.drawable.ic_shortcut_phonecall) {
                 launchSystem(Intent(Intent.ACTION_DIAL), "Không tìm thấy ứng dụng Gọi điện")
             },
-            row("Cuộc gọi", R.drawable.ic_shortcut_phonecall) {
+            entry("Cuộc gọi", R.drawable.ic_shortcut_phonecall) {
                 launchSystem(
                     Intent(Intent.ACTION_VIEW, Uri.parse("content://call_log/calls")),
                     "Không tìm thấy nhật ký Cuộc gọi"
                 )
             },
-            row("Nhắn tin", R.drawable.ic_shortcut_messaging) {
+            entry("Nhắn tin", R.drawable.ic_shortcut_messaging) {
                 launchSystem(
                     Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING),
                     "Không tìm thấy ứng dụng Nhắn tin"
                 )
             },
-            row("Danh bạ", R.drawable.ic_shortcut_contacts) {
+            entry("Danh bạ", R.drawable.ic_shortcut_contacts) {
                 launchSystem(
                     Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI),
                     "Không tìm thấy ứng dụng Danh bạ"
                 )
             },
-            row("Camera", R.drawable.ic_shortcut_camera) {
+            entry("Camera", R.drawable.ic_shortcut_camera) {
                 launchSystem(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA), "Không tìm thấy ứng dụng Camera")
             },
-            row("Thư viện", R.drawable.ic_shortcut_gallery) {
+            entry("Thư viện", R.drawable.ic_shortcut_gallery) {
                 launchSystem(
                     Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_GALLERY),
                     "Không tìm thấy ứng dụng Thư viện ảnh"
                 )
             },
-            row("Ghi âm", R.drawable.ic_shortcut_recorder) {
+            entry("Ghi âm", R.drawable.ic_shortcut_recorder) {
                 launchSystem(Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION), "Không tìm thấy ứng dụng Ghi âm")
             },
-            row("Ghi chú", R.drawable.ic_shortcut_notes) {
+            entry("Ghi chú", R.drawable.ic_shortcut_notes) {
                 val candidates = listOf(
                     "com.google.android.keep", "com.samsung.android.app.notes",
                     "com.miui.notes", "com.samsung.android.memo"
@@ -660,14 +508,13 @@ class HomeScreenManager(
                     Toast.makeText(context, "Chưa cài ứng dụng Ghi chú nào", Toast.LENGTH_SHORT).show()
                 }
             },
-            row("Lịch", R.drawable.ic_shortcut_calendar) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calendar")) },
-            row("Đồng hồ", R.drawable.ic_shortcut_clock) { onOpenShortcut(ShortcutsRepository.ALL.getValue("clock")) },
-            row("Máy tính", R.drawable.ic_shortcut_calculator) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calculator")) },
-            row("Quản lý tập tin", R.drawable.ic_shortcut_files) { onOpenShortcut(ShortcutsRepository.ALL.getValue("files")) }
+            entry("Lịch", R.drawable.ic_shortcut_calendar) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calendar")) },
+            entry("Đồng hồ", R.drawable.ic_shortcut_clock) { onOpenShortcut(ShortcutsRepository.ALL.getValue("clock")) },
+            entry("Máy tính", R.drawable.ic_shortcut_calculator) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calculator")) },
+            entry("Quản lý tập tin", R.drawable.ic_shortcut_files) { onOpenShortcut(ShortcutsRepository.ALL.getValue("files")) }
         )
     }
 
-    /** Nhấn giữ tile → hiện menu "Đổi vị trí" / "Đổi kích cỡ" / "Bỏ ghim". */
     private fun startTileDrag(
         tile: View, id: String, isFixed: Boolean,
         fixedKeys: MutableList<String>, userKeys: MutableList<String>,
@@ -1087,20 +934,10 @@ class HomeScreenManager(
         setPadding(dp(2), dp(8), dp(2), dp(10))
     }
 
-    /** Tiêu đề phân nhóm trong danh sách app (danh mục: "Trình duyệt", "Game"...), kiểu WP App
-     *  List: chữ to, màu accent, đứng riêng 1 dòng làm mốc phân cách trực quan giữa các nhóm.
-     *  CHỮ CÁI ĐẦU luôn IN HOA (đa số danh mục đã viết hoa sẵn nên phần lớn không đổi gì). */
-    private fun groupHeader(text: String): View = TextView(context).apply {
-        this.text = text.replaceFirstChar { it.titlecase() }
-        textSize = 22f
-        setTextColor(ThemePrefs.accent(context))
-        typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        setPadding(dp(4), dp(14), dp(4), dp(4))
-    }
-
-    /** Giống [groupHeader] nhưng có thêm ICON DẤU SAO (★) đứng trước chữ - dùng riêng cho nhóm
-     *  "ĐÃ ĐÁNH DẤU SAO" ở đầu trang "ứng dụng", để phân biệt trực quan ngay lập tức với các
-     *  nhóm danh mục thường (Trình duyệt, Game...) vốn chỉ có chữ. */
+    /** Giống tiêu đề nhóm thường (chữ to, màu accent) nhưng có thêm ICON DẤU SAO (★) đứng trước
+     *  chữ - dùng RIÊNG cho nhóm "ĐÃ ĐÁNH DẤU SAO" ở đầu trang "ứng dụng" - NGOẠI LỆ DUY NHẤT
+     *  còn tiêu đề trong trang này, vì danh sách chính bên dưới giờ là 1 list liên tục không còn
+     *  phân nhóm theo danh mục hay chữ cái A/B/C... nữa (xem [buildAppListPage]). */
     private fun groupHeaderStarred(text: String): View = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
