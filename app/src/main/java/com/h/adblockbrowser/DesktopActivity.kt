@@ -156,7 +156,14 @@ class DesktopActivity : AppCompatActivity() {
         // clock) theo yêu cầu - trước đây đặt ở ĐẦU dock. ──
         val dock = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
+            // ĐÁY (Gravity.BOTTOM) thay vì GIỮA (CENTER_VERTICAL trước đây) - trước đây các icon
+            // lơ lửng giữa màn hình, chừa khoảng trống rỗng phía trên LẪN phía dưới rất lãng phí
+            // - giờ dính SÁT ĐÁY dock, chỉ còn khoảng trống phía trên (đúng yêu cầu "nằm sát cạnh
+            // dưới"), đồng thời chừa đúng khoảng bằng chiều cao [WpNavBar] (thanh điều hướng nổi,
+            // cửa sổ hệ thống riêng LUÔN đè lên trên cùng ở mép dưới màn hình) để icon cuối cùng
+            // (nút "Về Start") không bị thanh đó che khuất mất 1 phần.
+            gravity = Gravity.BOTTOM
+            setPadding(0, 0, 0, dp(WpNavBar.HEIGHT_DP) + dp(8))
             background = ColorDrawable(0x66000000)
         }
         // ── Icon app trong dock (youtube/files/settings/calculator/clock) - GIỐNG ĐÚNG kiểu ô
