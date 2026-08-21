@@ -39,11 +39,24 @@ import kotlin.math.abs
  *   2) Vùng "desktop" - icon các app đã "Thêm vào Điện thoại" qua menu nhấn giữ (lưu ở
  *      [DesktopAppsStore] - TÁCH BIỆT HOÀN TOÀN với [PinnedAppsStore] của trang Start).
  *      Ghim vào Start KHÔNG tự thêm vào đây, và ngược lại - người dùng chủ động chọn
- *      riêng từng nơi. Kéo-thả tự do bất kỳ đâu, vị trí lưu qua [DesktopIconStore].
+ *      riêng từng nơi. Kéo-thả tự do bất kỳ đâu, vị trí lưu qua [DesktopIconStore]. Ô đồng hồ
+ *      ở trên cũng được coi NHƯ 1 ICON ỨNG DỤNG BÌNH THƯỜNG trong vùng này (id đặc biệt
+ *      [CLOCK_ID]) - kéo-thả được y hệt icon app, KHÔNG còn cố định 1 chỗ như trước.
  *   3) Dock dọc cạnh phải - lối tắt CỐ ĐỊNH tới các chức năng riêng của app (không phải app
- *      ngoài) để luôn có sẵn dù danh sách ghim trống - giống vai trò 1 "taskbar" thu nhỏ.
+ *      ngoài) để luôn có sẵn dù danh sách ghim trống - giống vai trò 1 "taskbar" thu nhỏ. KÉO
+ *      1 icon (app HOẶC ô đồng hồ) từ vùng desktop THẢ VÀO dải này (chạm cuối nằm trong vùng
+ *      dock) sẽ THÊM icon đó vào dock luôn (lưu ở [DesktopDockStore]), biến mất khỏi vùng tự
+ *      do - NHẤN GIỮ 1 icon loại này NGAY TRONG dock để gỡ trở lại vùng tự do.
  */
 class DesktopActivity : AppCompatActivity() {
+
+    companion object {
+        /** Id đặc biệt đại diện cho ô đồng hồ/ngày trong các store dùng chung với app thật
+         *  ([DesktopIconStore] lưu vị trí tự do, [DesktopDockStore] đánh dấu đã kéo vào dock) -
+         *  không trùng bất kỳ tên package Android thật nào (luôn có dạng "a.b.c"). */
+        const val CLOCK_ID = "clock_widget"
+    }
+
 
     override fun finish() {
         super.finish()
@@ -53,6 +66,8 @@ class DesktopActivity : AppCompatActivity() {
 
     private var navBarHandle: WpNavBar.Handle? = null
     private lateinit var desktopArea: FrameLayout
+    private lateinit var dock: LinearLayout
+    private lateinit var clockWidget: LinearLayout
     // Dấu ✕ (loại bỏ app khỏi Điện thoại) đang hiện, nếu có - xem showRemoveBadge(). Giữ tham
     // chiếu để: (1) tự dọn dấu ✕ CŨ khi nhấn giữ 1 icon KHÁC (chỉ 1 dấu ✕ hiện tại 1 lúc), (2)
     // dọn khi chạm ra khoảng trống (xem setOnClickListener của desktopArea bên dưới).
@@ -106,8 +121,13 @@ class DesktopActivity : AppCompatActivity() {
         }
 
         // ── Widget giờ/ngày kiểu Android thật: chữ trắng đổ bóng đè trực tiếp lên ảnh nền,
-        // KHÔNG khung màu (khác Live Tile của Start - xem class doc ở trên). ──
-        val clockWidget = LinearLayout(this).apply {
+        // KHÔNG khung màu (khác Live Tile của Start - xem class doc ở trên). GIỜ ĐÂY được coi
+        // NHƯ 1 ICON ỨNG DỤNG BÌNH THƯỜNG trong vùng desktop tự do (xem layoutPinnedIcons() -
+        // gắn vào [desktopArea] + [attachDrag] y hệt icon app khác) - KHÔNG còn gắn cố định 1
+        // vị trí thẳng vào [outer] như trước, KHÔNG còn 2 vùng chạm riêng (giờ mở Đồng hồ, ngày
+        // mở Lịch) - chạm/kéo xử lý CHUNG cho cả khối qua [attachDrag], chạm (không kéo) LUÔN mở
+        // Đồng hồ, đúng ý "xem như 1 icon ứng dụng luôn".
+        clockWidget = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
         }
@@ -117,8 +137,6 @@ class DesktopActivity : AppCompatActivity() {
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             gravity = Gravity.CENTER
             setShadowLayer(dp(6).toFloat(), 0f, dp(2).toFloat(), 0x99000000.toInt())
-            isClickable = true
-            setOnClickListener { openShortcut("clock") }
         }
         tvDate = TextView(this).apply {
             textSize = 15f
@@ -126,15 +144,9 @@ class DesktopActivity : AppCompatActivity() {
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             gravity = Gravity.CENTER
             setShadowLayer(dp(4).toFloat(), 0f, dp(1).toFloat(), 0x99000000.toInt())
-            isClickable = true
-            setOnClickListener { openShortcut("calendar") }
         }
         clockWidget.addView(tvTime)
         clockWidget.addView(tvDate)
-        outer.addView(clockWidget, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
-            it.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            it.topMargin = statusBarHeight() + dp(28)
-        })
         updateClock()
 
         // ── Vùng desktop: icon tự do kéo-thả. Chừa lề phải cho dock, lề trên cho widget giờ. ──
@@ -154,12 +166,11 @@ class DesktopActivity : AppCompatActivity() {
             it.rightMargin = dp(72)
         })
 
-        // ── Dock dọc cạnh phải - lối tắt cố định tới chức năng riêng của app. Nút "Start" (icon
-        // 4-ô kiểu logo Windows/WP thật, [R.drawable.ic_wp_start]) đưa thẳng về trang Start
-        // NGAY TỪ TRONG NỘI DUNG trang Điện thoại (không cần với tay xuống thanh WpNavBar ở đáy
-        // màn hình). ĐẶT Ở CUỐI dock (dưới cùng, sau icon youtube/files/settings/calculator/
-        // clock) theo yêu cầu - trước đây đặt ở ĐẦU dock. ──
-        val dock = LinearLayout(this).apply {
+        // ── Dock dọc cạnh phải - lối tắt cố định tới chức năng riêng của app + các mục người
+        // dùng đã KÉO THẢ vào đây ([DesktopDockStore]) - nội dung được dựng trong [rebuildDock]
+        // (tách hàm riêng để gọi lại được mỗi khi thêm/gỡ mục kéo-thả, không chỉ dựng 1 lần lúc
+        // mở trang). ──
+        dock = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             // ĐÁY (Gravity.BOTTOM) + GIỮA THEO CHIỀU NGANG (CENTER_HORIZONTAL) - trước đây các
             // icon lơ lửng giữa màn hình, chừa khoảng trống rỗng phía trên LẪN phía dưới rất
@@ -171,63 +182,7 @@ class DesktopActivity : AppCompatActivity() {
             setPadding(0, 0, 0, dp(WpNavBar.HEIGHT_DP) + dp(8))
             background = ColorDrawable(0x66000000)
         }
-        // ── Icon app trong dock (youtube/files/settings/calculator/clock) - GIỐNG ĐÚNG kiểu ô
-        // vuông màu accent của nút "Start" bên dưới (trước đây các icon này chỉ là icon trắng
-        // trơn không nền, lạc lõng, không rõ là 1 nút bấm được so với nút "Start" nổi bật) -
-        // xoay vòng màu qua [ThemePrefs.PALETTE] giống hệt cách các ô Live Tile trên trang
-        // "start" xoay màu (xem [HomeScreenManager]), để mỗi icon 1 màu khác nhau, đồng bộ
-        // cảm giác Live Tile xuyên suốt toàn app thay vì chỉ riêng nút "Start" có nền màu.
-        val dockTilePalette = ThemePrefs.PALETTE
-        var dockColorIndex = 0
-        val dockKeys = listOf("youtube", "files", "settings", "calculator", "clock")
-        dockKeys.forEach { key ->
-            ShortcutsRepository.ALL[key]?.let { item ->
-                // Icon "YouTube" trong dock: LUÔN nền đỏ cố định (khớp icon "youtube" trên
-                // trang start, xem HomeScreenManager) - không xoay vòng palette, không chiếm
-                // 1 lượt màu để các icon dock còn lại (files/settings/calculator/clock) không
-                // bị lệch màu so với trước.
-                val tileColor = if (key == "youtube") {
-                    ThemePrefs.PALETTE[11] // 0xFFE51400 - "Đỏ (Red)"
-                } else {
-                    dockTilePalette[dockColorIndex % dockTilePalette.size].also { dockColorIndex++ }
-                }
-                dock.addView(FrameLayout(this).apply {
-                    background = GradientDrawable().apply {
-                        setColor(tileColor)
-                    }
-                    isClickable = true
-                    isFocusable = true
-                    contentDescription = item.label
-                    setOnClickListener { openShortcut(key) }
-                    addView(ImageView(this@DesktopActivity).apply {
-                        setImageResource(item.iconRes)
-                        val pad = dp(14)
-                        setPadding(pad, pad, pad, pad)
-                    })
-                }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
-            }
-        }
-        dock.addView(View(this).apply {
-            setBackgroundColor(0x33FFFFFF)
-        }, LinearLayout.LayoutParams(dp(32), dp(1)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.topMargin = dp(4); it.bottomMargin = dp(4) })
-        dock.addView(FrameLayout(this).apply {
-            // Ô VUÔNG MÀU (accent người dùng đã chọn ở Cài đặt > Giao diện - mặc định Cobalt,
-            // có thể là Tím/Chàm nếu người dùng chọn màu đó) đúng kiểu "Live Tile Start" thật
-            // của Windows Phone, thay vì icon trắng trơn không nền như trước - để nút này thật
-            // sự NỔI BẬT, rõ ràng là 1 nút bấm được, không bị lẫn vào nền tối của dock.
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(ThemePrefs.accent(this@DesktopActivity))
-            }
-            isClickable = true
-            isFocusable = true
-            contentDescription = "Về Start"
-            setOnClickListener { finish() }
-            addView(ImageView(this@DesktopActivity).apply {
-                setImageResource(R.drawable.ic_wp_start)
-                val pad = dp(14)
-                setPadding(pad, pad, pad, pad)
-            })
-        }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
+        rebuildDock()
         outer.addView(dock, FrameLayout.LayoutParams(dp(72), ViewGroup.LayoutParams.MATCH_PARENT).also {
             it.gravity = Gravity.END
         })
@@ -273,6 +228,124 @@ class DesktopActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    /** Dựng lại TOÀN BỘ nội dung [dock]: 5 lối tắt CỐ ĐỊNH (youtube/files/settings/calculator/
+     *  clock, không đổi được) rồi tới các mục NGƯỜI DÙNG đã kéo-thả vào đây ([DesktopDockStore],
+     *  app hoặc ô đồng hồ [CLOCK_ID]), cuối cùng luôn là nút "Về Start". Gọi lại hàm này MỖI KHI
+     *  danh sách [DesktopDockStore] đổi (thêm/gỡ 1 mục) để dock hiện đúng nội dung mới ngay,
+     *  không cần thoát vào lại trang. */
+    private fun rebuildDock() {
+        dock.removeAllViews()
+        // ── Icon app trong dock (youtube/files/settings/calculator/clock) - GIỐNG ĐÚNG kiểu ô
+        // vuông màu accent của nút "Start" bên dưới (trước đây các icon này chỉ là icon trắng
+        // trơn không nền, lạc lõng, không rõ là 1 nút bấm được so với nút "Start" nổi bật) -
+        // xoay vòng màu qua [ThemePrefs.PALETTE] giống hệt cách các ô Live Tile trên trang
+        // "start" xoay màu (xem [HomeScreenManager]), để mỗi icon 1 màu khác nhau, đồng bộ
+        // cảm giác Live Tile xuyên suốt toàn app thay vì chỉ riêng nút "Start" có nền màu.
+        val dockTilePalette = ThemePrefs.PALETTE
+        var dockColorIndex = 0
+        val dockKeys = listOf("youtube", "files", "settings", "calculator", "clock")
+        dockKeys.forEach { key ->
+            ShortcutsRepository.ALL[key]?.let { item ->
+                // Icon "YouTube" trong dock: LUÔN nền đỏ cố định (khớp icon "youtube" trên
+                // trang start, xem HomeScreenManager) - không xoay vòng palette, không chiếm
+                // 1 lượt màu để các icon dock còn lại (files/settings/calculator/clock) không
+                // bị lệch màu so với trước.
+                val tileColor = if (key == "youtube") {
+                    ThemePrefs.PALETTE[11] // 0xFFE51400 - "Đỏ (Red)"
+                } else {
+                    dockTilePalette[dockColorIndex % dockTilePalette.size].also { dockColorIndex++ }
+                }
+                dock.addView(FrameLayout(this).apply {
+                    background = GradientDrawable().apply {
+                        setColor(tileColor)
+                    }
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = item.label
+                    setOnClickListener { openShortcut(key) }
+                    addView(ImageView(this@DesktopActivity).apply {
+                        setImageResource(item.iconRes)
+                        val pad = dp(14)
+                        setPadding(pad, pad, pad, pad)
+                    })
+                }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
+            }
+        }
+
+        // ── Mục NGƯỜI DÙNG đã KÉO-THẢ vào dock (app đã "Thêm vào Điện thoại", hoặc ô đồng hồ) -
+        // xem [DesktopDockStore] - thêm vào bằng cách kéo icon từ vùng desktop tự do thả vào
+        // dải dock này (xem [attachDrag]). NHẤN GIỮ 1 mục ở đây -> gỡ khỏi dock, icon quay lại
+        // vùng desktop tự do (giữ nguyên vị trí tự do cũ nếu có). ──
+        val dockedIds = DesktopDockStore.getAll(this)
+        if (dockedIds.isNotEmpty()) {
+            dock.addView(View(this).apply {
+                setBackgroundColor(0x33FFFFFF)
+            }, LinearLayout.LayoutParams(dp(32), dp(1)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.topMargin = dp(4); it.bottomMargin = dp(4) })
+        }
+        val pm = packageManager
+        dockedIds.forEach { id ->
+            val tileColor = dockTilePalette[dockColorIndex % dockTilePalette.size].also { dockColorIndex++ }
+            val tile = FrameLayout(this).apply {
+                background = GradientDrawable().apply { setColor(tileColor) }
+                isClickable = true
+                isFocusable = true
+            }
+            if (id == CLOCK_ID) {
+                tile.contentDescription = "Đồng hồ"
+                tile.addView(ImageView(this).apply {
+                    setImageResource(R.drawable.ic_shortcut_clock)
+                    val pad = dp(14); setPadding(pad, pad, pad, pad)
+                })
+                tile.setOnClickListener { openShortcut("clock") }
+            } else {
+                val icon = try { pm.getApplicationIcon(id) } catch (e: Exception) { null }
+                val label = try {
+                    pm.getApplicationLabel(pm.getApplicationInfo(id, 0)).toString()
+                } catch (e: Exception) { id }
+                tile.contentDescription = label
+                tile.addView(ImageView(this).apply {
+                    if (icon != null) setImageDrawable(icon)
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    val pad = dp(8); setPadding(pad, pad, pad, pad)
+                })
+                tile.setOnClickListener {
+                    val launch = pm.getLaunchIntentForPackage(id)
+                    if (launch != null) startActivity(launch)
+                }
+            }
+            tile.setOnLongClickListener {
+                tile.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                DesktopDockStore.remove(this, id)
+                rebuildDock()
+                layoutPinnedIcons()
+                true
+            }
+            dock.addView(tile, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
+        }
+
+        dock.addView(View(this).apply {
+            setBackgroundColor(0x33FFFFFF)
+        }, LinearLayout.LayoutParams(dp(32), dp(1)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.topMargin = dp(4); it.bottomMargin = dp(4) })
+        dock.addView(FrameLayout(this).apply {
+            // Ô VUÔNG MÀU (accent người dùng đã chọn ở Cài đặt > Giao diện - mặc định Cobalt,
+            // có thể là Tím/Chàm nếu người dùng chọn màu đó) đúng kiểu "Live Tile Start" thật
+            // của Windows Phone, thay vì icon trắng trơn không nền như trước - để nút này thật
+            // sự NỔI BẬT, rõ ràng là 1 nút bấm được, không bị lẫn vào nền tối của dock.
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(ThemePrefs.accent(this@DesktopActivity))
+            }
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Về Start"
+            setOnClickListener { finish() }
+            addView(ImageView(this@DesktopActivity).apply {
+                setImageResource(R.drawable.ic_wp_start)
+                val pad = dp(14)
+                setPadding(pad, pad, pad, pad)
+            })
+        }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
+    }
+
     private fun updateClock() {
         val cal = Calendar.getInstance()
         tvTime.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(cal.time)
@@ -314,8 +387,48 @@ class DesktopActivity : AppCompatActivity() {
     private fun layoutPinnedIcons() {
         desktopArea.removeAllViews()
         activeRemoveBadge = null  // removeAllViews() vừa xoá luôn dấu ✕ nếu đang hiện
+
+        // ── Ô đồng hồ/ngày - coi NHƯ 1 ICON ỨNG DỤNG BÌNH THƯỜNG trong vùng tự do này (xem
+        // class doc + CLOCK_ID) - CHỈ hiện ở đây nếu CHƯA bị kéo vào dock (xem
+        // [DesktopDockStore], nếu đã ở dock thì rebuildDock() lo phần hiển thị, không hiện lại
+        // ở đây nữa kẻo trùng 2 nơi cùng lúc). Vị trí mặc định = giữa màn hình theo chiều ngang,
+        // ngay dưới thanh trạng thái (giữ đúng cảm giác widget giờ gốc), NGƯỜI DÙNG kéo đi đâu
+        // thì lưu lại y hệt icon app qua [DesktopIconStore] (dùng chung, khoá bằng [CLOCK_ID]). ──
+        if (!DesktopDockStore.contains(this, CLOCK_ID)) {
+            (clockWidget.parent as? ViewGroup)?.removeView(clockWidget)
+            desktopArea.addView(
+                clockWidget,
+                FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            )
+            clockWidget.post {
+                val areaWNow = desktopArea.width.toFloat()
+                val areaHNow = desktopArea.height.toFloat()
+                val cw = clockWidget.width.toFloat().takeIf { it > 0f } ?: dp(200).toFloat()
+                val ch = clockWidget.height.toFloat().takeIf { it > 0f } ?: dp(80).toFloat()
+                val saved = DesktopIconStore.getPosition(this, CLOCK_ID)
+                val x = if (saved != null) saved.first * areaWNow else (areaWNow - cw) / 2f
+                val y = if (saved != null) saved.second * areaHNow else (statusBarHeight() + dp(28)).toFloat()
+                clockWidget.x = x.coerceIn(0f, (areaWNow - cw).coerceAtLeast(0f))
+                clockWidget.y = y.coerceIn(0f, (areaHNow - ch).coerceAtLeast(0f))
+            }
+            attachDrag(clockWidget, CLOCK_ID,
+                onTap = { openShortcut("clock") },
+                onLongPress = { /* Đồng hồ không có "gỡ khỏi trang" - chỉ kéo vào dock được */ },
+                onDroppedInDock = {
+                    DesktopDockStore.add(this, CLOCK_ID)
+                    layoutPinnedIcons()
+                    rebuildDock()
+                },
+                minYPx = statusBarHeight() + dp(4)
+            )
+        } else {
+            (clockWidget.parent as? ViewGroup)?.removeView(clockWidget)
+        }
+
         val pm = packageManager
-        val pinned = DesktopAppsStore.getAll(this)
+        // App đã "Thêm vào Điện thoại" NHƯNG đã bị kéo vào dock thì KHÔNG hiện lại ở vùng tự do
+        // nữa (xem [DesktopDockStore]) - chỉ còn hiện trong dock (xem [rebuildDock]).
+        val pinned = DesktopAppsStore.getAll(this).filter { !DesktopDockStore.contains(this, it) }
         if (pinned.isEmpty()) {
             if (showEmptyHint) {
                 // Hiện "icon hướng dẫn" trông giống 1 ô app thật (tile màu + icon + nhãn)
@@ -428,31 +541,49 @@ class DesktopActivity : AppCompatActivity() {
                 cell.y = y.coerceIn(0f, (areaHNow - cellH).coerceAtLeast(0f))
             }
 
-            attachDrag(cell, pkgName, cellW, cellH,
+            attachDrag(cell, pkgName,
                 onTap = {
                     // Chạm (không kéo) -> mở app, giống hành vi chạm icon trên màn hình chính
                     // Android thật.
                     val launchIntent = pm.getLaunchIntentForPackage(pkgName)
                     if (launchIntent != null) startActivity(launchIntent)
                 },
-                onLongPress = { showRemoveBadge(cell, pkgName) }
+                onLongPress = { showRemoveBadge(cell, pkgName) },
+                onDroppedInDock = {
+                    DesktopDockStore.add(this, pkgName)
+                    layoutPinnedIcons()
+                    rebuildDock()
+                }
             )
         }
     }
 
-    /** Kéo-thả tự do 1 icon trong [desktopArea]: nhấn giữ + di chuyển để đổi vị trí (lưu lại
-     *  qua [DesktopIconStore]); chạm ngắn không di chuyển (dưới ngưỡng [tapSlop]) -> coi là
-     *  TAP, gọi [onTap]; giữ nguyên tại chỗ đủ lâu (không di chuyển) -> coi là LONG PRESS, gọi
-     *  [onLongPress] (mở menu gỡ khỏi trang này) - đúng cách phân biệt tap/drag/long-press chuẩn
-     *  trên Android (không có API hệ thống nào tự làm việc này cho drag tự do bằng x/y, phải tự
-     *  tính khoảng cách + thời gian di chuyển so với điểm nhấn ban đầu). */
-    private fun attachDrag(view: View, pkgName: String, cellW: Int, cellH: Int, onTap: () -> Unit, onLongPress: () -> Unit) {
+    /** Kéo-thả tự do 1 icon (app HOẶC ô đồng hồ [CLOCK_ID]) trong [desktopArea]: nhấn giữ + di
+     *  chuyển để đổi vị trí (lưu lại qua [DesktopIconStore], khoá bằng [itemId]); chạm ngắn
+     *  không di chuyển (dưới ngưỡng [tapSlop]) -> coi là TAP, gọi [onTap]; giữ nguyên tại chỗ đủ
+     *  lâu (không di chuyển) -> coi là LONG PRESS, gọi [onLongPress]; kéo rồi THẢ TAY trong lúc
+     *  ngón tay đang nằm trong dải DOCK cạnh phải (toạ độ MÀN HÌNH THẬT >= mép trái dock, xem
+     *  [dockZoneStartPx] - PHẢI dùng toạ độ màn hình thật [MotionEvent.getRawX], không phải toạ
+     *  độ cục bộ trong [desktopArea], vì [desktopArea] đã CHỪA HẲN dải dock ra khỏi bề ngang của
+     *  nó nên không bao giờ tự nhận được toạ độ cục bộ nằm trong dock) -> gọi [onDroppedInDock]
+     *  THAY VÌ lưu vị trí tự do như bình thường - đúng ý "kéo vào thanh bên phải". Cỡ icon đọc
+     *  TRỰC TIẾP từ [View.getWidth]/[View.getHeight] của [view] tại thời điểm kéo (không nhận
+     *  tham số cỡ cố định) để dùng chung được cho CẢ icon app (cỡ cố định) LẪN ô đồng hồ (cỡ tự
+     *  co theo nội dung chữ, [ViewGroup.LayoutParams.WRAP_CONTENT]). [minYPx] = giới hạn TRÊN
+     *  không cho kéo lên quá (mặc định chừa chỗ đồng hồ cho icon app; ô đồng hồ tự truyền giá trị
+     *  thấp hơn hẳn vì chính nó không cần né chính nó). */
+    private fun attachDrag(
+        view: View, itemId: String, onTap: () -> Unit, onLongPress: () -> Unit,
+        onDroppedInDock: () -> Unit,
+        minYPx: Int = statusBarHeight() + dp(140)
+    ) {
         var downRawX = 0f
         var downRawY = 0f
         var startX = 0f
         var startY = 0f
         var longPressFired = false
         val tapSlop = dp(10)
+        val dockZoneStartPx = resources.displayMetrics.widthPixels - dp(72)
         val longPressRunnable = Runnable {
             longPressFired = true
             view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
@@ -474,12 +605,12 @@ class DesktopActivity : AppCompatActivity() {
                     val dy = event.rawY - downRawY
                     if (abs(dx) + abs(dy) > tapSlop) v.removeCallbacks(longPressRunnable)
                     if (!longPressFired) {
+                        val cellW = v.width
+                        val cellH = v.height
                         val maxX = (desktopArea.width - cellW).coerceAtLeast(0).toFloat()
                         val maxY = (desktopArea.height - cellH).coerceAtLeast(0).toFloat()
-                        // minY = clockReservedTop: không cho kéo icon lên che đồng hồ
-                        val minY = (statusBarHeight() + dp(140)).toFloat()
                         v.x = (startX + dx).coerceIn(0f, maxX)
-                        v.y = (startY + dy).coerceIn(minY, maxY)
+                        v.y = (startY + dy).coerceIn(minYPx.toFloat().coerceAtMost(maxY), maxY)
                     }
                     true
                 }
@@ -487,13 +618,15 @@ class DesktopActivity : AppCompatActivity() {
                     v.removeCallbacks(longPressRunnable)
                     if (longPressFired) return@setOnTouchListener true
                     val moved = abs(event.rawX - downRawX) + abs(event.rawY - downRawY)
-                    if (moved < tapSlop) {
-                        onTap()
-                    } else {
-                        val areaW = desktopArea.width.toFloat()
-                        val areaH = desktopArea.height.toFloat()
-                        if (areaW > 0 && areaH > 0) {
-                            DesktopIconStore.setPosition(this, pkgName, v.x / areaW, v.y / areaH)
+                    when {
+                        moved < tapSlop -> onTap()
+                        event.rawX >= dockZoneStartPx -> onDroppedInDock()
+                        else -> {
+                            val areaW = desktopArea.width.toFloat()
+                            val areaH = desktopArea.height.toFloat()
+                            if (areaW > 0 && areaH > 0) {
+                                DesktopIconStore.setPosition(this, itemId, v.x / areaW, v.y / areaH)
+                            }
                         }
                     }
                     true
