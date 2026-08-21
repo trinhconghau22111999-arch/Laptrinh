@@ -36,10 +36,10 @@ import kotlin.math.abs
  *   1) Widget giờ/ngày kiểu WIDGET ANDROID THẬT (chữ trắng đổ bóng nổi trực tiếp trên ảnh nền,
  *      KHÔNG có khung nền màu như Live Tile của trang Start - khác biệt thẩm mỹ CỐ Ý, xem giải
  *      thích ở trên).
- *   2) Vùng "desktop" - icon các app đã "Ghim vào Start" (dùng CHUNG danh sách với trang Start ở
- *      HomeScreenManager qua [PinnedAppsStore] - ứng dụng nào ghim 1 lần sẽ xuất hiện Ở CẢ 2 nơi:
- *      dạng Live Tile trên Start VÀ dạng icon tự do ở đây) - kéo-thả được tự do bất kỳ đâu trong
- *      vùng này, vị trí lưu qua [DesktopIconStore], chạm nhẹ (không kéo) để mở app.
+ *   2) Vùng "desktop" - icon các app đã "Thêm vào Điện thoại" qua menu nhấn giữ (lưu ở
+ *      [DesktopAppsStore] - TÁCH BIỆT HOÀN TOÀN với [PinnedAppsStore] của trang Start).
+ *      Ghim vào Start KHÔNG tự thêm vào đây, và ngược lại - người dùng chủ động chọn
+ *      riêng từng nơi. Kéo-thả tự do bất kỳ đâu, vị trí lưu qua [DesktopIconStore].
  *   3) Dock dọc cạnh phải - lối tắt CỐ ĐỊNH tới các chức năng riêng của app (không phải app
  *      ngoài) để luôn có sẵn dù danh sách ghim trống - giống vai trò 1 "taskbar" thu nhỏ.
  */
@@ -292,7 +292,7 @@ class DesktopActivity : AppCompatActivity() {
         if (pinned.isEmpty()) {
             if (showEmptyHint) {
                 desktopArea.addView(TextView(this).apply {
-                    text = "Giữ 1 ứng dụng trong trang \"ứng dụng\" ở Start rồi bấm \"Thêm vào Điện thoại\"\nđể nó xuất hiện ở đây."
+                    text = "Giữ 1 ứng dụng bất kỳ trong trang \"DS Ứng Dụng\" rồi chọn\n\"Thêm vào Điện thoại\" để nó xuất hiện ở đây.\n(\"Ghim vào start\" chỉ thêm vào trang Start, không thêm vào đây.)"
                     setTextColor(0xFFDDDDDD.toInt())
                     textSize = 13f
                     gravity = Gravity.CENTER
