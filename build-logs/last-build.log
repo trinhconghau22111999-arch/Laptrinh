@@ -27,19 +27,20 @@ Daemon will be stopped at the end of the build
 > Task :app:extractDeepLinksDebug
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
-> Task :app:mergeDebugStartupProfile
-> Task :app:mergeDebugJniLibFolders
-> Task :app:processDebugManifestForPackage
-> Task :app:checkDebugDuplicateClasses
+> Task :app:compressDebugAssets
 > Task :app:processDebugResources
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugStartupProfile
+> Task :app:compileDebugKotlin
 > Task :app:mergeExtDexDebug
+> Task :app:mergeDebugJniLibFolders
 > Task :app:mergeLibDexDebug
 > Task :app:mergeDebugNativeLibs
 > Task :app:validateSigningDebug
@@ -84,11 +85,11 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
       {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
       The OnBackPressedDispatcher controls how back button events are dispatched
       to one or more {@link OnBackPressedCallback} objects.
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/DesktopActivity.kt:209:24 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/DesktopActivity.kt:217:24 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
       {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
       The OnBackPressedDispatcher controls how back button events are dispatched
       to one or more {@link OnBackPressedCallback} objects.
-w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/DesktopActivity.kt:210:25 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
+w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/src/main/java/com/h/adblockbrowser/DesktopActivity.kt:218:25 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
       {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
       The OnBackPressedDispatcher controls how back button events are dispatched
       to one or more {@link OnBackPressedCallback} objects.
@@ -135,5 +136,5 @@ w: file:///home/runner/work/ch-n-qu-ng-c-o-android/ch-n-qu-ng-c-o-android/app/sr
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 1m 49s
+BUILD SUCCESSFUL in 1m 42s
 40 actionable tasks: 40 executed
