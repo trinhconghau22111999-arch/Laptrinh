@@ -8,6 +8,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.provider.ContactsContract
+import android.provider.MediaStore
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
@@ -18,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 
@@ -572,6 +575,14 @@ class HomeScreenManager(
             "com.microsoft.todos", "com.microsoft.office.onenote"
         )
         categoryOrder.forEach { category ->
+            if (category == "Điện thoại") {
+                // Theo yêu cầu: mục "Điện thoại" LUÔN hiện đúng 12 mục CỐ ĐỊNH này, ĐÚNG THỨ TỰ,
+                // thay cho việc dò app thật đã cài (trước đây chỉ hiện "Keep Ghi chú" vì máy chỉ
+                // cài đúng 1 app khớp [phonePackages]) - xem [buildPhoneCategoryRows].
+                content.addView(groupHeader(category))
+                buildPhoneCategoryRows().forEach { content.addView(it) }
+                return@forEach
+            }
             val appsInCategory = grouped[category] ?: return@forEach
             content.addView(groupHeader(category))
             val ordered = if (category == "Điện thoại") {
@@ -583,6 +594,77 @@ class HomeScreenManager(
 
         scrollView.addView(content)
         return scrollView
+    }
+
+    /** 12 MỤC CỐ ĐỊNH của danh mục "Điện thoại" - ĐÚNG THỨ TỰ theo yêu cầu:
+     *  Gọi điện, Cuộc gọi, Nhắn tin, Danh bạ, Camera, Thư viện, Ghi âm, Ghi chú, Lịch, Đồng hồ,
+     *  Máy tính, Quản lý tập tin. 4 mục cuối (Lịch/Đồng hồ/Máy tính/Quản lý tập tin) mở THẲNG
+     *  màn hình có sẵn trong app qua [onOpenShortcut] (tái dùng đúng [ShortcutItem] đã định
+     *  nghĩa cho tile Start). 8 mục đầu mở app HỆ THỐNG THẬT của máy qua Intent chuẩn Android. */
+    private fun buildPhoneCategoryRows(): List<View> {
+        fun launchSystem(intent: Intent, notFoundMsg: String) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
+            }
+        }
+        fun row(label: String, iconRes: Int, onClick: () -> Unit): View =
+            buildAppListRow(label, context.getDrawable(iconRes)!!, onClick = onClick, onLongPress = {})
+
+        return listOf(
+            row("Gọi điện", R.drawable.ic_shortcut_phonecall) {
+                launchSystem(Intent(Intent.ACTION_DIAL), "Không tìm thấy ứng dụng Gọi điện")
+            },
+            row("Cuộc gọi", R.drawable.ic_shortcut_phonecall) {
+                launchSystem(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("content://call_log/calls")),
+                    "Không tìm thấy nhật ký Cuộc gọi"
+                )
+            },
+            row("Nhắn tin", R.drawable.ic_shortcut_messaging) {
+                launchSystem(
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING),
+                    "Không tìm thấy ứng dụng Nhắn tin"
+                )
+            },
+            row("Danh bạ", R.drawable.ic_shortcut_contacts) {
+                launchSystem(
+                    Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI),
+                    "Không tìm thấy ứng dụng Danh bạ"
+                )
+            },
+            row("Camera", R.drawable.ic_shortcut_camera) {
+                launchSystem(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA), "Không tìm thấy ứng dụng Camera")
+            },
+            row("Thư viện", R.drawable.ic_shortcut_gallery) {
+                launchSystem(
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_GALLERY),
+                    "Không tìm thấy ứng dụng Thư viện ảnh"
+                )
+            },
+            row("Ghi âm", R.drawable.ic_shortcut_recorder) {
+                launchSystem(Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION), "Không tìm thấy ứng dụng Ghi âm")
+            },
+            row("Ghi chú", R.drawable.ic_shortcut_notes) {
+                val candidates = listOf(
+                    "com.google.android.keep", "com.samsung.android.app.notes",
+                    "com.miui.notes", "com.samsung.android.memo"
+                )
+                val launch = candidates.firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) }
+                if (launch != null) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(launch)
+                } else {
+                    Toast.makeText(context, "Chưa cài ứng dụng Ghi chú nào", Toast.LENGTH_SHORT).show()
+                }
+            },
+            row("Lịch", R.drawable.ic_shortcut_calendar) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calendar")) },
+            row("Đồng hồ", R.drawable.ic_shortcut_clock) { onOpenShortcut(ShortcutsRepository.ALL.getValue("clock")) },
+            row("Máy tính", R.drawable.ic_shortcut_calculator) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calculator")) },
+            row("Quản lý tập tin", R.drawable.ic_shortcut_files) { onOpenShortcut(ShortcutsRepository.ALL.getValue("files")) }
+        )
     }
 
     /** Nhấn giữ tile → hiện menu "Đổi vị trí" / "Đổi kích cỡ" / "Bỏ ghim". */
