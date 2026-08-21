@@ -295,15 +295,48 @@ class DesktopActivity : AppCompatActivity() {
         val pinned = DesktopAppsStore.getAll(this)
         if (pinned.isEmpty()) {
             if (showEmptyHint) {
-                desktopArea.addView(TextView(this).apply {
-                    text = "Giữ 1 ứng dụng bất kỳ trong trang \"DS Ứng Dụng\" rồi chọn\n\"Thêm vào Điện thoại\" để nó xuất hiện ở đây.\n(\"Ghim vào start\" chỉ thêm vào trang Start, không thêm vào đây.)"
-                    setTextColor(0xFFDDDDDD.toInt())
-                    textSize = 13f
+                // Hiện "icon hướng dẫn" trông giống 1 ô app thật (tile màu + icon + nhãn)
+                // để người dùng hiểu đây là vùng có thể có icon, không phải chỉ là thông báo
+                val hintCell = android.widget.LinearLayout(this).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    setPadding(dp(4), dp(4), dp(4), dp(4))
+                }
+                // Tile nền màu accent với icon dấu "+"
+                val tileFrame = android.widget.FrameLayout(this).apply {
+                    background = android.graphics.drawable.GradientDrawable().apply {
+                        setColor(ThemePrefs.accent(this@DesktopActivity))
+                    }
+                }
+                tileFrame.addView(android.widget.TextView(this).apply {
+                    text = "+"
+                    textSize = 32f
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                }, android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                ))
+                hintCell.addView(tileFrame, android.widget.LinearLayout.LayoutParams(dp(52), dp(52)))
+                hintCell.addView(android.widget.TextView(this).apply {
+                    text = "Thêm app"
+                    textSize = 11f
+                    setTextColor(Color.WHITE)
                     gravity = Gravity.CENTER
                     setShadowLayer(dp(4).toFloat(), 0f, dp(1).toFloat(), 0x99000000.toInt())
-                    setPadding(dp(24), dp(24), dp(24), dp(24))
-                }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
+                    setPadding(0, dp(4), 0, 0)
+                }, android.widget.LinearLayout.LayoutParams(dp(76), android.widget.LinearLayout.LayoutParams.WRAP_CONTENT))
+                // Tooltip khi chạm vào "icon hướng dẫn"
+                hintCell.setOnClickListener {
+                    android.widget.Toast.makeText(this,
+                        "Giữ app trong "DS Ứng Dụng" → chọn "Thêm vào Điện thoại"",
+                        android.widget.Toast.LENGTH_LONG).show()
+                }
+                desktopArea.addView(hintCell, android.widget.FrameLayout.LayoutParams(dp(76), dp(92)).also {
                     it.gravity = Gravity.CENTER
+                    // Đặt ở vùng dưới đồng hồ
+                    it.topMargin = statusBarHeight() + dp(150)
+                    it.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
                 })
             }
             return
@@ -314,6 +347,9 @@ class DesktopActivity : AppCompatActivity() {
         val cellH = dp(92)
         val areaW = desktopArea.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
         val cols = (areaW / cellW).coerceAtLeast(1)
+        // Icon mặc định bắt đầu bên DƯỚI vùng đồng hồ để không che khuất đồng hồ
+        // (statusBar + clockWidget ≈ 140dp). App đã kéo tự do vẫn giữ vị trí đã lưu.
+        val clockReservedTop = statusBarHeight() + dp(140)
 
         pinned.forEachIndexed { index, pkgName ->
             val appInfo: ApplicationInfo = try {
@@ -361,7 +397,10 @@ class DesktopActivity : AppCompatActivity() {
                 val areaWNow = desktopArea.width.toFloat()
                 val areaHNow = desktopArea.height.toFloat()
                 val x = if (saved != null) saved.first * areaWNow else (defaultCol * cellW).toFloat()
-                val y = if (saved != null) saved.second * areaHNow else (defaultRow * cellH).toFloat()
+                // Vị trí y mặc định bắt đầu bên dưới đồng hồ (clockReservedTop)
+                // - App đã kéo (saved != null) giữ vị trí cũ đã lưu theo tỉ lệ màn hình
+                val y = if (saved != null) saved.second * areaHNow
+                        else (clockReservedTop + defaultRow * cellH).toFloat()
                 cell.x = x.coerceIn(0f, (areaWNow - cellW).coerceAtLeast(0f))
                 cell.y = y.coerceIn(0f, (areaHNow - cellH).coerceAtLeast(0f))
             }
@@ -414,8 +453,10 @@ class DesktopActivity : AppCompatActivity() {
                     if (!longPressFired) {
                         val maxX = (desktopArea.width - cellW).coerceAtLeast(0).toFloat()
                         val maxY = (desktopArea.height - cellH).coerceAtLeast(0).toFloat()
+                        // minY = clockReservedTop: không cho kéo icon lên che đồng hồ
+                        val minY = (statusBarHeight() + dp(140)).toFloat()
                         v.x = (startX + dx).coerceIn(0f, maxX)
-                        v.y = (startY + dy).coerceIn(0f, maxY)
+                        v.y = (startY + dy).coerceIn(minY, maxY)
                     }
                     true
                 }
