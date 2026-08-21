@@ -146,7 +146,12 @@ class DesktopActivity : AppCompatActivity() {
             activeRemoveBadge = null
         }
         outer.addView(desktopArea, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT).also {
-            it.rightMargin = dp(56)  // dock gọn hơn, không chiếm quá nhiều không gian desktop
+            // 72dp (không phải 56dp trước đây) - PHẢI khớp ĐÚNG bề ngang dock bên dưới (xem
+            // outer.addView(dock,...)) - dock cũ chỉ 56dp trong khi icon bên trong to 64dp,
+            // khiến icon bị TRÀN RA NGOÀI khung dock và bị CẮT MẤT 2 bên (mỗi bên ~4dp), các
+            // icon trông không đều/khuất góc - giờ dock đủ rộng để chứa TRỌN VẸN icon 64dp
+            // (dư thêm ~8dp làm khoảng đệm 2 bên) nên không còn bị cắt nữa.
+            it.rightMargin = dp(72)
         })
 
         // ── Dock dọc cạnh phải - lối tắt cố định tới chức năng riêng của app. Nút "Start" (icon
@@ -156,13 +161,13 @@ class DesktopActivity : AppCompatActivity() {
         // clock) theo yêu cầu - trước đây đặt ở ĐẦU dock. ──
         val dock = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            // ĐÁY (Gravity.BOTTOM) thay vì GIỮA (CENTER_VERTICAL trước đây) - trước đây các icon
-            // lơ lửng giữa màn hình, chừa khoảng trống rỗng phía trên LẪN phía dưới rất lãng phí
-            // - giờ dính SÁT ĐÁY dock, chỉ còn khoảng trống phía trên (đúng yêu cầu "nằm sát cạnh
-            // dưới"), đồng thời chừa đúng khoảng bằng chiều cao [WpNavBar] (thanh điều hướng nổi,
-            // cửa sổ hệ thống riêng LUÔN đè lên trên cùng ở mép dưới màn hình) để icon cuối cùng
-            // (nút "Về Start") không bị thanh đó che khuất mất 1 phần.
-            gravity = Gravity.BOTTOM
+            // ĐÁY (Gravity.BOTTOM) + GIỮA THEO CHIỀU NGANG (CENTER_HORIZONTAL) - trước đây các
+            // icon lơ lửng giữa màn hình, chừa khoảng trống rỗng phía trên LẪN phía dưới rất
+            // lãng phí - giờ dính SÁT ĐÁY dock, chỉ còn khoảng trống phía trên (đúng yêu cầu
+            // "nằm sát cạnh dưới"), đồng thời chừa đúng khoảng bằng chiều cao [WpNavBar] (thanh
+            // điều hướng nổi, cửa sổ hệ thống riêng LUÔN đè lên trên cùng ở mép dưới màn hình)
+            // để icon cuối cùng (nút "Về Start") không bị thanh đó che khuất mất 1 phần.
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             setPadding(0, 0, 0, dp(WpNavBar.HEIGHT_DP) + dp(8))
             background = ColorDrawable(0x66000000)
         }
@@ -223,7 +228,7 @@ class DesktopActivity : AppCompatActivity() {
                 setPadding(pad, pad, pad, pad)
             })
         }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
-        outer.addView(dock, FrameLayout.LayoutParams(dp(56), ViewGroup.LayoutParams.MATCH_PARENT).also {
+        outer.addView(dock, FrameLayout.LayoutParams(dp(72), ViewGroup.LayoutParams.MATCH_PARENT).also {
             it.gravity = Gravity.END
         })
 
