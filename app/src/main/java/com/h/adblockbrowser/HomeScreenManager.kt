@@ -8,8 +8,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
-import android.provider.ContactsContract
-import android.provider.MediaStore
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
@@ -20,7 +18,6 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 
@@ -358,18 +355,48 @@ class HomeScreenManager(
 
     /** Thứ tự các danh mục app hiển thị trên trang "ứng dụng" - danh mục nào không có app nào
      *  thuộc về thì tự động bỏ qua, không hiện tiêu đề rỗng. "Khác" luôn đứng cuối cùng, gom
-     *  mọi app không khớp bất kỳ quy tắc nhận diện nào bên dưới. "Điện thoại" KHÔNG còn nằm ở
-     *  đây - nó là 1 danh mục CỐ ĐỊNH riêng (xem [buildPhoneCategoryRows]), luôn vẽ đầu tiên. */
+     *  mọi app không khớp bất kỳ quy tắc nhận diện nào bên dưới. */
     private val categoryOrder = listOf(
-        "Mạng xã hội", "Trình duyệt", "Ứng dụng Google", "Ngân hàng", "Mua sắm", "Office", "Khác"
+        "Điện thoại", "Mạng xã hội", "Trình duyệt", "Ứng dụng Google", "Ngân hàng", "Mua sắm", "Office", "Khác"
     )
 
-    /** "Điện thoại" KHÔNG còn dò theo app thật đã cài nữa (nhiều máy không có app Gọi
-     *  điện/Camera/Ghi âm... riêng biệt trong danh sách app - là app hệ thống ẩn, hoặc tên gói
-     *  khác OEM mỗi máy - khiến mục này gần như luôn trống). Thay vào đó danh mục này giờ là 11
-     *  MỤC CỐ ĐỊNH luôn hiện đủ (xem [buildPhoneCategoryRows]), 4 mục trỏ THẲNG vào tính năng
-     *  CÓ SẴN trong app (Lịch/Máy tính/Đồng hồ/Quản lý tệp), còn lại mở app HỆ THỐNG THẬT tương
-     *  ứng của máy qua Intent chuẩn (Gọi điện/Nhắn tin/Danh bạ/Camera/Thư viện/Ghi âm/Ghi chú). */
+    /** Tên gói (package) của các app THƯỜNG GẶP theo từng danh mục - dùng để nhận diện CHẮC
+     *  CHẮN NHẤT (so khớp đúng package name), ưu tiên hơn so khớp theo tên hiển thị (label) vì
+     *  label có thể trùng chữ ở nhiều app không liên quan. Gồm cả tên gói của Android gốc (AOSP)
+     *  LẪN các bản OEM phổ biến ở Việt Nam (Samsung, Xiaomi/MIUI...) vì mỗi hãng máy thường tự
+     *  đóng gói lại app hệ thống (Điện thoại, Danh bạ, Máy ảnh...) với package riêng. */
+    private val phonePackages = setOf(
+        // Cuộc gọi
+        "com.android.dialer", "com.google.android.dialer", "com.samsung.android.dialer",
+        "com.android.incallui", "com.android.phone",
+        // Tin nhắn
+        "com.android.mms", "com.google.android.apps.messaging", "com.samsung.android.messaging",
+        // Danh bạ
+        "com.android.contacts", "com.google.android.contacts", "com.samsung.android.app.contacts",
+        // Camera
+        "com.android.camera", "com.android.camera2", "com.google.android.GoogleCamera",
+        "com.sec.android.app.camera",
+        // Thư viện (thư viện ảnh CỦA MÁY - khác "Thư viện Google"/Google Photos, xem googlePackages)
+        "com.android.gallery3d", "com.sec.android.gallery3d", "com.miui.gallery",
+        // Ghi âm
+        "com.android.soundrecorder", "com.samsung.android.app.soundrecorder", "com.miui.SoundRecorder",
+        // Máy phát nhạc
+        "com.android.music", "com.sec.android.app.music", "com.google.android.music",
+        "com.miui.player",
+        // Máy tính
+        "com.android.calculator2", "com.google.android.calculator", "com.sec.android.app.popupcalculator",
+        "com.miui.calculator",
+        // Đồng hồ
+        "com.android.deskclock", "com.google.android.deskclock", "com.sec.android.app.clockpackage",
+        "com.android.alarmclock",
+        // Lịch
+        "com.android.calendar", "com.google.android.calendar", "com.samsung.android.calendar",
+        // Ghi chú - Google Keep, Samsung Notes, MIUI Notes, NotebookLM
+        "com.google.android.keep", "com.samsung.android.app.notes", "com.miui.notes",
+        "com.samsung.android.memo", "com.google.android.apps.notebooklm",
+        // Microsoft To Do, OneNote (ghi chú/task - xếp cùng nhóm điện thoại)
+        "com.microsoft.todos", "com.microsoft.office.onenote"
+    )
     /** Mua sắm: package name của các app TMĐT phổ biến ở Việt Nam */
     private val shoppingPackages = setOf(
         "com.shopee.vn", "com.lazada.android", "vn.sendo.app",
@@ -425,6 +452,7 @@ class HomeScreenManager(
         val pkgName = info.activityInfo.packageName
         val label = info.loadLabel(context.packageManager).toString().lowercase()
 
+        if (pkgName in phonePackages) return "Điện thoại"
         if (pkgName in socialPackages) return "Mạng xã hội"
         if (pkgName in browserPackagesExplicit || pkgName in browserPackages) return "Trình duyệt"
         if (pkgName in googlePackages || pkgName.startsWith("com.google.")) return "Ứng dụng Google"
@@ -508,9 +536,6 @@ class HomeScreenManager(
             }
         }
 
-        content.addView(groupHeader("Điện thoại"))
-        buildPhoneCategoryRows().forEach { content.addView(it) }
-
         categoryOrder.forEach { category ->
             val appsInCategory = grouped[category] ?: return@forEach
             content.addView(groupHeader(category))
@@ -519,83 +544,6 @@ class HomeScreenManager(
 
         scrollView.addView(content)
         return scrollView
-    }
-
-    /** 11 MỤC CỐ ĐỊNH của danh mục "Điện thoại" - LUÔN hiện đủ, không phụ thuộc máy đã cài app
-     *  gì (khác hẳn các danh mục khác vốn dò theo app thật đã cài, xem [appCategoryLabel]).
-     *   - 4 mục ĐÃ CÓ SẴN trong app (Lịch/Máy tính/Đồng hồ/Quản lý tệp): mở thẳng qua
-     *     [onOpenShortcut] - TÁI SỬ DỤNG đúng [ShortcutItem] đã định nghĩa cho tile Start
-     *     ("calendar"/"calculator"/"clock"/"files" trong [ShortcutsRepository]), không viết
-     *     riêng logic mở khác đi.
-     *   - 7 mục còn lại (Gọi điện/Nhắn tin/Danh bạ/Camera/Thư viện/Ghi âm/Ghi chú): app chưa tự
-     *     làm màn hình riêng cho các chức năng này - mở THẲNG app HỆ THỐNG THẬT của máy qua
-     *     Intent chuẩn Android (dial/contacts/camera/gallery/ghi âm...), để người dùng vẫn dùng
-     *     được chức năng thật ngay cả khi trong app chưa có phiên bản "giả lập" riêng. Nếu máy
-     *     không có app nào xử lý (rất hiếm) thì báo lỗi bằng Toast thay vì crash. */
-    private fun buildPhoneCategoryRows(): List<View> {
-        fun launchSystem(intent: Intent, notFoundMsg: String) {
-            try {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
-            }
-        }
-        fun row(label: String, iconRes: Int, onClick: () -> Unit): View =
-            buildAppListRow(label, context.getDrawable(iconRes)!!, onClick = onClick, onLongPress = {})
-
-        return listOf(
-            row("Gọi điện", R.drawable.ic_shortcut_phonecall) {
-                launchSystem(Intent(Intent.ACTION_DIAL), "Không tìm thấy ứng dụng Gọi điện")
-            },
-            row("Nhắn tin", R.drawable.ic_shortcut_messaging) {
-                launchSystem(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING),
-                    "Không tìm thấy ứng dụng Nhắn tin"
-                )
-            },
-            row("Danh bạ", R.drawable.ic_shortcut_contacts) {
-                launchSystem(
-                    Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI),
-                    "Không tìm thấy ứng dụng Danh bạ"
-                )
-            },
-            row("Camera", R.drawable.ic_shortcut_camera) {
-                launchSystem(
-                    Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA),
-                    "Không tìm thấy ứng dụng Camera"
-                )
-            },
-            row("Thư viện", R.drawable.ic_shortcut_gallery) {
-                launchSystem(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_GALLERY),
-                    "Không tìm thấy ứng dụng Thư viện ảnh"
-                )
-            },
-            row("Ghi âm", R.drawable.ic_shortcut_recorder) {
-                launchSystem(Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION), "Không tìm thấy ứng dụng Ghi âm")
-            },
-            row("Ghi chú", R.drawable.ic_shortcut_notes) {
-                // Không có Intent chuẩn nào của Android cho "mở app ghi chú" (khác Lịch/Máy
-                // tính... vốn có CATEGORY_APP_*) - thử LẦN LƯỢT các app ghi chú phổ biến nhất
-                // đã cài (Keep/Samsung Notes/MIUI Notes), dùng app ĐẦU TIÊN tìm thấy.
-                val candidates = listOf(
-                    "com.google.android.keep", "com.samsung.android.app.notes",
-                    "com.miui.notes", "com.samsung.android.memo"
-                )
-                val launch = candidates.firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) }
-                if (launch != null) {
-                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(launch)
-                } else {
-                    Toast.makeText(context, "Chưa cài ứng dụng Ghi chú nào", Toast.LENGTH_SHORT).show()
-                }
-            },
-            row("Lịch", R.drawable.ic_shortcut_calendar) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calendar")) },
-            row("Đồng hồ", R.drawable.ic_shortcut_clock) { onOpenShortcut(ShortcutsRepository.ALL.getValue("clock")) },
-            row("Máy tính", R.drawable.ic_shortcut_calculator) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calculator")) },
-            row("Quản lý tập tin", R.drawable.ic_shortcut_files) { onOpenShortcut(ShortcutsRepository.ALL.getValue("files")) }
-        )
     }
 
     /** Nhấn giữ tile → hiện menu "Đổi vị trí" / "Đổi kích cỡ" / "Bỏ ghim". */
