@@ -621,7 +621,9 @@ class HomeScreenManager(
             isOutsideTouchable = true
         }
         popup.showAsDropDown(anchor, 0, dp(4))
-    } 2 trang (có thể được [refreshPages] dựng lại), bọc mỗi
+    }
+
+    /** Adapter tối giản cho ViewPager2: 2 trang (có thể được [refreshPages] dựng lại), bọc mỗi
      *  View có sẵn vào 1 FrameLayout chứa cho từng vị trí. */
     private class PageAdapter(val pages: MutableList<View>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
