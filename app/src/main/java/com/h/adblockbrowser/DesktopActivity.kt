@@ -5,6 +5,7 @@ import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -148,18 +149,32 @@ class DesktopActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
             background = ColorDrawable(0x66000000)
         }
+        // ── Icon app trong dock (youtube/files/settings/calculator/clock) - GIỐNG ĐÚNG kiểu ô
+        // vuông màu accent của nút "Start" bên dưới (trước đây các icon này chỉ là icon trắng
+        // trơn không nền, lạc lõng, không rõ là 1 nút bấm được so với nút "Start" nổi bật) -
+        // xoay vòng màu qua [ThemePrefs.PALETTE] giống hệt cách các ô Live Tile trên trang
+        // "start" xoay màu (xem [HomeScreenManager]), để mỗi icon 1 màu khác nhau, đồng bộ
+        // cảm giác Live Tile xuyên suốt toàn app thay vì chỉ riêng nút "Start" có nền màu.
+        val dockTilePalette = ThemePrefs.PALETTE
+        var dockColorIndex = 0
         val dockKeys = listOf("youtube", "files", "settings", "calculator", "clock")
         dockKeys.forEach { key ->
             ShortcutsRepository.ALL[key]?.let { item ->
-                dock.addView(ImageView(this).apply {
-                    setImageResource(item.iconRes)
-                    val pad = dp(14)
-                    setPadding(pad, pad, pad, pad)
+                val tileColor = dockTilePalette[dockColorIndex % dockTilePalette.size]; dockColorIndex++
+                dock.addView(FrameLayout(this).apply {
+                    background = GradientDrawable().apply {
+                        setColor(tileColor)
+                    }
                     isClickable = true
                     isFocusable = true
                     contentDescription = item.label
                     setOnClickListener { openShortcut(key) }
-                }, LinearLayout.LayoutParams(dp(64), dp(64)))
+                    addView(ImageView(this@DesktopActivity).apply {
+                        setImageResource(item.iconRes)
+                        val pad = dp(14)
+                        setPadding(pad, pad, pad, pad)
+                    })
+                }, LinearLayout.LayoutParams(dp(64), dp(64)).also { it.topMargin = dp(2) })
             }
         }
         dock.addView(View(this).apply {
