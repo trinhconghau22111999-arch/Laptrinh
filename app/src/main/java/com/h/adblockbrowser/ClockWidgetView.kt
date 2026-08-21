@@ -6,7 +6,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
-import android.widget.LinearLayout
+import android.widget.FrameLayout
 import android.widget.TextView
 import java.util.Calendar
 
@@ -18,8 +18,15 @@ import java.util.Calendar
  *
  *  Vì giờ có thể bị thu nhỏ xuống tận cỡ "Nhỏ" (1x1, bằng 1 tile vuông bình thường) nên nội dung
  *  PHẢI tự đổi cỡ chữ + ẩn/hiện dòng ngày tuỳ theo [TileSize] hiện tại - xem [applySize] - giống
- *  hệt cách Live Tile Lịch/Đồng hồ thật của Windows Phone hiện ít/nhiều chi tiết hơn tuỳ cỡ ô. */
-class ClockWidgetView(context: Context) : LinearLayout(context) {
+ *  hệt cách Live Tile Lịch/Đồng hồ thật của Windows Phone hiện ít/nhiều chi tiết hơn tuỳ cỡ ô.
+ *
+ *  DÙNG FrameLayout (ghim GIỜ ở GÓC TRÊN-TRÁI, NGÀY ở GÓC DƯỚI-TRÁI) THAY VÌ LinearLayout xếp
+ *  2 dòng liền sát nhau như bản đầu: với LinearLayout, ở cỡ "To"/"Cao" (tile cao gấp đôi bình
+ *  thường) 2 dòng chữ dồn hết lên trên để lại 1 khoảng trống rất lớn, rất kì ở nửa dưới tile -
+ *  KHÔNG giống cách các tile khác (icon ghim trên-trái, nhãn ghim dưới-trái, lấp đầy cả khối)
+ *  lấp đầy chiều cao tile. Ghim 2 đầu như vậy tự động lấp đầy khoảng trống ở MỌI cỡ tile, luôn
+ *  nhất quán với các tile icon khác bất kể tile cao bao nhiêu. */
+class ClockWidgetView(context: Context) : FrameLayout(context) {
 
     private val tvTime = TextView(context).apply {
         setTextColor(0xFFFFFFFF.toInt())
@@ -40,16 +47,23 @@ class ClockWidgetView(context: Context) : LinearLayout(context) {
     private var ticking = false
 
     init {
-        orientation = VERTICAL
-        gravity = Gravity.START
-        setPadding(dp(14), dp(10), dp(14), dp(10))
+        val padH = dp(14)
+        val padV = dp(10)
+        setPadding(padH, padV, padH, padV)
         // Khung nền phẳng kiểu Live Tile, màu accent người dùng đã chọn - y hệt các tile khác.
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             setColor(ThemePrefs.accent(context))
         }
-        addView(tvTime)
-        addView(tvDate)
+        // Giờ ghim GÓC TRÊN-TRÁI (giống vị trí icon của các tile khác).
+        addView(tvTime, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT
+        ).also { it.gravity = Gravity.TOP or Gravity.START })
+        // Ngày ghim GÓC DƯỚI-TRÁI (giống vị trí nhãn tên app của các tile khác) - luôn dính đáy
+        // tile bất kể tile cao bao nhiêu, không còn để trống khoảng lớn ở giữa/dưới như trước.
+        addView(tvDate, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT
+        ).also { it.gravity = Gravity.BOTTOM or Gravity.START })
         applySize(TileSize.TO) // mặc định "To" - giữ đúng cảm giác nổi bật như thiết kế gốc
     }
 
