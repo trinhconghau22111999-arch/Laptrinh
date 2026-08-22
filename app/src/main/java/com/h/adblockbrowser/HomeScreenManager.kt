@@ -2,6 +2,7 @@ package com.h.adblockbrowser
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ResolveInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
@@ -290,26 +291,26 @@ class HomeScreenManager(
         fun totalRows(): Int = occupied.size
     }
 
-    /** 1 mục trong danh sách "ứng dụng" - dùng chung cho CẢ app thật đã cài (installedApps())
-     *  LẪN 12 mục cố định của "Điện thoại" (Gọi điện/Nhắn tin/Lịch/Đồng hồ...) để có thể GỘP
-     *  CHUNG rồi sắp xếp A-Z thành 1 DANH SÁCH DUY NHẤT, LIÊN TỤC - không còn phân nhóm theo
-     *  danh mục (Trình duyệt/Mạng xã hội/Ngân hàng...) hay theo chữ cái A/B/C... như các phiên
-     *  bản trước, đúng yêu cầu đơn giản hoá: "1 list liên tục thôi là đủ".
-     *  [pkgName] = null cho 12 mục cố định (không phải app thật nên KHÔNG đánh dấu sao được). */
+    /** 1 mục trong danh sách "ứng dụng" - ứng với 1 app THẬT đã cài trên máy (installedApps()).
+     *  [pkgName] LUÔN khác null (chỉ còn app thật, không còn mục cố định giả nào trộn vào nữa -
+     *  xem class doc [buildAppListPage]). */
     private data class AppEntry(
         val label: String, val icon: Drawable, val pkgName: String?,
         val onClick: () -> Unit, val onLongPress: ((View) -> Unit)?,
-        // Package THẬT mà mục cố định này TRỎ TỚI khi bấm (vd "Cuộc gọi" trỏ tới app Điện
-        // thoại thật, "Thư viện" trỏ tới app Ảnh thật) - null nếu mục này mở màn hình NỘI BỘ
-        // của chính app (Lịch/Đồng hồ/Máy tính/Quản lý tệp riêng, không phải app ngoài) hoặc
-        // không xác định được. Dùng để LOẠI TRÙNG "app ảo" chính xác hơn so khớp theo TÊN CHỮ -
-        // 2 mục có TÊN KHÁC NHAU (vd "Cuộc gọi" vs "Gọi Điện") nhưng cùng TRỎ TỚI 1 app thật đã
-        // cài thì vẫn bị coi là trùng, chỉ giữ lại đúng 1 (ưu tiên app thật).
         val dedupPkg: String? = null
     )
 
-    /** Dựng TRANG "ứng dụng" (trang phải - vuốt sang mới thấy): 1 DANH SÁCH DUY NHẤT, LIÊN TỤC,
-     *  sắp xếp A-Z theo tên hiển thị, GỘP CHUNG app thật đã cài + 12 mục cố định "Điện thoại" -
+    /** Dò xem thiết bị có app nào cài đè icon/tên khác cho CÙNG package hay không - KHÔNG dùng
+     *  nữa (xem lịch sử) - giữ lại field [AppEntry.dedupPkg] chỉ để không phải sửa lại chỗ khai
+     *  báo, LUÔN null vì danh sách giờ CHỈ gồm app thật, không còn mục ảo cần loại trùng. */
+
+    /** Dựng TRANG "ứng dụng" (trang phải - vuốt sang mới thấy): TOÀN BỘ APP THẬT đã cài trên
+     *  máy (installedApps()), xếp thành 1 DANH SÁCH DUY NHẤT, LIÊN TỤC, sắp A-Z theo tên hiển
+     *  thị - KHÔNG còn 12 mục "cố định"/"ảo" (Gọi điện, Cuộc gọi, Nhắn tin, Danh bạ, Camera, Thư
+     *  viện, Ghi âm, Ghi chú, Lịch, Đồng hồ, Máy tính, Quản lý tập tin) trộn vào nữa - trước đây
+     *  có 2 lần đổi qua lại (khi thì CHỈ giữ app thật, khi thì CHỈ giữ 12 mục cố định) gây nhầm
+     *  lẫn, giờ CHỐT hẳn: chỉ app thật, đơn giản và đúng với tên "DS Ứng Dụng" nhất - máy có gì
+     *  cài sẵn thì hiện đúng cái đó, không có app "nửa vời" không tương ứng app cụ thể nào cả.
      *  KHÔNG còn tiêu đề phân nhóm nào (không danh mục, không chữ cái A/B/C...) - chỉ có ĐÚNG 1
      *  ngoại lệ: nhóm app đã "ghim lên đầu trang" hiện Ở ĐẦU trang, CHỈ hiện khi có ít nhất 1 app
      *  đã ghim (xem [StarredAppsStore]) - nhấn giữ 1 app rồi chọn "Ghim lên đầu trang" ở menu bật
@@ -335,12 +336,23 @@ class HomeScreenManager(
 
         content.addView(sectionHeader("DS Ứng Dụng", smallHeader = true))
 
-        // ── ĐÃ BỎ danh sách app THẬT đã cài trên máy (installedApps()) khỏi trang "ứng dụng" -
-        // theo yêu cầu "Xóa hết app bên ngoài": trang này giờ CHỈ còn hiện 12 mục cố định của
-        // "Điện thoại" (buildFixedEntries()), không còn gộp thêm app bên ngoài (bên thứ 3) đã
-        // cài trên máy nữa, nên cũng KHÔNG cần logic loại trùng "app ảo" như trước (không còn
-        // app thật nào để so khớp/trùng với mục cố định). ──
-        val allEntries = buildFixedEntries().sortedBy { it.label.lowercase() }
+        val pm = context.packageManager
+        val allEntries = installedApps().map { info ->
+            val pkgName = info.activityInfo.packageName
+            AppEntry(
+                label = info.loadLabel(pm).toString(),
+                icon = info.loadIcon(pm),
+                pkgName = pkgName,
+                onClick = {
+                    val launch = pm.getLaunchIntentForPackage(pkgName)
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(launch)
+                    }
+                },
+                onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
+            )
+        }.sortedBy { it.label.lowercase() }
 
         // Dùng chung 1 closure dựng dòng app (tránh lặp lại) cho cả nhóm "ghim lên đầu trang" lẫn
         // danh sách chính bên dưới.
@@ -352,9 +364,17 @@ class HomeScreenManager(
             ))
         }
 
-        // ── Nhóm "ghim lên đầu trang" đã bỏ theo yêu cầu "Xóa hết app bên ngoài": chỉ app THẬT
-        // (có pkgName) mới ghim được, mà trang này giờ không còn app thật nào nữa nên nhóm ghim
-        // luôn rỗng - bỏ hẳn để khỏi giữ code chết. ──
+        // ── Nhóm "ghim lên đầu trang" - CHỈ hiện khi có ít nhất 1 app đã ghim (xem
+        // [StarredAppsStore]) - nhấn giữ 1 app rồi chọn "Ghim lên đầu trang" ở menu bật lên
+        // ([showPinContextMenu]) để thêm vào đây. ──
+        val starredPkgs = StarredAppsStore.getAll(context)
+        val starredEntries = allEntries.filter { it.pkgName in starredPkgs }
+        if (starredEntries.isNotEmpty()) {
+            starredEntries.forEach { addRow(it) }
+            content.addView(View(context).apply { setBackgroundColor(0x22FFFFFF) }, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(1)
+            ).also { it.topMargin = dp(8); it.bottomMargin = dp(8) })
+        }
 
         // ── Danh sách chính: 1 LIST DUY NHẤT, LIÊN TỤC, A-Z, KHÔNG tiêu đề phân nhóm nào. ──
         allEntries.forEach { addRow(it) }
@@ -363,88 +383,22 @@ class HomeScreenManager(
         return scrollView
     }
 
-    /** 12 MỤC CỐ ĐỊNH luôn có mặt trong danh sách "ứng dụng" dù máy có cài app tương ứng hay
-     *  không (Gọi điện, Cuộc gọi, Nhắn tin, Danh bạ, Camera, Thư viện, Ghi âm, Ghi chú, Lịch,
-     *  Đồng hồ, Máy tính, Quản lý tập tin) - trả về dạng [AppEntry] để GỘP CHUNG với app thật rồi
-     *  sắp A-Z thành 1 danh sách duy nhất (xem [buildAppListPage]), KHÔNG còn đứng riêng thành 1
-     *  khối cố định đúng thứ tự như phiên bản trước. 8 mục đầu mở app HỆ THỐNG THẬT của máy qua
-     *  Intent chuẩn Android, 4 mục cuối (Lịch/Đồng hồ/Máy tính/Quản lý tập tin) mở THẲNG màn hình
-     *  có sẵn trong app qua [onOpenShortcut]. KHÔNG đánh dấu sao được (không phải app thật, không
-     *  có packageName) nên [AppEntry.onLongPress] = null. */
-    private fun buildFixedEntries(): List<AppEntry> {
-        fun launchSystem(intent: Intent, notFoundMsg: String) {
-            try {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
-            }
+    /** Trả về TOÀN BỘ app thật đã cài trên máy có icon hiện trên launcher (CATEGORY_LAUNCHER) -
+     *  loại trừ chính app này. Dùng cho [buildAppListPage]. */
+    private fun installedApps(): List<ResolveInfo> {
+        val intent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
         }
-        // Dò xem 1 Intent NGẦM (implicit) sẽ được hệ thống chuyển tới APP THẬT nào (package
-        // name) NẾU bấm vào - dùng để so khớp loại trùng với danh sách app thật đã cài (xem
-        // [AppEntry.dedupPkg]), KHÔNG dùng để mở app (việc mở vẫn qua [launchSystem] như cũ,
-        // giữ nguyên hành vi bấm nút kể cả khi dò gói thất bại/không có quyền).
-        fun resolvePkg(intent: Intent): String? = try {
-            context.packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
-                ?.activityInfo?.packageName
-        } catch (e: Exception) { null }
-
-        fun entry(label: String, iconRes: Int, dedupPkg: String? = null, onClick: () -> Unit): AppEntry =
-            AppEntry(label, context.getDrawable(iconRes)!!, null, onClick, null, dedupPkg)
-
-        val dialIntent = Intent(Intent.ACTION_DIAL)
-        val callLogIntent = Intent(Intent.ACTION_VIEW, Uri.parse("content://call_log/calls"))
-        val messagingIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING)
-        val contactsIntent = Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI)
-        val cameraIntent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
-        val galleryIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_GALLERY)
-        val recorderIntent = Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION)
-        val noteCandidates = listOf(
-            "com.google.android.keep", "com.samsung.android.app.notes",
-            "com.miui.notes", "com.samsung.android.memo"
-        )
-        val installedNotePkg = noteCandidates.firstOrNull {
-            context.packageManager.getLaunchIntentForPackage(it) != null
-        }
-
-        return listOf(
-            entry("Gọi điện", R.drawable.ic_shortcut_phonecall, dedupPkg = resolvePkg(dialIntent)) {
-                launchSystem(dialIntent, "Không tìm thấy ứng dụng Gọi điện")
-            },
-            // "Cuộc gọi" (nhật ký) và "Gọi điện" (bàn phím quay số) ở TRÊN thường do CÙNG 1 app
-            // Điện thoại thật xử lý - dò riêng package của call_log (không dùng lại kết quả của
-            // dialIntent) để chính xác, phòng trường hợp hiếm 2 app khác nhau đảm nhiệm.
-            entry("Cuộc gọi", R.drawable.ic_shortcut_phonecall, dedupPkg = resolvePkg(callLogIntent)) {
-                launchSystem(callLogIntent, "Không tìm thấy nhật ký Cuộc gọi")
-            },
-            entry("Nhắn tin", R.drawable.ic_shortcut_messaging, dedupPkg = resolvePkg(messagingIntent)) {
-                launchSystem(messagingIntent, "Không tìm thấy ứng dụng Nhắn tin")
-            },
-            entry("Danh bạ", R.drawable.ic_shortcut_contacts, dedupPkg = resolvePkg(contactsIntent)) {
-                launchSystem(contactsIntent, "Không tìm thấy ứng dụng Danh bạ")
-            },
-            entry("Camera", R.drawable.ic_shortcut_camera, dedupPkg = resolvePkg(cameraIntent)) {
-                launchSystem(cameraIntent, "Không tìm thấy ứng dụng Camera")
-            },
-            entry("Thư viện", R.drawable.ic_shortcut_gallery, dedupPkg = resolvePkg(galleryIntent)) {
-                launchSystem(galleryIntent, "Không tìm thấy ứng dụng Thư viện ảnh")
-            },
-            entry("Ghi âm", R.drawable.ic_shortcut_recorder, dedupPkg = resolvePkg(recorderIntent)) {
-                launchSystem(recorderIntent, "Không tìm thấy ứng dụng Ghi âm")
-            },
-            entry("Ghi chú", R.drawable.ic_shortcut_notes, dedupPkg = installedNotePkg) {
-                val launch = installedNotePkg?.let { context.packageManager.getLaunchIntentForPackage(it) }
-                if (launch != null) {
-                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(launch)
-                } else {
-                    Toast.makeText(context, "Chưa cài ứng dụng Ghi chú nào", Toast.LENGTH_SHORT).show()
-                }
-            },
-            // Quản lý tệp mở màn hình NỘI BỘ của CHÍNH app này (xem ShortcutsRepository), không
-            // trỏ tới app ngoài nào -> KHÔNG có dedupPkg, chỉ loại trùng theo tên chữ như trước.
-            entry("Quản lý tập tin", R.drawable.ic_appicon_files) { onOpenShortcut(ShortcutsRepository.ALL.getValue("files")) }
-        )
+        val pm = context.packageManager
+        return pm.queryIntentActivities(intent, 0)
+            .filter { it.activityInfo.packageName != context.packageName }
+            // LOẠI TRÙNG theo packageName - 1 số app khai báo NHIỀU launcher activity trong CÙNG
+            // 1 package (vd icon phụ/alias), khiến queryIntentActivities() trả về NHIỀU
+            // ResolveInfo cho CÙNG 1 app thật, hiện lặp lại y hệt tên+icon trong danh sách "ứng
+            // dụng" (vd "Camera" xuất hiện 2 lần giống hệt nhau) - chỉ giữ lại activity ĐẦU TIÊN
+            // gặp cho mỗi package.
+            .distinctBy { it.activityInfo.packageName }
+            .sortedBy { it.loadLabel(pm).toString().lowercase() }
     }
 
     private fun startTileDrag(
