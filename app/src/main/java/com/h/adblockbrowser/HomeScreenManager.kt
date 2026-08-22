@@ -149,17 +149,33 @@ class HomeScreenManager(
             // trước thì tile cuối cùng của lưới Live Tile bị nó che khuất mất 1 phần.
             setPadding(dp(20), dp(8), dp(20), dp(4) + dp(WpNavBar.HEIGHT_DP))
             overScrollMode = View.OVER_SCROLL_NEVER
-            // NHẤN GIỮ vào KHOẢNG TRỐNG của trang Start (không trúng tile nào - các tile đã tự
-            // "ăn" sự kiện chạm của riêng nó nên không lọt tới đây) -> hiện menu kiểu màn hình
-            // chính Android thật: Hình nền / Tiện ích / Cài đặt (xem [showStartLongPressMenu]).
-            setOnLongClickListener { anchor ->
-                showStartLongPressMenu(anchor)
-                true
-            }
+            // BẮT BUỘC để content (con trực tiếp) DÃN RA ÍT NHẤT bằng đúng vùng nhìn thấy của
+            // ScrollView khi nội dung ngắn hơn màn hình (mặc định KHÔNG bật, content chỉ cao
+            // vừa khít số tile hiện có) - nếu không bật, khoảng trống bên dưới tile cuối cùng
+            // nằm NGOÀI phạm vi của content, chạm vào đó sẽ không nhấn giữ được gì cả.
+            isFillViewport = true
         }
 
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
+            // NHẤN GIỮ vào KHOẢNG TRỐNG của trang Start (không trúng tile nào - các tile đã tự
+            // "ăn" sự kiện chạm của riêng nó nên không lọt tới đây) -> hiện menu kiểu màn hình
+            // chính Android thật: Hình nền / Tiện ích / Cài đặt (xem [showStartLongPressMenu]).
+            //
+            // FIX: gắn listener này LÊN "content" (LinearLayout) - KHÔNG PHẢI lên "scrollView"
+            // như bản trước (đó là lý do tính năng "chưa hoạt động" dù code trông đúng và biên
+            // dịch không lỗi). ScrollView.onTouchEvent() tự viết lại HOÀN TOÀN cơ chế xử lý
+            // chạm (để tự làm cuộn/fling/quán tính) THAY VÌ gọi View.onTouchEvent() mặc định -
+            // mà chính View.onTouchEvent() mặc định mới là nơi Android phát hiện nhấn-giữ rồi
+            // gọi tới OnLongClickListener. Gắn listener LÊN ScrollView chỉ bật cờ isLongClickable
+            // (biên dịch được, KHÔNG báo lỗi gì) NHƯNG callback không bao giờ được gọi vì
+            // ScrollView không bao giờ chạy tới đoạn code kiểm tra long-press đó. LinearLayout
+            // (như "content" đây) KHÔNG override onTouchEvent() nên vẫn dùng đúng cơ chế phát
+            // hiện nhấn-giữ chuẩn của View, hoạt động bình thường.
+            setOnLongClickListener { anchor ->
+                showStartLongPressMenu(anchor)
+                true
+            }
         }
 
         // (Tiêu đề "start" đã được gỡ theo yêu cầu.)
