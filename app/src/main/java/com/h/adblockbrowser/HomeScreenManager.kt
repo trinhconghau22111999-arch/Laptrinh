@@ -169,13 +169,8 @@ class HomeScreenManager(
         // ô" x kích thước 1 ô) thay vì thả trôi theo layout tự động, để chiều cao lồng nhiều
         // hàng của tile "Cao"/"To" không làm vỡ layout các tile lân cận.
         // Thứ tự mặc định - có thể thay đổi khi người dùng kéo-thả
-        val defaultFixedKeys = listOf("youtube", "incognito", "accounts", "files")
-        val pinnedKeys = PinnedOrderStore.getFixedOrder(context, defaultFixedKeys).toMutableList()
         val defaultUserKeys = PinnedAppsStore.getAll(context)
         val userKeys = PinnedOrderStore.getUserOrder(context, defaultUserKeys).toMutableList()
-        // Cỡ MẶC ĐỊNH khi người dùng CHƯA từng tự đổi kích cỡ tile đó - YouTube/Nhiều T.khoản
-        // mặc định "Rộng" ngay từ đầu (giữ nguyên hành vi cũ), các ô còn lại mặc định "Nhỏ".
-        val wideKeys = setOf("youtube", "accounts")
         val gridColumns = 3
         // Cỡ 1 "đơn vị" ô lưới = (bề ngang khả dụng của trang)/3 - lấy theo bề ngang MÀN HÌNH
         // THẬT (không cần đợi layout đo xong) trừ đi padding 2 bên dp(20) của scrollView, để ô
@@ -198,33 +193,34 @@ class HomeScreenManager(
 
         // (Widget giờ/ngày lớn đã được gỡ khỏi trang Start theo yêu cầu.)
 
-        // Tile cố định
-        pinnedKeys.forEach { key ->
-            ShortcutsRepository.ALL[key]?.let { item ->
-                val tileColor = if (key == "youtube") ThemePrefs.PALETTE[11]
-                                else tilePalette[colorIndex % tilePalette.size].also { colorIndex++ }
-                val defaultSize = if (key in wideKeys) TileSize.RONG else TileSize.NHO
-                val size = TileSizeStore.get(context, key, defaultSize)
-                val tile = buildLiveTile(item.label, item.iconRes, tileColor) { onOpenShortcut(item) }
-                tile.tag = key  // tag để enterDragMode nhận diện khi swap
-                addTile(tile, size)
-                // Nhấn giữ: nếu đang resize mode → cancel; còn không → hiện menu resize/drag
-                tile.setOnLongClickListener {
-                    val existing = tile.tag
-                    if (existing is ResizeState) {
-                        gridContainer.removeView(existing.handleBottom)
-                        gridContainer.removeView(existing.handleRight)
-                        gridContainer.removeView(existing.handleTop)
-                        gridContainer.removeView(existing.handleLeft)
-                        tile.foreground = existing.originalForeground
-                        tile.tag = null
-                    } else {
-                        startTileDrag(tile, key, true, pinnedKeys, userKeys, gridContainer, cellPitchPx)
-                    }
-                    true
+        // ── 4 nút CỐ ĐỊNH (YouTube/Ẩn danh/Nhiều T.khoản/Quản lý tệp) - GIAO DIỆN ĐƠN GIẢN
+        // KIỂU ANDROID CHUẨN (xem [buildSimpleAppIcon]), TÁCH HẲN khỏi hệ thống lưới Live Tile
+        // bên dưới: KHÔNG đổi kích cỡ, KHÔNG kéo-thả đổi vị trí, KHÔNG menu nhấn giữ, KHÔNG
+        // chiếm nguyên 1 ô lưới rộng (vùng chạm chỉ đúng bằng icon+tên) - thứ tự và vị trí LUÔN
+        // CỐ ĐỊNH y hệt 4 icon tắt (shortcut) trên màn hình chính Android thật, không còn dính
+        // dáng "Live Tile Windows Phone" nữa. Xếp 2 CỘT x 2 HÀNG bằng LinearLayout lồng nhau đơn
+        // giản (không cần GridPlacer/GridLayout phức tạp - chỉ 4 ô cố định, không cần thuật toán
+        // chiếm-dụng-ô-linh-hoạt của lưới Live Tile bên dưới).
+        val fixedKeys = listOf("youtube", "incognito", "accounts", "files")
+        val fixedSection = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 0, 0, dp(8))
+        }
+        fixedKeys.chunked(2).forEach { rowKeys ->
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
+            rowKeys.forEach { key ->
+                ShortcutsRepository.ALL[key]?.let { item ->
+                    val tileColor = if (key == "youtube") ThemePrefs.PALETTE[11]
+                                    else tilePalette[colorIndex % tilePalette.size].also { colorIndex++ }
+                    row.addView(buildSimpleAppIcon(item.label, item.iconRes, tileColor) { onOpenShortcut(item) })
                 }
             }
+            fixedSection.addView(row)
         }
+        content.addView(fixedSection)
 
         // Tile user ghim
         val pm = context.packageManager
@@ -240,7 +236,11 @@ class HomeScreenManager(
                         if (launch != null) { launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); context.startActivity(launch) }
                     },
                     onLongPress = { anchor ->
-                        startTileDrag(anchor, pkgName, false, pinnedKeys, userKeys, gridContainer, cellPitchPx)
+                        // fixedKeys rỗng: 4 nút cố định không còn tham gia lưới Live Tile nữa
+                        // (xem [buildSimpleAppIcon]), nên không còn tile nào có tag khớp trong
+                        // fixedKeys để hoán đổi vị trí cùng - tham số này chỉ còn ý nghĩa hình
+                        // thức, giữ lại để khớp chữ ký [startTileDrag].
+                        startTileDrag(anchor, pkgName, false, mutableListOf(), userKeys, gridContainer, cellPitchPx)
                     }
                 )
                 tile.tag = pkgName  // tag để enterDragMode nhận diện
@@ -996,58 +996,63 @@ class HomeScreenManager(
         return badge
     }
 
-    private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
-        val tile = FrameLayout(context).apply {
-            // KHÔNG còn viền/ô vuông ngoài - chỉ còn icon (ô màu nhỏ) + tên bên dưới, giống 1 icon
-            // app Android bình thường. Cả ô này (tile) vẫn chiếm TRỌN 1 ô lưới để việc kéo-thả đổi
-            // vị trí (nhấn giữ ở BẤT KỲ đâu trong ô lưới) hoạt động y như trước - nhưng bấm CHẠM
-            // (tap) một phát để mở app thì CHỈ ăn khi chạm đúng icon/tên (xem iconBg/labelView bên
-            // dưới), không còn ăn cả vùng trống xung quanh như trước nữa.
-            isFocusable = true
-        }
-        applyWpTilePressAnim(tile)
-
-        // Ô nền màu BÊN TRONG chứa icon - HÌNH TRÒN (thay vì vuông bo góc nhẹ trước đó) - đúng
-        // kiểu icon app mặc định của Android/Pixel thật (adaptive icon với mặt nạ tròn, kiểu phổ
-        // biến nhất trên launcher Android gốc) thay vì hình vuông bo nhẹ trông vẫn còn hơi giống
-        // Windows Phone. Giữ nguyên cỡ 48dp.
-        val iconBg = FrameLayout(context).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(tileColor)
-            }
-            layoutParams = FrameLayout.LayoutParams(dp(48), dp(48)).also {
-                it.gravity = Gravity.TOP or Gravity.START
-                it.leftMargin = dp(10); it.topMargin = dp(10)
-            }
+    /** 1 nút icon ĐƠN GIẢN kiểu Android chuẩn (icon tròn + tên bên dưới, canh giữa) - dùng cho 4
+     *  mục CỐ ĐỊNH (YouTube/Ẩn danh/Nhiều T.khoản/Quản lý tệp). KHÔNG tham gia hệ thống lưới
+     *  Live Tile ([GridPlacer]/[TileSizeStore]/[PinnedOrderStore]) như [buildLiveTile] trước đây
+     *  nữa - không đổi kích cỡ, không kéo-thả đổi vị trí, không menu nhấn giữ (setOnLongClickListener
+     *  KHÔNG được gắn) - CHỈ CHẠM để mở, thứ tự CỐ ĐỊNH luôn luôn, đúng y hệt cách 4 icon tắt
+     *  (shortcut) cố định trên màn hình chính Android thật hoạt động. Vùng chạm cũng THU GỌN
+     *  đúng bằng khung icon+tên (wrap_content) - không còn chiếm nguyên 1 ô lưới rộng như tile
+     *  cũ (từng khiến chạm trượt ra ngoài icon vẫn mở nhầm app, hoặc giữ tay ở vùng trống quanh
+     *  icon vẫn vô tình hiện menu đổi kích cỡ/vị trí không còn tồn tại nữa). */
+    private fun buildSimpleAppIcon(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
             isClickable = true
             isFocusable = true
-            foreground = pressedOverlayRound()
+            foreground = pressedOverlay()
+            setPadding(dp(6), dp(8), dp(6), dp(8))
             setOnClickListener { onClick() }
+        }
+        applyWpTilePressAnim(column) // giữ hiệu ứng "bóp nhẹ" khi chạm, đồng bộ cảm giác với các icon khác trong app
+
+        val iconBg = FrameLayout(context).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(tileColor) }
+            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48))
         }
         val icon = ImageView(context).apply {
             setImageResource(iconRes)
-            // Padding tăng nhẹ (7dp->9dp) so với bản nền vuông trước đó - nền TRÒN "ăn" vào góc
-            // nhiều hơn nền vuông bo nhẹ, cần chừa thêm chút để glyph không chạm sát viền cong.
             val pad = dp(9)
             setPadding(pad, pad, pad, pad)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
-        iconBg.addView(icon, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-        ))
+        iconBg.addView(icon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
-        val labelView = buildTileLabel(label).apply {
-            isClickable = true
-            setOnClickListener { onClick() }
+        val labelView = TextView(context).apply {
+            text = label
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            setShadowLayer(dp(3).toFloat(), 0f, dp(1).toFloat(), 0xCC000000.toInt())
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            layoutParams = LinearLayout.LayoutParams(dp(76), ViewGroup.LayoutParams.WRAP_CONTENT).also {
+                it.topMargin = dp(4)
+            }
         }
-        tile.addView(iconBg)
-        tile.addView(labelView)
-        return tile
+
+        column.addView(iconBg)
+        column.addView(labelView)
+        return column
     }
 
+    /** buildLiveTile() (tile Live Tile kiểu WP cho 4 mục cố định) đã bị XOÁ HẲN - 4 mục cố định
+     *  giờ dùng [buildSimpleAppIcon] đơn giản, không tham gia lưới nữa (xem [buildStartPage]). */
+
     /** 1 ô "Live Tile" cho app NGƯỜI DÙNG TỰ GHIM (dùng icon thật của app, không phải icon
-     *  vector đơn sắc) - bố cục giống [buildLiveTile], thêm NHẤN GIỮ để mở menu bỏ ghim. */
+     *  vector đơn sắc) - bố cục tương tự (trước là buildLiveTile, nay đã xoá), thêm NHẤN GIỮ để mở menu bỏ ghim. */
     private fun buildAppTile(
         label: String, icon: Drawable, tileColor: Int,
         onClick: () -> Unit, onLongPress: (View) -> Unit
@@ -1062,7 +1067,7 @@ class HomeScreenManager(
         }
         applyWpTilePressAnim(tile)
 
-        // Ô nền màu BÊN TRONG chứa icon app thật - HÌNH TRÒN, đồng bộ với [buildLiveTile] (xem
+        // Ô nền màu BÊN TRONG chứa icon app thật - HÌNH TRÒN, đồng bộ với [buildSimpleAppIcon] (xem
         // giải thích ở đó) - launcher Android thật (Pixel/AOSP) áp mặt nạ GIỐNG NHAU lên MỌI
         // icon trên màn hình chính bất kể là app hệ thống hay app cài thêm, để đồng nhất hình
         // dạng toàn màn hình - không để icon vuông xen giữa các icon tròn.
@@ -1184,7 +1189,7 @@ class HomeScreenManager(
     }
 
     /** Giống [pressedOverlay] nhưng bo TRÒN thay vì vuông - dùng cho `foreground` của icon nền
-     *  tròn ([buildLiveTile]/[buildAppTile]) để lớp sáng khi nhấn không bị "vuông", tràn ra khỏi
+     *  tròn ([buildSimpleAppIcon]/[buildAppTile]) để lớp sáng khi nhấn không bị "vuông", tràn ra khỏi
      *  4 góc đường viền tròn của nền bên dưới. */
     private fun pressedOverlayRound(): Drawable {
         val pressedState = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0x33FFFFFF) }
