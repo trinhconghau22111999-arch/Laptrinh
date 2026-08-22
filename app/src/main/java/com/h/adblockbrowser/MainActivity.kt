@@ -44,13 +44,6 @@ import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
 
-    /** true nếu Activity này được mở TỪ trang "Điện thoại" (DesktopActivity, qua extra
-     *  "from_phone") - đọc 1 lần ở onCreate(), dùng để Back/Home (nút Start của WpNavBar) biết
-     *  đường quay VỀ trang Điện thoại thay vì mặc định về Start. Đây là ngoại lệ DUY NHẤT khỏi
-     *  quy tắc mặc định "Back/Home luôn về Start" - mặc định (không có cờ này, tức mở từ Start
-     *  hoặc mở trực tiếp từ icon app ngoài Android) vẫn giữ nguyên luôn về Start như trước. */
-    private var openedFromPhone = false
-
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     /** Nền ô địa chỉ kiểu Windows Phone: nền đen phẳng + 1 gạch chân màu NHẤN ở đáy (đặc trưng
@@ -165,7 +158,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        openedFromPhone = intent.getBooleanExtra("from_phone", false)
         setContentView(R.layout.activity_main)
         // FIX khoảng đen dư ở trên cùng: dù đã setDecorFitsSystemWindows(false), 1 số máy vẫn tự
         // đệm (padding) view gốc theo chiều cao thanh trạng thái/điều hướng theo cơ chế insets
@@ -226,7 +218,7 @@ class MainActivity : AppCompatActivity() {
             onOpenShortcut = { item -> openShortcutByKey(item.key) }
         )
         val homeContainer = homeOverlay as android.widget.FrameLayout
-        homeContainer.addView(homeScreenManager.build(buildClockWidget()))
+        homeContainer.addView(homeScreenManager.build())
 
         requestAllPermissions()
         setupWebView()
@@ -260,12 +252,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         showHomeOverlay()
-        // FIX: DesktopActivity (trang "Điện thoại") mở MainActivity kèm extra "initial_url" (vd
-        // bấm icon YouTube trong dock ở cạnh phải) để vào THẲNG trang đó - nhưng TRƯỚC ĐÂY không
-        // có dòng nào đọc lại extra này, nên showHomeOverlay() ở trên luôn thắng, khiến người
-        // dùng bấm icon YouTube chỉ thấy app "bật lên rồi quay lại trang Start" thay vì mở
-        // YouTube. Đọc lại extra, có thì điều hướng thẳng qua navigateTo() (hàm này tự ẩn
-        // homeOverlay giúp, xem navigateTo()).
+        // Nếu Activity được mở kèm extra "initial_url" (vd shortcut YouTube + Ẩn danh), điều
+        // hướng thẳng qua navigateTo() thay vì dừng ở Start (hàm này tự ẩn homeOverlay giúp).
         intent.getStringExtra("initial_url")?.let { url -> navigateTo(url) }
     }
 
@@ -298,22 +286,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Điều hướng "về nhà" dùng chung cho nút Start (WpNavBar) và bước cuối của doBack(). MẶC
-     *  ĐỊNH (đặt lên trước, áp dụng cho MỌI trường hợp khác) LUÔN về Start ([showHomeOverlay]) -
-     *  đúng quy tắc gốc "Trang Start là trang chính". NGOẠI LỆ DUY NHẤT: nếu Activity này được
-     *  mở TỪ trang Điện thoại ([openedFromPhone], qua DesktopActivity) VÀ có 1 màn hình khác
-     *  bên dưới trong back stack để quay về (![isTaskRoot] - nếu Activity này lại là task root,
-     *  vd bị hệ thống khôi phục sau khi bị kill nền, thì không còn gì bên dưới để quay lại,
-     *  phải fallback về Start như bình thường) - lúc đó thoát (finish, kèm hiệu ứng trượt qua
-     *  [startActivityWp]/finish() đã override) để lộ lại ĐÚNG trang Điện thoại bên dưới, KHÔNG
-     *  hiện Start - vì trước đó người dùng đang dùng app TỪ ngữ cảnh Điện thoại, không phải
-     *  Start. */
+    /** Điều hướng "về nhà" dùng chung cho nút Start (WpNavBar) và bước cuối của doBack() - LUÔN
+     *  về Start ([showHomeOverlay]), đúng quy tắc gốc "Trang Start là trang chính". */
     private fun goHome() {
-        if (openedFromPhone && !isTaskRoot) {
-            finish()
-        } else {
-            showHomeOverlay()
-        }
+        showHomeOverlay()
     }
 
     private fun showHomeOverlay() {
@@ -482,20 +458,6 @@ class MainActivity : AppCompatActivity() {
     // cho 2 màn hình thật sự có nhiều tab để chuyển qua lại: Ẩn danh (IncognitoActivity) và 1
     // hồ sơ Nhiều tài khoản (AccountBrowserActivityBase) - xem toggleTaskView() ở 2 file đó.
 
-    /** Widget giờ/ngày ở trang chủ - giờ được coi là 1 Live Tile BÌNH THƯỜNG trong lưới tile
-     *  trang "start", tham gia đầy đủ hệ thống chung: NHẤN GIỮ + KÉO tay cầm để đổi cỡ giống
-     *  HỆT các tile khác (xem [ClockWidgetView] và [HomeScreenManager.buildStartPage]) - không
-     *  còn là widget đặc biệt nằm riêng phía trên lưới với kiểu resize khác (chụm/dãn 2 ngón)
-     *  như trước. Giờ/phút và ngày/tháng vẫn tách 2 vùng bấm riêng: bấm giờ/phút mở trang Đồng
-     *  hồ, bấm ngày/tháng mở trang Lịch. */
-    private fun buildClockWidget(): ClockWidgetView {
-        val widget = ClockWidgetView(this)
-        widget.setOnTimeClick { openShortcutByKey("clock") }
-        widget.setOnDateClick { openShortcutByKey("calendar") }
-        widget.startTicking()
-        return widget
-    }
-
     private fun clearAllSessionData() {
         webView.clearHistory()
         webView.clearCache(true)
@@ -533,13 +495,7 @@ class MainActivity : AppCompatActivity() {
             val activityClass = when (activityName) {
                 "IncognitoActivity" -> IncognitoActivity::class.java
                 "AccountsActivity" -> AccountsActivity::class.java
-                "AppLockSetupActivity" -> AppLockSetupActivity::class.java
                 "FilesActivity" -> FilesActivity::class.java
-                "DesktopActivity" -> DesktopActivity::class.java
-                "CalendarActivity" -> CalendarActivity::class.java
-                "CalculatorActivity" -> CalculatorActivity::class.java
-                "ClockActivity" -> ClockActivity::class.java
-                "SettingsActivity" -> SettingsActivity::class.java
                 else -> null
             }
             if (activityClass != null) {

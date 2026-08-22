@@ -2,7 +2,6 @@ package com.h.adblockbrowser
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ResolveInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
@@ -46,26 +45,8 @@ object ShortcutsRepository {
         "accounts" to ShortcutItem(
             "accounts", "Nhiều T.khoản", ShortcutType.ACTIVITY, "AccountsActivity", R.drawable.ic_shortcut_accounts
         ),
-        "settings" to ShortcutItem(
-            "settings", "Cài đặt", ShortcutType.ACTIVITY, "SettingsActivity", R.drawable.ic_shortcut_settings
-        ),
         "files" to ShortcutItem(
             "files", "Quản lý tệp", ShortcutType.ACTIVITY, "FilesActivity", R.drawable.ic_shortcut_files
-        ),
-        // Ô "Phone": mở màn giả lập MÀN HÌNH CHÍNH ANDROID THẬT (icon tự do kéo-thả + dock dọc
-        // cạnh phải) - đóng vai trò tương tự icon "Desktop/This PC" trên máy tính Windows, xem
-        // giải thích đầy đủ ở class doc của DesktopActivity.kt.
-        "phone" to ShortcutItem(
-            "phone", "Điện thoại", ShortcutType.ACTIVITY, "DesktopActivity", R.drawable.ic_wp_mobile_flat
-        ),
-        "calendar" to ShortcutItem(
-            "calendar", "Lịch", ShortcutType.ACTIVITY, "CalendarActivity", R.drawable.ic_shortcut_calendar
-        ),
-        "calculator" to ShortcutItem(
-            "calculator", "Máy tính", ShortcutType.ACTIVITY, "CalculatorActivity", R.drawable.ic_shortcut_calculator
-        ),
-        "clock" to ShortcutItem(
-            "clock", "Đồng hồ", ShortcutType.ACTIVITY, "ClockActivity", R.drawable.ic_shortcut_clock
         )
     )
 }
@@ -93,7 +74,6 @@ class HomeScreenManager(
     /** Giữ lại tham chiếu để [refreshPages] có thể dựng lại nội dung 2 trang ngay khi người
      *  dùng ghim/bỏ ghim 1 app, mà KHÔNG cần thoát vào lại trang chủ mới thấy cập nhật. */
     private var pageAdapterRef: PageAdapter? = null
-    private var clockWidgetRef: View? = null
     private var pagerRef: ViewPager2? = null
 
     /** Cuộn về trang "start" (trang 0) ngay lập tức - gọi khi bấm nút Home (Windows) hoặc Back
@@ -106,18 +86,14 @@ class HomeScreenManager(
      *  về trang "start" thay vì đưa app xuống nền ngay. */
     fun isOnAppListPage(): Boolean = (pagerRef?.currentItem ?: 0) == 1
 
-    /** [clockWidget]: widget giờ/ngày (nếu có) được chèn làm mục ĐẦU TIÊN trong nội dung cuộn
-     *  dọc của TRANG "start", NẰM NGAY TRONG LUỒNG LAYOUT (không phải overlay nổi tự do) - nhờ
-     *  vậy nó "dính" liền phía trên lưới tile, và khi người dùng chụm/dãn tay phóng to widget
-     *  này ra, chiều cao của nó tăng lên sẽ tự động ĐẨY lưới tile bên dưới xuống theo. */
-    fun build(clockWidget: View? = null): FrameLayout {
-        clockWidgetRef = clockWidget
+    /** Dựng nội dung 2 trang Pivot ("start" + "ứng dụng") trong 1 ViewPager2. */
+    fun build(): FrameLayout {
         val root = FrameLayout(context).apply {
             setBackgroundColor(Color.TRANSPARENT)
         }
 
         // ── ViewPager2: 2 TRANG Pivot vuốt ngang - trang 0 "start", trang 1 "ứng dụng" ──
-        val pages = mutableListOf(buildStartPage(clockWidget), buildAppListPage())
+        val pages = mutableListOf(buildStartPage(), buildAppListPage())
         val adapter = PageAdapter(pages)
         pageAdapterRef = adapter
         val pager = ViewPager2(context).apply {
@@ -153,16 +129,16 @@ class HomeScreenManager(
         val adapter = pageAdapterRef ?: return
         val prevStartScrollY = (adapter.pages.getOrNull(0) as? ScrollView)?.scrollY ?: 0
         val prevAppListScrollY = (adapter.pages.getOrNull(1) as? ScrollView)?.scrollY ?: 0
-        adapter.pages[0] = buildStartPage(clockWidgetRef)
+        adapter.pages[0] = buildStartPage()
         adapter.pages[1] = buildAppListPage()
         adapter.notifyDataSetChanged()
         (adapter.pages[0] as? ScrollView)?.let { sv -> sv.post { sv.scrollTo(0, prevStartScrollY) } }
         (adapter.pages[1] as? ScrollView)?.let { sv -> sv.post { sv.scrollTo(0, prevAppListScrollY) } }
     }
 
-    /** Dựng TRANG "start" (trang trái - hiện mặc định): widget giờ/ngày + tiêu đề "start" +
-     *  lưới Live Tile 3 cột, gồm các ô cố định VÀ các app người dùng đã ghim thêm. */
-    private fun buildStartPage(clockWidget: View?): View {
+    /** Dựng TRANG "start" (trang trái - hiện mặc định): lưới Live Tile 3 cột, gồm các ô cố
+     *  định VÀ các app người dùng đã ghim thêm. */
+    private fun buildStartPage(): View {
         val scrollView = ScrollView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
@@ -178,9 +154,7 @@ class HomeScreenManager(
             orientation = LinearLayout.VERTICAL
         }
 
-        // ── Tiêu đề "start" kiểu Hub/Pivot header của WP: chữ thường, mảnh, rất to - ĐẶT LÊN
-        // TRÊN CÙNG. ──
-        content.addView(sectionHeader("start"))
+        // (Tiêu đề "start" đã được gỡ theo yêu cầu.)
 
         // ── Lưới Live Tile - ĐÚNG kiểu Start Screen WP thật: 4 CỠ tile khác nhau (Nhỏ 1x1,
         // Rộng 2x1, Cao 1x2, To 2x2) trong lưới 3 cột - NHẤN GIỮ bất kỳ tile nào (kể cả ô cố
@@ -195,7 +169,7 @@ class HomeScreenManager(
         // ô" x kích thước 1 ô) thay vì thả trôi theo layout tự động, để chiều cao lồng nhiều
         // hàng của tile "Cao"/"To" không làm vỡ layout các tile lân cận.
         // Thứ tự mặc định - có thể thay đổi khi người dùng kéo-thả
-        val defaultFixedKeys = listOf("youtube", "settings", "incognito", "accounts", "files", "phone", "calendar", "calculator", "clock")
+        val defaultFixedKeys = listOf("youtube", "incognito", "accounts", "files")
         val pinnedKeys = PinnedOrderStore.getFixedOrder(context, defaultFixedKeys).toMutableList()
         val defaultUserKeys = PinnedAppsStore.getAll(context)
         val userKeys = PinnedOrderStore.getUserOrder(context, defaultUserKeys).toMutableList()
@@ -222,23 +196,7 @@ class HomeScreenManager(
             gridContainer.addView(tileView, lp)
         }
 
-        // ── Widget giờ/ngày (nếu có) - GIỜ LÀ TILE ĐẦU TIÊN trong chính lưới này (không còn
-        // nằm riêng phía trên lưới như trước) - mặc định cỡ "To" (giữ đúng cảm giác nổi bật như
-        // thiết kế gốc), NHẤN GIỮ rồi kéo tay cầm để đổi cỡ y hệt mọi tile khác. Nội dung bên
-        // trong ([ClockWidgetView]) tự đổi cỡ chữ + ẩn/hiện dòng ngày tương ứng - xem [applySize].
-        if (clockWidget != null) {
-            (clockWidget.parent as? ViewGroup)?.removeView(clockWidget)
-            val size = TileSizeStore.get(context, "clock_widget", TileSize.TO)
-            (clockWidget as? ClockWidgetView)?.applySize(size)
-            addTile(clockWidget, size)
-            clockWidget.setOnLongClickListener {
-                enterResizeMode(clockWidget, gridContainer, cellPitchPx) { picked ->
-                    TileSizeStore.set(context, "clock_widget", picked)
-                    refreshPages()
-                }
-                true
-            }
-        }
+        // (Widget giờ/ngày lớn đã được gỡ khỏi trang Start theo yêu cầu.)
 
         // Tile cố định
         pinnedKeys.forEach { key ->
@@ -377,40 +335,12 @@ class HomeScreenManager(
 
         content.addView(sectionHeader("DS Ứng Dụng", smallHeader = true))
 
-        val pm = context.packageManager
-
-        val realEntries = installedApps().map { info ->
-            val pkgName = info.activityInfo.packageName
-            AppEntry(
-                label = info.loadLabel(pm).toString(),
-                icon = info.loadIcon(pm),
-                pkgName = pkgName,
-                onClick = {
-                    val launch = pm.getLaunchIntentForPackage(pkgName)
-                    if (launch != null) {
-                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(launch)
-                    }
-                },
-                onLongPress = { anchor -> showPinContextMenu(anchor, pkgName) }
-            )
-        }
-        // ── LOẠI TRÙNG "app ảo": nếu máy đã có SẴN app THẬT trùng với 1 trong 12 mục cố định
-        // thì KHÔNG cộng thêm mục cố định đó nữa - so khớp theo 2 CÁCH:
-        //  1) TÊN HIỂN THỊ giống hệt (không phân biệt hoa/thường) - vd máy đã cài app tên
-        //     "Camera"/"Danh bạ" thật.
-        //  2) PACKAGE THẬT mà mục cố định TRỎ TỚI (xem [AppEntry.dedupPkg]) trùng với package
-        //     của 1 app thật đã cài - bắt được cả trường hợp TÊN KHÁC NHAU nhưng CÙNG 1 app (vd
-        //     mục cố định "Cuộc gọi"/"Thư viện" tên khác app Điện thoại/Ảnh thật trên máy nhưng
-        //     bấm vào lại mở ĐÚNG app đó - trước đây chỉ so tên nên bị sót, hiện trùng 2-3 lần). ──
-        val realLabelsLower = realEntries.map { it.label.trim().lowercase() }.toSet()
-        val realPkgSet = realEntries.mapNotNull { it.pkgName }.toSet()
-        val fixedEntries = buildFixedEntries().filter { entry ->
-            val labelDup = entry.label.trim().lowercase() in realLabelsLower
-            val pkgDup = entry.dedupPkg != null && entry.dedupPkg in realPkgSet
-            !labelDup && !pkgDup
-        }
-        val allEntries = (realEntries + fixedEntries).sortedBy { it.label.lowercase() }
+        // ── ĐÃ BỎ danh sách app THẬT đã cài trên máy (installedApps()) khỏi trang "ứng dụng" -
+        // theo yêu cầu "Xóa hết app bên ngoài": trang này giờ CHỈ còn hiện 12 mục cố định của
+        // "Điện thoại" (buildFixedEntries()), không còn gộp thêm app bên ngoài (bên thứ 3) đã
+        // cài trên máy nữa, nên cũng KHÔNG cần logic loại trùng "app ảo" như trước (không còn
+        // app thật nào để so khớp/trùng với mục cố định). ──
+        val allEntries = buildFixedEntries().sortedBy { it.label.lowercase() }
 
         // Dùng chung 1 closure dựng dòng app (tránh lặp lại) cho cả nhóm "ghim lên đầu trang" lẫn
         // danh sách chính bên dưới.
@@ -422,15 +352,9 @@ class HomeScreenManager(
             ))
         }
 
-        // ── Nhóm app "ghim lên đầu trang" - LUÔN Ở ĐẦU trang, CHỈ hiện khi có ít nhất 1 app đã
-        // ghim, KHÔNG còn tiêu đề chữ "★ ĐÃ ĐÁNH DẤU SAO" phía trên nữa (theo yêu cầu - app ghim
-        // cứ thế nổi lên đầu, không cần nhãn chữ báo hiệu) - vẫn đúng NGOẠI LỆ DUY NHẤT ngoài
-        // danh sách chính liên tục bên dưới, chỉ bớt phần tiêu đề hiển thị. ──
-        val starredPkgs = StarredAppsStore.getAll(context).toSet()
-        if (starredPkgs.isNotEmpty()) {
-            val starredEntries = allEntries.filter { it.pkgName != null && it.pkgName in starredPkgs }
-            starredEntries.forEach { addRow(it) }
-        }
+        // ── Nhóm "ghim lên đầu trang" đã bỏ theo yêu cầu "Xóa hết app bên ngoài": chỉ app THẬT
+        // (có pkgName) mới ghim được, mà trang này giờ không còn app thật nào nữa nên nhóm ghim
+        // luôn rỗng - bỏ hẳn để khỏi giữ code chết. ──
 
         // ── Danh sách chính: 1 LIST DUY NHẤT, LIÊN TỤC, A-Z, KHÔNG tiêu đề phân nhóm nào. ──
         allEntries.forEach { addRow(it) }
@@ -517,13 +441,9 @@ class HomeScreenManager(
                     Toast.makeText(context, "Chưa cài ứng dụng Ghi chú nào", Toast.LENGTH_SHORT).show()
                 }
             },
-            // Lịch/Đồng hồ/Máy tính/Quản lý tệp mở màn hình NỘI BỘ của CHÍNH app này (xem
-            // ShortcutsRepository), không trỏ tới app ngoài nào -> KHÔNG có dedupPkg, chỉ loại
-            // trùng theo tên chữ như trước (vd máy đã có app "Máy tính" thật cùng tên).
-            entry("Lịch", R.drawable.ic_shortcut_calendar) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calendar")) },
-            entry("Đồng hồ", R.drawable.ic_shortcut_clock) { onOpenShortcut(ShortcutsRepository.ALL.getValue("clock")) },
-            entry("Máy tính", R.drawable.ic_shortcut_calculator) { onOpenShortcut(ShortcutsRepository.ALL.getValue("calculator")) },
-            entry("Quản lý tập tin", R.drawable.ic_shortcut_files) { onOpenShortcut(ShortcutsRepository.ALL.getValue("files")) }
+            // Quản lý tệp mở màn hình NỘI BỘ của CHÍNH app này (xem ShortcutsRepository), không
+            // trỏ tới app ngoài nào -> KHÔNG có dedupPkg, chỉ loại trùng theo tên chữ như trước.
+            entry("Quản lý tập tin", R.drawable.ic_appicon_files) { onOpenShortcut(ShortcutsRepository.ALL.getValue("files")) }
         )
     }
 
@@ -628,11 +548,8 @@ class HomeScreenManager(
     }
 
         /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
-     *  "start") - 3 dòng: "Ghim/Bỏ ghim vào start", "Thêm/Bỏ khỏi Điện thoại" và "Đánh dấu/Bỏ
-     *  đánh dấu sao", tự đổi nhãn tuỳ trạng thái hiện tại, rồi dựng lại 2 trang ngay để tile/nhóm
-     *  "★" mới hiện/mất tức thì. "Ghim vào start" và "Thêm vào Điện thoại" là 2 hành động ĐỘC
-     *  LẬP HOÀN TOÀN (xem [PinnedAppsStore] và [DesktopAppsStore]) - chọn 1 trong 2 không tự
-     *  động thêm vào nơi còn lại, đúng ý phân biệt rạch ròi 2 trang.
+     *  "start") - 2 dòng: "Ghim/Bỏ ghim vào start" và "Đánh dấu/Bỏ đánh dấu sao", tự đổi nhãn
+     *  tuỳ trạng thái hiện tại, rồi dựng lại 2 trang ngay để tile/nhóm "★" mới hiện/mất tức thì.
      *
      *  DỰNG THỦ CÔNG bằng [PopupWindow] thay vì [android.widget.PopupMenu] mặc định của Android:
      *  PopupMenu hệ thống luôn tự vẽ nền TRẮNG BO GÓC + ĐỔ BÓNG (Material Card) bất kể theme app
@@ -645,7 +562,6 @@ class HomeScreenManager(
         cellPitchPx: Int = 0
     ) {
         val pinned = PinnedAppsStore.isPinned(context, pkgName)
-        val onDesktop = DesktopAppsStore.isAdded(context, pkgName)
         val starred = StarredAppsStore.isStarred(context, pkgName)
 
         lateinit var popup: PopupWindow
@@ -674,14 +590,6 @@ class HomeScreenManager(
         } else {
             menuItem(if (pinned) "Bỏ ghim khỏi start" else "Ghim vào start") {
                 if (pinned) PinnedAppsStore.unpin(context, pkgName) else PinnedAppsStore.pin(context, pkgName)
-            }
-        }
-        val itemDesktop = if (gridContainer == null) {
-            // Cùng lý do như itemPin ở trên - trang "DS Ứng Dụng" chỉ cho THÊM vào Điện thoại.
-            if (onDesktop) null else menuItem("Thêm vào Điện thoại") { DesktopAppsStore.add(context, pkgName) }
-        } else {
-            menuItem(if (onDesktop) "Bỏ khỏi Điện thoại" else "Thêm vào Điện thoại") {
-                if (onDesktop) DesktopAppsStore.remove(context, pkgName) else DesktopAppsStore.add(context, pkgName)
             }
         }
         val itemStar = menuItem(if (starred) "Bỏ ghim đầu trang" else "Ghim lên đầu trang") {
@@ -755,11 +663,11 @@ class HomeScreenManager(
                 setColor(0xFF1A1A1A.toInt())
                 setStroke(dp(1), 0xFF3A3A3A.toInt())
             }
-            // itemPin/itemDesktop có thể là null (trang "DS Ứng Dụng", app đã ghim/đã thêm rồi
+            // itemPin có thể là null (trang "DS Ứng Dụng", app đã ghim rồi
             // - xem 2 nhánh if ở trên) - dùng listOfNotNull() + chèn divider() MỚI (view riêng
             // mỗi lần, không tái dùng) giữa các dòng THỰC SỰ có mặt, tránh 2 divider dính liền
             // nhau hoặc divider ở đầu khi dòng đầu tiên bị ẩn.
-            val rows = listOfNotNull(itemPin, itemDesktop, itemStar, itemResize, itemUninstall)
+            val rows = listOfNotNull(itemPin, itemStar, itemResize, itemUninstall)
             rows.forEachIndexed { i, row ->
                 if (i > 0) addView(divider())
                 addView(row)
@@ -1263,23 +1171,6 @@ class HomeScreenManager(
             addState(intArrayOf(android.R.attr.state_pressed), pressedState)
             addState(intArrayOf(), normalState)
         }
-    }
-
-    /** Lấy danh sách app có thể launch (trừ chính app này) - sắp xếp A-Z theo tên hiển thị. */
-    private fun installedApps(): List<ResolveInfo> {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
-        }
-        val pm = context.packageManager
-        return pm.queryIntentActivities(intent, 0)
-            .filter { it.activityInfo.packageName != context.packageName }
-            // LOẠI TRÙNG theo packageName - 1 số app khai báo NHIỀU launcher activity trong CÙNG
-            // 1 package (vd icon phụ/alias), khiến queryIntentActivities() trả về NHIỀU ResolveInfo
-            // cho CÙNG 1 app thật, hiện lặp lại y hệt tên+icon trong danh sách "ứng dụng" (vd
-            // "Camera" xuất hiện 2 lần giống hệt nhau) - chỉ giữ lại activity ĐẦU TIÊN gặp cho mỗi
-            // package, distinctBy giữ đúng thứ tự xuất hiện ban đầu của danh sách gốc.
-            .distinctBy { it.activityInfo.packageName }
-            .sortedBy { it.loadLabel(pm).toString().lowercase() }
     }
 
     private fun dp(v: Int): Int = (v * context.resources.displayMetrics.density).toInt()

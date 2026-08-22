@@ -1,7 +1,8 @@
+<!-- Camera: icon "photo_camera" kiểu Material chuẩn Android, nền vuông bo góc -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="56dp" android:height="56dp"
     android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="#B983FF" android:pathData="M12,0A12,12 0 1,0 12,24A12,12 0 1,0 12,0Z"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M9,7h1.5l0.8,-1.2h1.4L13.5,7H15a2,2 0 0,1 2,2v6a2,2 0 0,1 -2,2h-6a2,2 0 0,1 -2,-2v-6a2,2 0 0,1 2,-2Z"/>
-    <path android:fillColor="#B983FF" android:pathData="M12,11.2m-2.3,0a2.3,2.3 0 1,0 4.6,0a2.3,2.3 0 1,0 -4.6,0"/>
+    <path android:fillColor="#424242" android:pathData="M5,0 L19,0 A5,5 0 0 1 24,5 L24,19 A5,5 0 0 1 19,24 L5,24 A5,5 0 0 1 0,19 L0,5 A5,5 0 0 1 5,0 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M19.6,6h-2.9l-1.84,-2H9.14L7.3,6H4.4C3.08,6 2,7.08 2,8.4v9.2C2,18.92 3.08,20 4.4,20h15.2c1.32,0 2.4,-1.08 2.4,-2.4V8.4C22,7.08 20.92,6 19.6,6ZM12,17.6c-3.09,0 -5.6,-2.51 -5.6,-5.6S8.91,6.4 12,6.4s5.6,2.51 5.6,5.6 -2.51,5.6 -5.6,5.6Z"/>
+    <path android:fillColor="#424242" android:pathData="M12,15.2c1.77,0 3.2,-1.43 3.2,-3.2s-1.43,-3.2 -3.2,-3.2 -3.2,1.43 -3.2,3.2 1.43,3.2 3.2,3.2Z"/>
 </vector>

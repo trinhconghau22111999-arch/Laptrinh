@@ -7,8 +7,7 @@ import android.content.Context
  *  ngay sau các ô cố định (YouTube, Ẩn danh, Nhiều T.khoản...). Lưu VĨNH VIỄN qua
  *  SharedPreferences theo thứ tự đã ghim (ghim thêm sẽ nối vào cuối danh sách).
  *
- *  Đây là danh sách RIÊNG của trang Start - xem [DesktopAppsStore] cho danh sách tương tự nhưng
- *  của trang "Điện thoại" (2 danh sách độc lập, ghim ở nơi này KHÔNG tự xuất hiện ở nơi kia). */
+ *  Đây là danh sách RIÊNG của trang Start. */
 object PinnedAppsStore {
     private const val PREFS = "pinned_apps_start"
     private const val KEY = "packages"
