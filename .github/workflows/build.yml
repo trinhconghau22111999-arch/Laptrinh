@@ -38,6 +38,9 @@ jobs:
           gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
           build_exit=$?
           set -e
+          echo "" >> build.log
+          echo "=== APK thực tế tìm thấy sau build (find app/build/outputs -iname '*.apk') ===" >> build.log
+          find app/build/outputs -iname "*.apk" >> build.log 2>&1 || echo "(khong tim thay file .apk nao)" >> build.log
           echo "build_exit=$build_exit" >> $GITHUB_OUTPUT
 
       - name: Save build log to repo (via API)
@@ -61,4 +64,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          # Rộng hơn "apk/debug/*.apk" cũ - phòng trường hợp cấu trúc thư mục output đổi khác
+          # (đổi build variant, thêm flavor...) khiến đường dẫn cũ không còn khớp NỮA mà không
+          # ai biết (trước đây action âm thầm "success" dù 0 file khớp - xem if-no-files-found).
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
