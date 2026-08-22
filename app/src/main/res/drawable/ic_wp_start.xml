@@ -4,9 +4,13 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
     <!-- 4 ô vuông kiểu logo Windows/Start của WP thật (2x2, khe hở nhỏ ở giữa) - thay cho
-         glyph "⊞" (1 hình vuông chia 4 bằng nét viền, sai cấu trúc "4 mảnh rời" của logo thật). -->
-    <path android:fillColor="#FFFFFF" android:pathData="M3,3h8v8h-8z" />
+         glyph "⊞" (1 hình vuông chia 4 bằng nét viền, sai cấu trúc "4 mảnh rời" của logo thật).
+         Cắt nhẹ (vát chéo) đúng 2 góc NGOÀI CÙNG đối xứng nhau qua tâm - góc trên-trái của ô
+         trên-trái và góc dưới-phải của ô dưới-phải - cho icon bớt cứng, có điểm nhấn tinh tế
+         kiểu "lá cờ" thay vì 4 hình vuông thuần góc nhọn. 2 ô còn lại (trên-phải, dưới-trái)
+         GIỮ NGUYÊN góc vuông để không đối xứng hoàn toàn, đúng ý "chỉ 2 góc". -->
+    <path android:fillColor="#FFFFFF" android:pathData="M5,3H11V11H3V5Z" />
     <path android:fillColor="#FFFFFF" android:pathData="M13,3h8v8h-8z" />
     <path android:fillColor="#FFFFFF" android:pathData="M3,13h8v8h-8z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M13,13h8v8h-8z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M13,13H21V19L19,21H13Z" />
 </vector>
