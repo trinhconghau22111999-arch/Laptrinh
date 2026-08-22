@@ -317,8 +317,17 @@ class FilesActivity : AppCompatActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     setPadding(dp(4), dp(11), dp(12), dp(11))
-                    isClickable = true
-                    isFocusable = true
+                    // KHÔNG đặt isClickable/isFocusable = true trên chính hàng này - đây chính
+                    // là NGUYÊN NHÂN khiến chạm vào thư mục "không ăn" (ListView.
+                    // setOnItemClickListener ngừng nhận sự kiện): khi 1 dòng con TỰ nhận
+                    // clickable=true, Android để dòng đó tự xử lý chạm luôn, không còn chuyển
+                    // sự kiện lên cơ chế chọn dòng của ListView nữa (lỗi kinh điển hay gặp khi tự
+                    // vẽ hàng cho ListView). Để vẫn có hiệu ứng "chạm tối nhẹ hình chữ nhật" kiểu
+                    // Metro MÀ KHÔNG cướp sự kiện chạm của ListView, dùng
+                    // isDuplicateParentStateEnabled = true - nền StateListDrawable của dòng sẽ tự
+                    // đổi theo đúng trạng thái nhấn (pressed) mà CHÍNH ListView (chủ, không phải
+                    // dòng này) đang quản lý, không cần dòng tự nhận chạm.
+                    isDuplicateParentStateEnabled = true
                     // Chạm tối nhẹ hình chữ nhật - đúng cảm giác "bấm phẳng" Metro, không ripple
                     // tròn Material mặc định của ListView hệ thống (xem lý giải tương tự ở
                     // HomeScreenManager.pressedOverlay).
