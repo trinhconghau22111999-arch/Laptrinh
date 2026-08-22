@@ -998,13 +998,10 @@ class HomeScreenManager(
 
     private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
         val tile = FrameLayout(context).apply {
-            // Nền TRONG SUỐT - thấy xuyên qua wallpaper
-            // Viền trắng 1.5dp bao quanh tile
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                setColor(0x00000000)
-                setStroke(dp(1), 0xFFFFFFFF.toInt())
-            }
+            // KHÔNG còn viền/ô vuông ngoài - chỉ còn icon (ô màu nhỏ) + tên bên dưới, giống 1 icon
+            // app Android bình thường. Vẫn giữ click/kéo-thả y nguyên (background=null không ảnh
+            // hưởng gì tới isClickable/foreground/nhấn giữ - chỉ là KHÔNG VẼ gì cho lớp nền nữa).
+            background = null
             isClickable = true
             isFocusable = true
             foreground = pressedOverlay()
@@ -1047,12 +1044,10 @@ class HomeScreenManager(
         onClick: () -> Unit, onLongPress: (View) -> Unit
     ): View {
         val tile = FrameLayout(context).apply {
-            // Nền TRONG SUỐT + viền trắng - giống buildLiveTile
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                setColor(0x00000000)
-                setStroke(dp(1), 0xFFFFFFFF.toInt())
-            }
+            // KHÔNG còn viền/ô vuông ngoài - chỉ còn icon (ô màu nhỏ) + tên bên dưới, giống 1 icon
+            // app Android bình thường. Nhấn giữ để chọn/kéo-thả VẪN giữ nguyên (isLongClickable +
+            // onLongClickListener bên dưới không đổi gì) - chỉ bỏ phần VẼ khung viền ngoài.
+            background = null
             isClickable = true
             isFocusable = true
             isLongClickable = true
