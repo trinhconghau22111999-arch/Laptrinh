@@ -390,8 +390,13 @@ class HomeScreenManager(
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
         val pm = context.packageManager
+        // App "Phone" (com.phone.launcher) là BẢN SAO "Choi" của CHÍNH app này (fork riêng chỉ
+        // giữ trang Start, cùng icon 4-ô-vuông xanh) - cài chung máy để test nên hiện lẫn vào
+        // đây như 1 app ngoài bình thường, gây rối vì trông y hệt icon Start của app hiện tại -
+        // loại luôn ra, coi như "chính mình" giống [context.packageName].
+        val selfClonePkg = "com.phone.launcher"
         return pm.queryIntentActivities(intent, 0)
-            .filter { it.activityInfo.packageName != context.packageName }
+            .filter { it.activityInfo.packageName != context.packageName && it.activityInfo.packageName != selfClonePkg }
             // LOẠI TRÙNG theo packageName - 1 số app khai báo NHIỀU launcher activity trong CÙNG
             // 1 package (vd icon phụ/alias), khiến queryIntentActivities() trả về NHIỀU
             // ResolveInfo cho CÙNG 1 app thật, hiện lặp lại y hệt tên+icon trong danh sách "ứng
