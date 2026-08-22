@@ -149,6 +149,13 @@ class HomeScreenManager(
             // trước thì tile cuối cùng của lưới Live Tile bị nó che khuất mất 1 phần.
             setPadding(dp(20), dp(8), dp(20), dp(4) + dp(WpNavBar.HEIGHT_DP))
             overScrollMode = View.OVER_SCROLL_NEVER
+            // NHẤN GIỮ vào KHOẢNG TRỐNG của trang Start (không trúng tile nào - các tile đã tự
+            // "ăn" sự kiện chạm của riêng nó nên không lọt tới đây) -> hiện menu kiểu màn hình
+            // chính Android thật: Hình nền / Tiện ích / Cài đặt (xem [showStartLongPressMenu]).
+            setOnLongClickListener { anchor ->
+                showStartLongPressMenu(anchor)
+                true
+            }
         }
 
         val content = LinearLayout(context).apply {
@@ -506,7 +513,87 @@ class HomeScreenManager(
         gridContainer.addView(overlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
 
-        /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
+        /** Menu bật lên khi NHẤN GIỮ vào KHOẢNG TRỐNG (không trúng tile nào) trên trang Start - 3
+     *  dòng đúng kiểu màn hình chính Android thật: "Hình nền" / "Tiện ích" / "Cài đặt" - CẢ 3
+     *  đều là LỐI TẮT MỞ THẲNG màn hình HỆ THỐNG tương ứng (không phải màn hình riêng của app
+     *  này), dùng chung phong cách popup phẳng nền đen với [showPinContextMenu]. Android không
+     *  có 1 Intent công khai, đảm bảo hoạt động trên MỌI máy/hãng để mở thẳng "trang chọn tiện
+     *  ích" (khác "Hình nền"/"Cài đặt" đều có Intent chuẩn, ổn định) - nên "Tiện ích" thử
+     *  [Settings.ACTION_HOME_SETTINGS] trước (màn "Ứng dụng màn hình chính", nhiều hãng gộp luôn
+     *  lối vào tiện ích ở đây), lỗi thì mới rơi về [Settings.ACTION_SETTINGS] (trang Cài đặt hệ
+     *  thống gốc) kèm Toast hướng dẫn tìm mục "Màn hình chính"/"Tiện ích" trong đó. */
+    private fun showStartLongPressMenu(anchor: View) {
+        lateinit var popup: PopupWindow
+        fun menuItem(label: String, onTap: () -> Unit): TextView = TextView(context).apply {
+            text = label
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(dp(22), dp(16), dp(22), dp(16))
+            minWidth = dp(200)
+            isClickable = true
+            isFocusable = true
+            background = pressedOverlay()
+            setOnClickListener {
+                popup.dismiss()
+                onTap()
+            }
+        }
+        fun openSystem(vararg intents: Intent, notFoundMsg: String) {
+            for (intent in intents) {
+                try {
+                    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    return
+                } catch (e: Exception) { /* thử intent kế tiếp */ }
+            }
+            Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
+        }
+        val itemWallpaper = menuItem("Hình nền") {
+            openSystem(
+                Intent(Intent.ACTION_SET_WALLPAPER),
+                notFoundMsg = "Máy không hỗ trợ đổi hình nền hệ thống"
+            )
+        }
+        val itemWidgets = menuItem("Tiện ích") {
+            openSystem(
+                Intent(android.provider.Settings.ACTION_HOME_SETTINGS),
+                Intent(android.provider.Settings.ACTION_SETTINGS),
+                notFoundMsg = "Không mở được cài đặt Tiện ích - vào Cài đặt hệ thống > Màn hình chính để tìm"
+            )
+        }
+        val itemSettings = menuItem("Cài đặt") {
+            openSystem(
+                Intent(android.provider.Settings.ACTION_SETTINGS),
+                notFoundMsg = "Không mở được Cài đặt hệ thống"
+            )
+        }
+        fun divider() = View(context).apply {
+            setBackgroundColor(0xFF3A3A3A.toInt())
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+        }
+        val menuBox = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(0xFF1A1A1A.toInt())
+                setStroke(dp(1), 0xFF3A3A3A.toInt())
+            }
+            val rows = listOf(itemWallpaper, itemWidgets, itemSettings)
+            rows.forEachIndexed { i, row ->
+                if (i > 0) addView(divider())
+                addView(row)
+            }
+        }
+        popup = PopupWindow(
+            menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true
+        ).apply {
+            elevation = 0f
+            animationStyle = 0
+            isOutsideTouchable = true
+        }
+        popup.showSmartDropDown(anchor)
+    }
+
+    /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
      *  "start") - 2 dòng: "Ghim/Bỏ ghim vào start" và "Đánh dấu/Bỏ đánh dấu sao", tự đổi nhãn
      *  tuỳ trạng thái hiện tại, rồi dựng lại 2 trang ngay để tile/nhóm "★" mới hiện/mất tức thì.
      *
