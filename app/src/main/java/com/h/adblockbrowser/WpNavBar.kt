@@ -43,7 +43,9 @@ import android.widget.LinearLayout
 object WpNavBar {
 
     /** Chiều cao NavBar đúng Win10 Mobile (dùng để WpAppBar tính offset nằm ngay trên) */
-    const val HEIGHT_DP = 54
+    // Giảm còn 80% chiều cao trước đây (54dp x 0.8 = 43.2 -> làm tròn 43dp) theo yêu cầu -
+    // thanh gọn hơn, đỡ chiếm diện tích màn hình phía dưới.
+    const val HEIGHT_DP = 43
 
     class Handle internal constructor(
         private val wm: WindowManager,
@@ -103,8 +105,9 @@ object WpNavBar {
                 setImageResource(iconRes)
                 setColorFilter(Color.WHITE)
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
-                // Padding 15dp (tăng từ 13dp) - icon thoáng hơn, đúng cảm giác nút WP thật
-                val pad = dp(15)
+                // Padding 12dp (giảm từ 15dp, tỉ lệ 80% khớp với HEIGHT_DP mới) - icon vẫn đủ
+                // thoáng, không bị bóp méo/tràn trong thanh giờ thấp hơn.
+                val pad = dp(12)
                 setPadding(pad, pad, pad, pad)
                 contentDescription = desc
                 isClickable = true
