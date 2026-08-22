@@ -196,15 +196,7 @@ class HomeScreenManager(
         // hàng của tile "Cao"/"To" không làm vỡ layout các tile lân cận.
         // Thứ tự mặc định - có thể thay đổi khi người dùng kéo-thả
         val defaultFixedKeys = listOf("youtube", "settings", "incognito", "accounts", "files", "phone", "calendar", "calculator", "clock")
-        // Các tile NGƯỜI DÙNG YÊU CẦU XOÁ HẲN khỏi Start (YouTube, Quản lý tệp, Máy tính, Đồng
-        // hồ) - lọc bỏ ở đây, áp dụng CẢ CHO thứ tự MẶC ĐỊNH (máy chưa từng lưu thứ tự) LẪN thứ
-        // tự ĐÃ LƯU từ trước (máy cũ có thể đã lưu thứ tự còn chứa mấy key này) để chắc chắn
-        // biến mất luôn, không phụ thuộc máy đã cài lâu hay mới. "Cài đặt" GIỮ NGUYÊN (không bị
-        // xoá) vì không có cách nào khác trong app để mở lại trang Cài đặt nếu bỏ tile này.
-        val removedFixedKeys = setOf("youtube", "files", "calculator", "clock")
-        val pinnedKeys = PinnedOrderStore.getFixedOrder(context, defaultFixedKeys)
-            .filter { it !in removedFixedKeys }
-            .toMutableList()
+        val pinnedKeys = PinnedOrderStore.getFixedOrder(context, defaultFixedKeys).toMutableList()
         val defaultUserKeys = PinnedAppsStore.getAll(context)
         val userKeys = PinnedOrderStore.getUserOrder(context, defaultUserKeys).toMutableList()
         // Cỡ MẶC ĐỊNH khi người dùng CHƯA từng tự đổi kích cỡ tile đó - YouTube/Nhiều T.khoản
