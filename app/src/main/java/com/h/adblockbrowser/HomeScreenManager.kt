@@ -1007,13 +1007,14 @@ class HomeScreenManager(
         }
         applyWpTilePressAnim(tile)
 
-        // Ô nền màu BÊN TRONG chứa icon - thu nhỏ về đúng cỡ 1 icon app Android bình thường
-        // (48dp, thay vì 67dp to gần bằng nửa ô lưới như trước).
+        // Ô nền màu BÊN TRONG chứa icon - HÌNH TRÒN (thay vì vuông bo góc nhẹ trước đó) - đúng
+        // kiểu icon app mặc định của Android/Pixel thật (adaptive icon với mặt nạ tròn, kiểu phổ
+        // biến nhất trên launcher Android gốc) thay vì hình vuông bo nhẹ trông vẫn còn hơi giống
+        // Windows Phone. Giữ nguyên cỡ 48dp.
         val iconBg = FrameLayout(context).apply {
             background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
+                shape = GradientDrawable.OVAL
                 setColor(tileColor)
-                cornerRadius = dp(4).toFloat()
             }
             layoutParams = FrameLayout.LayoutParams(dp(48), dp(48)).also {
                 it.gravity = Gravity.TOP or Gravity.START
@@ -1021,12 +1022,14 @@ class HomeScreenManager(
             }
             isClickable = true
             isFocusable = true
-            foreground = pressedOverlay()
+            foreground = pressedOverlayRound()
             setOnClickListener { onClick() }
         }
         val icon = ImageView(context).apply {
             setImageResource(iconRes)
-            val pad = dp(7)
+            // Padding tăng nhẹ (7dp->9dp) so với bản nền vuông trước đó - nền TRÒN "ăn" vào góc
+            // nhiều hơn nền vuông bo nhẹ, cần chừa thêm chút để glyph không chạm sát viền cong.
+            val pad = dp(9)
             setPadding(pad, pad, pad, pad)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
@@ -1059,13 +1062,14 @@ class HomeScreenManager(
         }
         applyWpTilePressAnim(tile)
 
-        // Ô nền màu BÊN TRONG chứa icon app thật - thu nhỏ về đúng cỡ 1 icon app Android bình
-        // thường (48dp, thay vì 67dp to gần bằng nửa ô lưới như trước).
+        // Ô nền màu BÊN TRONG chứa icon app thật - HÌNH TRÒN, đồng bộ với [buildLiveTile] (xem
+        // giải thích ở đó) - launcher Android thật (Pixel/AOSP) áp mặt nạ GIỐNG NHAU lên MỌI
+        // icon trên màn hình chính bất kể là app hệ thống hay app cài thêm, để đồng nhất hình
+        // dạng toàn màn hình - không để icon vuông xen giữa các icon tròn.
         val iconBg = FrameLayout(context).apply {
             background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
+                shape = GradientDrawable.OVAL
                 setColor(tileColor)
-                cornerRadius = dp(4).toFloat()
             }
             layoutParams = FrameLayout.LayoutParams(dp(48), dp(48)).also {
                 it.gravity = Gravity.TOP or Gravity.START
@@ -1073,12 +1077,12 @@ class HomeScreenManager(
             }
             isClickable = true
             isFocusable = true
-            foreground = pressedOverlay()
+            foreground = pressedOverlayRound()
             setOnClickListener { onClick() }
         }
         val iconView = ImageView(context).apply {
             setImageDrawable(icon)
-            val pad = dp(5)
+            val pad = dp(7)
             setPadding(pad, pad, pad, pad)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
@@ -1173,6 +1177,18 @@ class HomeScreenManager(
     private fun pressedOverlay(): Drawable {
         val pressedState = GradientDrawable().apply { setColor(0x33FFFFFF) }
         val normalState = GradientDrawable().apply { setColor(Color.TRANSPARENT) }
+        return android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressedState)
+            addState(intArrayOf(), normalState)
+        }
+    }
+
+    /** Giống [pressedOverlay] nhưng bo TRÒN thay vì vuông - dùng cho `foreground` của icon nền
+     *  tròn ([buildLiveTile]/[buildAppTile]) để lớp sáng khi nhấn không bị "vuông", tràn ra khỏi
+     *  4 góc đường viền tròn của nền bên dưới. */
+    private fun pressedOverlayRound(): Drawable {
+        val pressedState = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0x33FFFFFF) }
+        val normalState = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.TRANSPARENT) }
         return android.graphics.drawable.StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), pressedState)
             addState(intArrayOf(), normalState)
