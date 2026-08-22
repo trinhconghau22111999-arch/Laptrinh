@@ -999,30 +999,34 @@ class HomeScreenManager(
     private fun buildLiveTile(label: String, iconRes: Int, tileColor: Int, onClick: () -> Unit): View {
         val tile = FrameLayout(context).apply {
             // KHÔNG còn viền/ô vuông ngoài - chỉ còn icon (ô màu nhỏ) + tên bên dưới, giống 1 icon
-            // app Android bình thường. Vẫn giữ click/kéo-thả y nguyên (background=null không ảnh
-            // hưởng gì tới isClickable/foreground/nhấn giữ - chỉ là KHÔNG VẼ gì cho lớp nền nữa).
-            background = null
-            isClickable = true
+            // app Android bình thường. Cả ô này (tile) vẫn chiếm TRỌN 1 ô lưới để việc kéo-thả đổi
+            // vị trí (nhấn giữ ở BẤT KỲ đâu trong ô lưới) hoạt động y như trước - nhưng bấm CHẠM
+            // (tap) một phát để mở app thì CHỈ ăn khi chạm đúng icon/tên (xem iconBg/labelView bên
+            // dưới), không còn ăn cả vùng trống xung quanh như trước nữa.
             isFocusable = true
-            foreground = pressedOverlay()
         }
         applyWpTilePressAnim(tile)
 
-        // Ô nền màu BÊN TRONG chứa icon - hình vuông nhỏ căn góc trên-trái
+        // Ô nền màu BÊN TRONG chứa icon - thu nhỏ về đúng cỡ 1 icon app Android bình thường
+        // (48dp, thay vì 67dp to gần bằng nửa ô lưới như trước).
         val iconBg = FrameLayout(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 setColor(tileColor)
                 cornerRadius = dp(4).toFloat()
             }
-            layoutParams = FrameLayout.LayoutParams(dp(67), dp(67)).also {
+            layoutParams = FrameLayout.LayoutParams(dp(48), dp(48)).also {
                 it.gravity = Gravity.TOP or Gravity.START
                 it.leftMargin = dp(10); it.topMargin = dp(10)
             }
+            isClickable = true
+            isFocusable = true
+            foreground = pressedOverlay()
+            setOnClickListener { onClick() }
         }
         val icon = ImageView(context).apply {
             setImageResource(iconRes)
-            val pad = dp(10)
+            val pad = dp(7)
             setPadding(pad, pad, pad, pad)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
@@ -1030,10 +1034,12 @@ class HomeScreenManager(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
-        val labelView = buildTileLabel(label)
+        val labelView = buildTileLabel(label).apply {
+            isClickable = true
+            setOnClickListener { onClick() }
+        }
         tile.addView(iconBg)
         tile.addView(labelView)
-        tile.setOnClickListener { onClick() }
         return tile
     }
 
@@ -1045,31 +1051,34 @@ class HomeScreenManager(
     ): View {
         val tile = FrameLayout(context).apply {
             // KHÔNG còn viền/ô vuông ngoài - chỉ còn icon (ô màu nhỏ) + tên bên dưới, giống 1 icon
-            // app Android bình thường. Nhấn giữ để chọn/kéo-thả VẪN giữ nguyên (isLongClickable +
-            // onLongClickListener bên dưới không đổi gì) - chỉ bỏ phần VẼ khung viền ngoài.
-            background = null
-            isClickable = true
+            // app Android bình thường. Nhấn giữ để chọn/kéo-thả VẪN ăn ở BẤT KỲ đâu trong ô lưới
+            // (isLongClickable + onLongClickListener bên dưới không đổi gì) - nhưng bấm CHẠM một
+            // phát để mở app thì CHỈ ăn khi chạm đúng icon/tên (xem iconBg/labelView bên dưới).
             isFocusable = true
             isLongClickable = true
-            foreground = pressedOverlay()
         }
         applyWpTilePressAnim(tile)
 
-        // Ô nền màu BÊN TRONG chứa icon app thật
+        // Ô nền màu BÊN TRONG chứa icon app thật - thu nhỏ về đúng cỡ 1 icon app Android bình
+        // thường (48dp, thay vì 67dp to gần bằng nửa ô lưới như trước).
         val iconBg = FrameLayout(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 setColor(tileColor)
                 cornerRadius = dp(4).toFloat()
             }
-            layoutParams = FrameLayout.LayoutParams(dp(67), dp(67)).also {
+            layoutParams = FrameLayout.LayoutParams(dp(48), dp(48)).also {
                 it.gravity = Gravity.TOP or Gravity.START
                 it.leftMargin = dp(10); it.topMargin = dp(10)
             }
+            isClickable = true
+            isFocusable = true
+            foreground = pressedOverlay()
+            setOnClickListener { onClick() }
         }
         val iconView = ImageView(context).apply {
             setImageDrawable(icon)
-            val pad = dp(8)
+            val pad = dp(5)
             setPadding(pad, pad, pad, pad)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
@@ -1077,10 +1086,12 @@ class HomeScreenManager(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
-        val labelView = buildTileLabel(label)
+        val labelView = buildTileLabel(label).apply {
+            isClickable = true
+            setOnClickListener { onClick() }
+        }
         tile.addView(iconBg)
         tile.addView(labelView)
-        tile.setOnClickListener { onClick() }
         tile.setOnLongClickListener { anchor -> onLongPress(anchor); true }
         return tile
     }
