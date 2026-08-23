@@ -901,6 +901,31 @@ class MainActivity : AppCompatActivity() {
         super.onUserLeaveHint()
     }
 
+    // ── Tự cập nhật trang "DS Ứng Dụng" khi có app MỚI CÀI/GỠ/CẬP NHẬT trên máy - không cần
+    // thoát app rồi mở lại mới thấy app mới. Đăng ký ĐỘNG (không khai báo tĩnh trong Manifest)
+    // trong onStart()/gỡ trong onStop() thay vì đăng ký suốt vòng đời app, vì hiếm khi có ích
+    // lúc app đang ở nền hoàn toàn (không hiển thị), tiết kiệm tài nguyên hệ thống. Bắt cả 3
+    // hành động: PACKAGE_ADDED (cài mới), PACKAGE_REMOVED (gỡ), PACKAGE_REPLACED (cập nhật app -
+    // icon/tên hiển thị có thể đổi). ──
+    private val packageChangeReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(ctx: android.content.Context?, intent: Intent?) {
+            if (::homeScreenManager.isInitialized) homeScreenManager.refreshPages()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val filter = android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, packageChangeReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
     // Gọi khi Activity bị đưa xuống nền vì BẤT KỲ lý do gì (Home, chuyển app khác, tắt màn
     // hình, mở app khác đè lên...). KHÔNG dừng video/audio ở đây (xem giải thích ở
     // onUserLeaveHint() phía trên) - để nhạc/video tiếp tục phát nền đúng như yêu cầu.
@@ -910,6 +935,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
+        try {
+            unregisterReceiver(packageChangeReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Chưa từng đăng ký (vd onStop() gọi mà onStart() lỡ chưa chạy) - bỏ qua, tránh crash.
+        }
     }
 
     /** Bố cục "ô đầu tiên" (pane1) LUÔN LUÔN là customView (video HTML5 đang toàn màn hình,
