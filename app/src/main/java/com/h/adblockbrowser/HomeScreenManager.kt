@@ -632,6 +632,18 @@ class HomeScreenManager(
                 notFoundMsg = "Không mở được Cài đặt hệ thống"
             )
         }
+        // "Giao diện mặc định" - mở trang HỆ THỐNG cho chọn app nào làm "trình chạy" (launcher)
+        // mặc định của máy - KHÁC hẳn "Tiện ích" ở trên (đó là trang chọn WIDGET, xem
+        // [MainActivity.pickWidget]) dù trước đây "Tiện ích" từng tạm mượn ĐÚNG trang này do
+        // Android không có intent công khai mở thẳng trang chọn widget - giờ tách riêng hẳn ra
+        // đây, đúng đúng chức năng của nó.
+        val itemDefaultLauncher = menuItem("Giao diện mặc định") {
+            openSystem(
+                Intent(android.provider.Settings.ACTION_HOME_SETTINGS),
+                Intent(android.provider.Settings.ACTION_SETTINGS),
+                notFoundMsg = "Không mở được cài đặt Giao diện mặc định - vào Cài đặt hệ thống > Ứng dụng > Ứng dụng mặc định để tìm"
+            )
+        }
         fun divider() = View(context).apply {
             setBackgroundColor(0xFF3A3A3A.toInt())
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
@@ -642,7 +654,7 @@ class HomeScreenManager(
                 setColor(0xFF1A1A1A.toInt())
                 setStroke(dp(1), 0xFF3A3A3A.toInt())
             }
-            val rows = listOf(itemWallpaper, itemWidgets, itemSettings)
+            val rows = listOf(itemWallpaper, itemWidgets, itemSettings, itemDefaultLauncher)
             rows.forEachIndexed { i, row ->
                 if (i > 0) addView(divider())
                 addView(row)
