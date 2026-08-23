@@ -608,7 +608,12 @@ class HomeScreenManager(
             animationStyle = 0
             isOutsideTouchable = true
         }
-        popup.showSmartDropDown(anchor)
+        // showSmartDropDown(anchor) neo theo VỊ TRÍ/KÍCH THƯỚC của [anchor] - ở đây anchor chính
+        // là cả ScrollView (gần như phủ hết màn hình vì nhấn giữ vào KHOẢNG TRỐNG bất kỳ chỗ
+        // nào trên trang, không phải 1 tile nhỏ cụ thể), khiến popup bị neo lệch hẳn lên góc
+        // trên thay vì ra giữa nơi ngón tay đang nhấn - dùng showAtLocation với Gravity.CENTER
+        // thay vì showSmartDropDown ở đây để LUÔN hiện giữa màn hình, không phụ thuộc anchor.
+        popup.showAtLocation(anchor, Gravity.CENTER, 0, 0)
     }
 
     /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
