@@ -153,6 +153,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val REQ_PERMISSIONS = 101
         const val REQ_LOCK = 103
+        const val REQ_PICK_WALLPAPER = 104
         const val DOWNLOAD_FOLDER = "AdBlockBrowser"
     }
 
@@ -215,7 +216,8 @@ class MainActivity : AppCompatActivity() {
         // Khởi tạo màn hình chính - chỉ còn 3 icon cố định (YouTube, Ẩn danh, YouTube+Ẩn danh)
         homeScreenManager = HomeScreenManager(
             this,
-            onOpenShortcut = { item -> openShortcutByKey(item.key) }
+            onOpenShortcut = { item -> openShortcutByKey(item.key) },
+            onPickWallpaper = { pickCustomWallpaper() }
         )
         val homeContainer = homeOverlay as android.widget.FrameLayout
         homeContainer.addView(homeScreenManager.build())
@@ -469,6 +471,25 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- Menu đề xuất trang (tam giác) ----------
 
+    /** Mở trình chọn ẢNH của HỆ THỐNG (không phải trình chọn hình nền hệ thống - xem giải thích
+     *  ở [HomeScreenManager] constructor) để người dùng chọn 1 ảnH bất kỳ trong máy làm hình nền
+     *  RIÊNG của trang Start app này - lưu lại qua [WallpaperPrefs] + [loadWallpaper] áp dụng
+     *  ngay, không cần khởi động lại app. Dùng ACTION_OPEN_DOCUMENT (không phải ACTION_GET_CONTENT)
+     *  để xin được QUYỀN ĐỌC LÂU DÀI (persistable) qua [android.content.ContentResolver.
+     *  takePersistableUriPermission] - nếu không, URI chỉ đọc được 1 lần ngay lúc chọn, lần mở
+     *  app kế tiếp ảnh sẽ không hiện được nữa (mất quyền truy cập). */
+    private fun pickCustomWallpaper() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+        }
+        try {
+            startActivityForResult(intent, REQ_PICK_WALLPAPER)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Không mở được trình chọn ảnh", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_LOCK) {
@@ -477,6 +498,18 @@ class MainActivity : AppCompatActivity() {
             }
             // resultCode khác OK (bị đưa xuống nền qua nút back của LockScreenActivity) -
             // không làm gì cả, app vẫn ở màn khoá lúc quay lại foreground lần sau.
+            return
+        }
+        if (requestCode == REQ_PICK_WALLPAPER) {
+            val uri = data?.data
+            if (resultCode == RESULT_OK && uri != null) {
+                try {
+                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (e: Exception) { /* 1 số máy/nguồn ảnh không hỗ trợ quyền lâu dài - vẫn
+                    thử lưu, ảnh có thể mất hiệu lực sau khi khởi động lại máy, chấp nhận được. */ }
+                WallpaperPrefs.set(this, uri.toString())
+                loadWallpaper()
+            }
             return
         }
     }

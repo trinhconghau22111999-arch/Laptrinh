@@ -65,7 +65,14 @@ object ShortcutsRepository {
  *      NHẤN GIỮ tile vừa ghim đó trên trang "start" sẽ hiện menu "Bỏ ghim khỏi start". */
 class HomeScreenManager(
     private val context: Context,
-    private val onOpenShortcut: (ShortcutItem) -> Unit
+    private val onOpenShortcut: (ShortcutItem) -> Unit,
+    // Mở trình chọn ảnh TRONG APP để đổi hình nền RIÊNG của trang Start (KHÁC hẳn hình nền màn
+    // hình chính THẬT của điện thoại - trước đây "Hình nền" ở menu nhấn giữ lỡ mở nhầm trình
+    // chọn hình nền HỆ THỐNG (Intent.ACTION_SET_WALLPAPER), đổi xong không thấy gì khác trên
+    // trang Start vì app không hề đọc hình nền hệ thống, chỉ đọc [WallpaperPrefs] riêng của
+    // mình - khiến người dùng tưởng nhầm "nền trang Start giờ là nền màn hình chính [thật]".
+    // Xem [MainActivity.pickCustomWallpaper]).
+    private val onPickWallpaper: () -> Unit
 ) {
     /** Bảng màu Live Tile - dùng chung [ThemePrefs.PALETTE] (đúng 20 màu Accent/Live Tile gốc
      *  của Windows Phone) để đồng bộ với lưới chọn màu ở Cài đặt > Giao diện - xoay vòng cho
@@ -564,12 +571,7 @@ class HomeScreenManager(
             }
             Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
         }
-        val itemWallpaper = menuItem("Hình nền") {
-            openSystem(
-                Intent(Intent.ACTION_SET_WALLPAPER),
-                notFoundMsg = "Máy không hỗ trợ đổi hình nền hệ thống"
-            )
-        }
+        val itemWallpaper = menuItem("Hình nền") { onPickWallpaper() }
         val itemWidgets = menuItem("Tiện ích") {
             openSystem(
                 Intent(android.provider.Settings.ACTION_HOME_SETTINGS),
