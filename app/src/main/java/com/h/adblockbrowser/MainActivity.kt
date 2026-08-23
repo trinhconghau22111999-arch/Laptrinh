@@ -120,6 +120,27 @@ class MainActivity : AppCompatActivity() {
     private var edtHomeSearch: EditText? = null
     private lateinit var homeScreenManager: HomeScreenManager
 
+    // ── Widget Android THẬT (App Widget hệ thống của các app khác đã cài trên máy - đồng hồ,
+    // thời tiết, lịch...) gắn được vào trang Start qua menu nhấn giữ > "Tiện ích" - dùng
+    // [android.appwidget.AppWidgetHost], KHÔNG phụ thuộc việc app này có đang là "trình chạy
+    // mặc định" (Default Launcher) của máy hay không: BẤT KỲ app nào cũng tự lưu trữ (host)
+    // được widget của app khác, đây là API công khai của Android, không cần quyền đặc biệt vì
+    // luồng chọn/cấp quyền qua đúng UI hệ thống (ACTION_APPWIDGET_PICK) - người dùng tự chọn +
+    // xác nhận, không phải app tự ý bind ngầm. HOST_ID chỉ cần 1 số cố định, DUY NHẤT trong
+    // phạm vi app này (không trùng ứng dụng khác trên máy - mỗi app host luôn tự quản danh sách
+    // widget riêng của mình dựa theo HOST_ID). ──
+    private val appWidgetManager: android.appwidget.AppWidgetManager by lazy {
+        android.appwidget.AppWidgetManager.getInstance(this)
+    }
+    private val appWidgetHost: android.appwidget.AppWidgetHost by lazy {
+        android.appwidget.AppWidgetHost(this, WIDGET_HOST_ID)
+    }
+    // Widget vừa được CHỌN xong (ACTION_APPWIDGET_PICK) nhưng còn đang chờ bước CẤU HÌNH
+    // (ACTION_APPWIDGET_CONFIGURE) trước khi chính thức thêm vào Start - 1 số widget (vd đồng hồ
+    // thế giới cho chọn múi giờ, thời tiết cho chọn thành phố) BẮT BUỘC qua bước này mới dùng
+    // được, bỏ qua sẽ hiện sai/rỗng.
+    private var pendingConfigureWidgetId: Int = -1
+
     // Đánh dấu điều hướng do chính app gọi (từ thanh địa chỉ / menu đề xuất / mở lại tab)
     // để KHÔNG hỏi xác nhận, chỉ hỏi khi người dùng bấm link ngay trên trang.
     private var programmaticLoad = false
@@ -154,6 +175,9 @@ class MainActivity : AppCompatActivity() {
         const val REQ_PERMISSIONS = 101
         const val REQ_LOCK = 103
         const val REQ_PICK_WALLPAPER = 104
+        const val REQ_PICK_WIDGET = 105
+        const val REQ_CONFIGURE_WIDGET = 106
+        const val WIDGET_HOST_ID = 1985
         const val DOWNLOAD_FOLDER = "AdBlockBrowser"
     }
 
@@ -217,7 +241,10 @@ class MainActivity : AppCompatActivity() {
         homeScreenManager = HomeScreenManager(
             this,
             onOpenShortcut = { item -> openShortcutByKey(item.key) },
-            onPickWallpaper = { pickCustomWallpaper() }
+            onPickWallpaper = { pickCustomWallpaper() },
+            appWidgetManager = appWidgetManager,
+            appWidgetHost = appWidgetHost,
+            onPickWidget = { pickWidget() }
         )
         val homeContainer = homeOverlay as android.widget.FrameLayout
         homeContainer.addView(homeScreenManager.build())
@@ -490,6 +517,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Mở đúng trang HỆ THỐNG cho người dùng chọn 1 TIỆN ÍCH (App Widget) THẬT trong số tất cả
+     *  widget mà CÁC APP KHÁC đã cài trên máy khai báo sẵn (đồng hồ, thời tiết, lịch...) - gọi
+     *  từ menu nhấn giữ khoảng trống Start > "Tiện ích" (xem [HomeScreenManager]). KHÔNG cần app
+     *  này đang là "trình chạy mặc định" của máy - [appWidgetHost] là cơ chế lưu trữ widget độc
+     *  lập, app nào cũng dùng được (xem giải thích đầy đủ ở khai báo [appWidgetHost] phía trên). */
+    private fun pickWidget() {
+        val appWidgetId = appWidgetHost.allocateAppWidgetId()
+        val pickIntent = Intent(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_PICK).apply {
+            putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+        }
+        try {
+            startActivityForResult(pickIntent, REQ_PICK_WIDGET)
+        } catch (e: Exception) {
+            appWidgetHost.deleteAppWidgetId(appWidgetId)
+            Toast.makeText(this, "Máy không hỗ trợ chọn tiện ích", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** Widget đã CHỌN xong (hoặc vừa CẤU HÌNH xong, nếu cần) -> chính thức lưu vào
+     *  [StartWidgetStore] rồi dựng lại trang Start để hiện ngay, không cần thoát vào lại. */
+    private fun finalizeWidgetPick(appWidgetId: Int) {
+        StartWidgetStore.add(this, appWidgetId)
+        if (::homeScreenManager.isInitialized) homeScreenManager.refreshPages()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_LOCK) {
@@ -509,6 +561,48 @@ class MainActivity : AppCompatActivity() {
                     thử lưu, ảnh có thể mất hiệu lực sau khi khởi động lại máy, chấp nhận được. */ }
                 WallpaperPrefs.set(this, uri.toString())
                 loadWallpaper()
+            }
+            return
+        }
+        if (requestCode == REQ_PICK_WIDGET) {
+            val appWidgetId = data?.getIntExtra(
+                android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID,
+                android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID
+            ) ?: android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID
+            if (resultCode != RESULT_OK || appWidgetId == android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID) {
+                // Người dùng bấm back/huỷ ở trang chọn - dọn luôn id vừa cấp phát, tránh rác.
+                if (appWidgetId != android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID) {
+                    appWidgetHost.deleteAppWidgetId(appWidgetId)
+                }
+                return
+            }
+            val info = appWidgetManager.getAppWidgetInfo(appWidgetId)
+            if (info?.configure != null) {
+                // Widget này BẮT BUỘC cấu hình trước (vd chọn thành phố/múi giờ) - mở màn cấu
+                // hình CỦA CHÍNH APP CUNG CẤP widget đó, chờ nó trả kết quả rồi mới thêm chính
+                // thức (xem nhánh REQ_CONFIGURE_WIDGET bên dưới).
+                pendingConfigureWidgetId = appWidgetId
+                try {
+                    appWidgetHost.startAppWidgetConfigureActivityForResult(
+                        this, appWidgetId, 0, REQ_CONFIGURE_WIDGET, null
+                    )
+                } catch (e: Exception) {
+                    appWidgetHost.deleteAppWidgetId(appWidgetId)
+                    Toast.makeText(this, "Không mở được màn cấu hình tiện ích", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                finalizeWidgetPick(appWidgetId)
+            }
+            return
+        }
+        if (requestCode == REQ_CONFIGURE_WIDGET) {
+            val widgetId = pendingConfigureWidgetId
+            pendingConfigureWidgetId = -1
+            if (resultCode == RESULT_OK && widgetId != -1) {
+                finalizeWidgetPick(widgetId)
+            } else if (widgetId != -1) {
+                // Huỷ cấu hình -> widget coi như không thêm, dọn luôn id đã cấp phát.
+                appWidgetHost.deleteAppWidgetId(widgetId)
             }
             return
         }
@@ -948,6 +1042,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        // AppWidgetHost PHẢI startListening() thì các widget đang hiện mới nhận được cập nhật
+        // trực tiếp từ app cung cấp (đồng hồ tự nhảy số, thời tiết tự làm mới...) - quên gọi thì
+        // widget bị "đứng hình" y nguyên nội dung lúc mới thêm.
+        appWidgetHost.startListening()
         val filter = android.content.IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
@@ -968,6 +1066,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
+        appWidgetHost.stopListening()
         try {
             unregisterReceiver(packageChangeReceiver)
         } catch (e: IllegalArgumentException) {

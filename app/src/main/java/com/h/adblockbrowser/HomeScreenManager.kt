@@ -72,7 +72,16 @@ class HomeScreenManager(
     // trang Start vì app không hề đọc hình nền hệ thống, chỉ đọc [WallpaperPrefs] riêng của
     // mình - khiến người dùng tưởng nhầm "nền trang Start giờ là nền màn hình chính [thật]".
     // Xem [MainActivity.pickCustomWallpaper]).
-    private val onPickWallpaper: () -> Unit
+    private val onPickWallpaper: () -> Unit,
+    // ── Widget Android THẬT (App Widget hệ thống của app khác đã cài trên máy) - xem giải
+    // thích đầy đủ ở khai báo tương ứng trong MainActivity. [appWidgetManager]/[appWidgetHost]
+    // dùng để ĐỌC lại thông tin + DỰNG VIEW cho từng widget đã thêm (xem [buildStartPage]);
+    // [onPickWidget] gọi ngược về [MainActivity.pickWidget] để mở đúng trang hệ thống cho chọn
+    // tiện ích mới (HomeScreenManager không tự startActivityForResult được vì chỉ giữ Context,
+    // không phải Activity). ──
+    private val appWidgetManager: android.appwidget.AppWidgetManager,
+    private val appWidgetHost: android.appwidget.AppWidgetHost,
+    private val onPickWidget: () -> Unit
 ) {
     /** Bảng màu Live Tile - dùng chung [ThemePrefs.PALETTE] (đúng 20 màu Accent/Live Tile gốc
      *  của Windows Phone) để đồng bộ với lưới chọn màu ở Cài đặt > Giao diện - xoay vòng cho
@@ -276,6 +285,50 @@ class HomeScreenManager(
                 )
                 tile.tag = pkgName  // tag để enterDragMode nhận diện
                 addTile(tile, size)
+            }
+        }
+
+        // ── Tile WIDGET ANDROID THẬT (App Widget hệ thống của app khác đã cài trên máy - đồng
+        // hồ, thời tiết, lịch...) - thêm qua menu nhấn giữ khoảng trống > "Tiện ích" (xem
+        // [showStartLongPressMenu] + [MainActivity.pickWidget]), LUÔN nằm SAU app đã ghim (thêm
+        // vào cuối [StartWidgetStore], hiện cuối lưới). Widget nào bị GỠ CÀI ĐẶT ở app cung cấp
+        // (hoặc bất kỳ lý do gì khiến hệ thống không còn thông tin) -> [appWidgetManager.
+        // getAppWidgetInfo] trả về null, TỰ ĐỘNG dọn khỏi [StartWidgetStore] luôn, tránh giữ mãi
+        // 1 ô trống không hiện gì. ──
+        StartWidgetStore.getAll(context).forEach { widgetId ->
+            val info = appWidgetManager.getAppWidgetInfo(widgetId)
+            if (info == null) {
+                StartWidgetStore.remove(context, widgetId)
+                return@forEach
+            }
+            val hostView = try {
+                appWidgetHost.createView(context, widgetId, info)
+            } catch (e: Exception) {
+                null
+            } ?: return@forEach
+            val sizeKey = "widget_$widgetId"
+            val size = TileSizeStore.get(context, sizeKey, TileSize.TO)
+            addTile(hostView, size)
+            // Báo cho chính widget biết kích thước THẬT nó đang được cấp (tính bằng dp) - nhiều
+            // widget (đặc biệt lịch/thời tiết) tự đổi bố cục bên trong theo kích thước này qua
+            // [android.appwidget.AppWidgetProvider.onAppWidgetOptionsChanged], không báo thì
+            // widget có thể hiện sai/cắt chữ vì mặc định tưởng đang ở cỡ nhỏ nhất.
+            hostView.post {
+                val widthDp = (hostView.width / context.resources.displayMetrics.density).toInt()
+                val heightDp = (hostView.height / context.resources.displayMetrics.density).toInt()
+                if (widthDp > 0 && heightDp > 0) {
+                    val options = android.os.Bundle().apply {
+                        putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
+                        putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
+                        putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp)
+                        putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, heightDp)
+                    }
+                    appWidgetManager.updateAppWidgetOptions(widgetId, options)
+                }
+            }
+            hostView.setOnLongClickListener { anchor ->
+                showWidgetContextMenu(anchor, widgetId, sizeKey, gridContainer, cellPitchPx)
+                true
             }
         }
 
@@ -572,13 +625,7 @@ class HomeScreenManager(
             Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
         }
         val itemWallpaper = menuItem("Hình nền") { onPickWallpaper() }
-        val itemWidgets = menuItem("Tiện ích") {
-            openSystem(
-                Intent(android.provider.Settings.ACTION_HOME_SETTINGS),
-                Intent(android.provider.Settings.ACTION_SETTINGS),
-                notFoundMsg = "Không mở được cài đặt Tiện ích - vào Cài đặt hệ thống > Màn hình chính để tìm"
-            )
-        }
+        val itemWidgets = menuItem("Tiện ích") { onPickWidget() }
         val itemSettings = menuItem("Cài đặt") {
             openSystem(
                 Intent(android.provider.Settings.ACTION_SETTINGS),
@@ -614,6 +661,64 @@ class HomeScreenManager(
         // trên thay vì ra giữa nơi ngón tay đang nhấn - dùng showAtLocation với Gravity.CENTER
         // thay vì showSmartDropDown ở đây để LUÔN hiện giữa màn hình, không phụ thuộc anchor.
         popup.showAtLocation(anchor, Gravity.CENTER, 0, 0)
+    }
+
+    /** Menu bật lên khi NHẤN GIỮ 1 tile WIDGET (App Widget hệ thống thật, khác hẳn tile app -
+     *  xem [buildStartPage]) - 2 dòng: "Đổi kích cỡ" (vào [enterResizeMode] y hệt tile thường)
+     *  và "Gỡ tiện ích" (xoá khỏi [StartWidgetStore] + [android.appwidget.AppWidgetHost.
+     *  deleteAppWidgetId] để hệ thống dọn hẳn, không rò rỉ id widget vô chủ). */
+    private fun showWidgetContextMenu(
+        anchor: View, widgetId: Int, sizeKey: String, gridContainer: FrameLayout, cellPitchPx: Int
+    ) {
+        lateinit var popup: PopupWindow
+        fun menuItem(label: String, isDestructive: Boolean = false, onTap: () -> Unit): TextView = TextView(context).apply {
+            text = label
+            textSize = 16f
+            setTextColor(if (isDestructive) 0xFFFF5252.toInt() else Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setPadding(dp(22), dp(16), dp(22), dp(16))
+            minWidth = dp(200)
+            isClickable = true
+            isFocusable = true
+            background = pressedOverlay()
+            setOnClickListener {
+                popup.dismiss()
+                onTap()
+            }
+        }
+        val itemResize = menuItem("Đổi kích cỡ") {
+            enterResizeMode(anchor, gridContainer, cellPitchPx) { picked ->
+                TileSizeStore.set(context, sizeKey, picked)
+                refreshPages()
+            }
+        }
+        val itemRemove = menuItem("Gỡ tiện ích", isDestructive = true) {
+            StartWidgetStore.remove(context, widgetId)
+            appWidgetHost.deleteAppWidgetId(widgetId)
+            refreshPages()
+        }
+        fun divider() = View(context).apply {
+            setBackgroundColor(0xFF3A3A3A.toInt())
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+        }
+        val menuBox = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(0xFF1A1A1A.toInt())
+                setStroke(dp(1), 0xFF3A3A3A.toInt())
+            }
+            addView(itemResize)
+            addView(divider())
+            addView(itemRemove)
+        }
+        popup = PopupWindow(
+            menuBox, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true
+        ).apply {
+            elevation = 0f
+            animationStyle = 0
+            isOutsideTouchable = true
+        }
+        popup.showSmartDropDown(anchor)
     }
 
     /** Menu bật lên khi NHẤN GIỮ 1 app (trong danh sách "ứng dụng" hoặc chính tile đã ghim trên
