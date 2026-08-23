@@ -64,26 +64,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun enableImmersiveMode() {
-        // Chỉ ẩn THANH TRẠNG THÁI (giờ/mạng/pin) - KHÔNG ẩn thanh điều hướng hệ thống (3 phím
-        // đa nhiệm). Người dùng cần 3 phím đa nhiệm để chuyển app, Recent... Thanh điều hướng
-        // chỉ bị ẩn khi đang ở chế độ "tắt màn hình ảo" (FakeScreenOff) - xem showNavBar()/hideNavBar().
+        // Ẩn CẢ thanh trạng thái (giờ/mạng/pin) LẪN thanh điều hướng hệ thống (3 phím
+        // Back/Home/Recent hoặc gesture bar) - toàn màn hình thật sự, đúng tinh thần Windows
+        // Phone (bản thân WP không có thanh điều hướng phần mềm của Android). Đa nhiệm trong
+        // app giờ CHỈ dùng nút "Đa nhiệm" của WpNavBar (xem WpNavBar.kt/TaskView.kt), KHÔNG còn
+        // dựa vào nút Recent/Overview hệ thống nữa.
+        //
+        // TRƯỚC ĐÂY hàm này CHỈ ẩn thanh trạng thái, CỐ Ý giữ nguyên thanh điều hướng hệ thống -
+        // đã đổi lại theo yêu cầu (3 phím điều hướng Android vẫn lộ ra phá vỡ giao diện WP).
+        //
+        // Dùng WindowInsetsControllerCompat của androidx để hoạt động đúng trên mọi phiên bản
+        // Android (kể cả các máy Android cũ hơn không có API ẩn thanh điều hướng mới).
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.hide(WindowInsetsCompat.Type.statusBars())
-        controller.show(WindowInsetsCompat.Type.navigationBars())
+        controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    }
-
-    /** Ẩn thanh điều hướng (3 phím đa nhiệm) - CHỈ gọi khi bật FakeScreenOff */
-    fun hideNavBar() {
-        val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.hide(WindowInsetsCompat.Type.navigationBars())
-    }
-
-    /** Hiện lại thanh điều hướng - gọi khi tắt FakeScreenOff */
-    fun showNavBar() {
-        val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.show(WindowInsetsCompat.Type.navigationBars())
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -1188,7 +1183,7 @@ class MainActivity : AppCompatActivity() {
             // Truyền [webView] để FakeScreenOff tự hạ chất lượng video xuống thấp nhất lúc bật
             // (tiết kiệm CPU/GPU giải mã -> đỡ pin hơn khi không ai nhìn hình), và tự phục hồi
             // đúng chất lượng cũ lúc tắt lớp phủ - xem giải thích chi tiết ở FakeScreenOff.kt.
-            onTap = { hideNavBar(); FakeScreenOff.show(this, webView, onDismiss = { showNavBar() }) },
+            onTap = { FakeScreenOff.show(this, webView) },
             id = "off",
             icon = "⏻",
             defaultIsRight = false,

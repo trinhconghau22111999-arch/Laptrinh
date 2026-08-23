@@ -114,12 +114,9 @@ object FakeScreenOff {
     /** [webView]: truyền WebView đang hiển thị (có thể null nếu không cần hạ chất lượng, ví dụ
      *  gọi từ màn hình không có WebView) - nếu có, tự động hạ chất lượng video xuống thấp nhất
      *  ngay khi lớp phủ hiện lên, và tự phục hồi khi [hide] được gọi. */
-    private var onDismissCallback: (() -> Unit)? = null
-
-    fun show(activity: Activity, webView: WebView? = null, onDismiss: (() -> Unit)? = null) {
+    fun show(activity: Activity, webView: WebView? = null) {
         if (overlay != null) return // đang hiện rồi thì thôi, tránh add trùng window
 
-        onDismissCallback = onDismiss
         pendingWebView = webView
         webView?.evaluateJavascript(JS_LOWER_QUALITY, null)
 
@@ -241,12 +238,14 @@ object FakeScreenOff {
         clockHandler = null
         clockRunnable = null
         overlay?.let {
-            try { wm?.removeViewImmediate(it) } catch (e: Exception) { }
+            try {
+                wm?.removeViewImmediate(it)
+            } catch (e: Exception) {
+            }
         }
         overlay = null
+
         pendingWebView?.evaluateJavascript(JS_RESTORE_QUALITY, null)
         pendingWebView = null
-        onDismissCallback?.invoke()
-        onDismissCallback = null
     }
 }
