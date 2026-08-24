@@ -27,28 +27,29 @@ Daemon will be stopped at the end of the build
 > Task :app:extractDeepLinksDebug
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:processDebugManifestForPackage
 > Task :app:desugarDebugFileDependencies
 > Task :app:compressDebugAssets
-> Task :app:processDebugResources
-> Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugStartupProfile
+> Task :app:mergeDebugJniLibFolders
+> Task :app:checkDebugDuplicateClasses
+> Task :app:processDebugResources
+> Task :app:mergeDebugNativeLibs
 > Task :app:compileDebugKotlin
 > Task :app:mergeExtDexDebug
-> Task :app:mergeDebugJniLibFolders
 > Task :app:mergeLibDexDebug
-> Task :app:mergeDebugNativeLibs
-> Task :app:validateSigningDebug
-> Task :app:writeDebugAppMetadata
-> Task :app:writeDebugSigningConfigVersions
 
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libimage_processing_util_jni.so.
+
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
 
 > Task :app:compileDebugKotlin
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:362:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
@@ -58,7 +59,7 @@ w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbro
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:246:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:534:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/LockScreenActivity.kt:251:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
-w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:55:13 'startActivityForResult(Intent, Int): Unit' is deprecated. This method has been deprecated in favor of using the Activity Result API
+w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:59:13 'startActivityForResult(Intent, Int): Unit' is deprecated. This method has been deprecated in favor of using the Activity Result API
       which brings increased type safety via an {@link ActivityResultContract} and the prebuilt
       contracts for common intents available in
       {@link androidx.activity.result.contract.ActivityResultContracts}, provides hooks for
@@ -66,7 +67,7 @@ w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbro
       activity. Use
       {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)}
       passing in a {@link StartActivityForResult} object for the {@link ActivityResultContract}.
-w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:65:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:72:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/WpAppBar.kt:218:13 Variable 'originalSetExpanded' is never used
 
 > Task :app:compileDebugJavaWithJavac
@@ -79,7 +80,7 @@ w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbro
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 1m 56s
+BUILD SUCCESSFUL in 1m 48s
 40 actionable tasks: 40 executed
 
 === APK thực tế tìm thấy sau build (find app/build/outputs -iname '*.apk') ===
