@@ -1,8 +1,10 @@
 package com.h.adblockbrowser
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -20,7 +22,9 @@ import java.io.ByteArrayInputStream
  * "chọn 1 trong 3 app" mỗi khi mở app, KHÔNG còn là 1 trình duyệt/Start Screen kiểu Windows
  * Phone nữa. Cụ thể đã BỎ HẲN so với bản trước:
  *  - Xin quyền (Camera/Mic/Vị trí/Bộ nhớ/Thông báo...) lúc vào app - [requestAllPermissions]
- *    cũ đã xoá, KHÔNG còn hộp thoại xin quyền nào hiện ra khi mở app nữa.
+ *    cũ đã xoá, KHÔNG còn hộp thoại xin quyền hệ thống nào hiện ra khi mở app nữa - NGOẠI TRỪ
+ *    đúng 1 hộp thoại "Truy cập mọi tệp" hiện DUY NHẤT 1 LẦN ở lần mở app đầu tiên sau khi cài
+ *    đặt (xem [maybeShowFirstLaunchAllFilesAccessPrompt]), thêm lại theo yêu cầu riêng.
  *  - Trang "DS Ứng dụng" (liệt kê toàn bộ app cài trên máy) - đã xoá cùng với cả hệ thống
  *    Start Screen kiểu Pivot 2 trang (xem HomeScreenManager.kt bản mới, đã viết lại hoàn toàn).
  *  - 2 nút nổi "Back / Start" (WpNavBar) từng thay thế thanh điều hướng hệ thống - đã xoá, vì
@@ -55,11 +59,14 @@ class MainActivity : AppCompatActivity() {
             startActivityForResult(Intent(this, LockScreenActivity::class.java), REQ_LOCK)
         } else {
             showChooser()
+            maybeShowFirstLaunchAllFilesAccessPrompt()
         }
     }
 
     companion object {
         const val REQ_LOCK = 103
+        private const val PREFS_FIRST_RUN = "first_run"
+        private const val KEY_ASKED_ALL_FILES_ACCESS = "asked_all_files_access"
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -67,10 +74,45 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == REQ_LOCK) {
             if (resultCode == RESULT_OK) {
                 showChooser()
+                maybeShowFirstLaunchAllFilesAccessPrompt()
             }
             // Khác RESULT_OK (bị đưa xuống nền qua nút back của màn khoá) - không làm gì, app
             // vẫn ở màn khoá lúc quay lại foreground lần sau.
         }
+    }
+
+    /** Hộp thoại xin quyền "Truy cập mọi tệp" (MANAGE_EXTERNAL_STORAGE) - CHỈ hiện đúng 1 LẦN
+     *  DUY NHẤT, ngay lần đầu mở app sau khi cài đặt. Đánh dấu "đã hỏi" vào SharedPreferences
+     *  NGAY LẬP TỨC (trước khi biết người dùng bấm gì) nên hộp thoại không hiện lại ở các lần mở
+     *  sau nữa, kể cả khi người dùng bấm "Để sau" hoặc rời app mà chưa cấp quyền ở Cài đặt.
+     *  Quyền này KHÔNG xin được qua hộp thoại quyền runtime thông thường (như Camera/Vị trí...),
+     *  phải mở đúng màn Cài đặt hệ thống để người dùng tự bật.
+     *  LƯU Ý: màn "Quản lý tệp" (xem FilesActivity.checkAllFilesAccess()) vẫn TỰ nhắc lại quyền
+     *  này mỗi lần mở nếu còn thiếu - đó là nhắc lại theo NGỮ CẢNH (đúng lúc cần dùng tệp), tách
+     *  biệt hoàn toàn với lần hỏi MỘT LẦN DUY NHẤT lúc khởi động app ở đây. */
+    private fun maybeShowFirstLaunchAllFilesAccessPrompt() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) return
+        val prefs = getSharedPreferences(PREFS_FIRST_RUN, MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_ASKED_ALL_FILES_ACCESS, false)) return
+        prefs.edit().putBoolean(KEY_ASKED_ALL_FILES_ACCESS, true).apply()
+        if (android.os.Environment.isExternalStorageManager()) return
+
+        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
+            .setTitle("Cần quyền truy cập tệp")
+            .setMessage("Để ứng dụng xem/xoá/chia sẻ được mọi tệp trên máy (mục Quản lý tệp), hãy cấp quyền \"Truy cập mọi tệp\" ở Cài đặt hệ thống.")
+            .setPositiveButton("Mở Cài đặt") { _, _ ->
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    intent.data = Uri.parse("package:$packageName")
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    try {
+                        startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                    } catch (e2: Exception) { }
+                }
+            }
+            .setNegativeButton("Để sau", null)
+            .show()
     }
 
     /** Dựng màn "chọn 1 trong 3 app": nền đen tuyệt đối phủ toàn màn hình, CHỈ có 3 icon (đã
