@@ -83,7 +83,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private lateinit var browserRoot: LinearLayout
     private lateinit var fullscreenContainer: FrameLayout
     private var taskViewHandle: TaskView.Handle? = null
-    private var starredViewHandle: StarredView.Handle? = null
     private lateinit var tabBar: LinearLayout
     private lateinit var webArea: FrameLayout
     private lateinit var edtUrl: EditText
@@ -176,7 +175,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             // dễ bấm trúng hơn, tránh bấm nhầm nút đánh dấu trang kế bên.
             setPadding(dp(8), dp(4), dp(8), dp(4))
             isClickable = true
-            setOnClickListener { toggleStarredView() }
+            setOnClickListener { openAllStarred() }
         }, LinearLayout.LayoutParams(dp(44), dp(44)))
         browserRoot.addView(urlRow)
 
@@ -595,29 +594,16 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         Toast.makeText(this, if (nowStarred) "Đã gắn dấu trang" else "Đã bỏ dấu trang", Toast.LENGTH_SHORT).show()
     }
 
-    /** Mở/đóng màn "đã gắn dấu" - lưới Live Tile giống hệt trang "start" (xem StarredView.kt),
-     *  THAY CHO hành vi cũ (mở thẳng luôn TẤT CẢ các trang đã gắn dấu thành tab mới cùng lúc) -
-     *  giờ người dùng thấy danh sách trước, bấm vào tile nào thì MỚI mở đúng trang đó. */
-    private fun toggleStarredView() {
-        val existing = starredViewHandle
-        if (existing != null && existing.isShowing) {
-            existing.dismiss()
+    /** Bấm icon sao xanh -> mở LUÔN tất cả trang đã gắn dấu (bookmark) của hồ sơ này thành tab
+     *  mới, KHÔNG hiện màn lưới chọn trước nữa (đồng bộ với Ẩn danh - xem openAllStarred() trong
+     *  IncognitoActivity.kt). */
+    private fun openAllStarred() {
+        val urls = AccountStarredStore.getAll(this, slot)
+        if (urls.isEmpty()) {
+            Toast.makeText(this, "Chưa có trang nào được đánh dấu", Toast.LENGTH_SHORT).show()
             return
         }
-        starredViewHandle = StarredView.show(
-            activity = this,
-            root = outer,
-            urls = AccountStarredStore.getAll(this, slot),
-            onOpen = { url ->
-                starredViewHandle?.dismiss()
-                newTab(url)
-            },
-            onRemove = { url ->
-                AccountStarredStore.toggle(this, slot, url)
-                refreshStarIcon()
-                starredViewHandle?.update(AccountStarredStore.getAll(this, slot))
-            }
-        )
+        urls.forEach { newTab(it) }
     }
 
     private fun loadFromInput() {
@@ -648,12 +634,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        // Đang mở màn "đã gắn dấu" -> Back chỉ ĐÓNG màn đó, KHÔNG lùi trang/thoát hồ sơ.
-        val sv = starredViewHandle
-        if (sv != null && sv.isShowing) {
-            sv.dismiss()
-            return
-        }
         // Đang mở Đa nhiệm -> Back chỉ ĐÓNG Đa nhiệm, KHÔNG lùi trang/thoát hồ sơ.
         val tv = taskViewHandle
         if (tv != null && tv.isShowing) {
@@ -714,7 +694,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         saveSession()
         for (t in tabs) t.webView.destroy()
         taskViewHandle?.dismiss()
-        starredViewHandle?.dismiss()
         super.onDestroy()
     }
 }
