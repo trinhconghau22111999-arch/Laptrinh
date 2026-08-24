@@ -45,11 +45,6 @@ class FilesActivity : AppCompatActivity() {
     private var selectionMode = false
     private val selected = LinkedHashSet<Int>() // chỉ số trong `entries`
 
-    // Thanh điều hướng 2 nút kiểu Windows Phone thật (Back/Start) - xem WpNavBar.kt. TRƯỚC ĐÂY
-    // màn Quản lý tệp là màn DUY NHẤT trong app KHÔNG có thanh này (thiếu sót), khiến người dùng
-    // không có cách nào bấm Start để về Start Screen từ màn này ngoài bấm lùi hết Back cứng.
-    private var navBarHandle: WpNavBar.Handle? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Ẩn thanh trạng thái (giờ/mạng/pin) - phần khoanh đỏ người dùng muốn ẩn ở trên cùng.
@@ -141,11 +136,7 @@ class FilesActivity : AppCompatActivity() {
 
         listView = ListView(this).apply {
             setBackgroundColor(0xFF0D0D0D.toInt())
-            // Chừa khoảng trống đáy đúng bằng chiều cao WpNavBar, tránh dòng tệp cuối cùng bị
-            // thanh điều hướng nổi che mất (giống cách ClockActivity/CalculatorActivity... đã
-            // làm) - KHÔNG hard-code lại số 54.
             clipToPadding = false
-            setPadding(0, 0, 0, dp(WpNavBar.HEIGHT_DP))
         }
 
         root.addView(titleRow)
@@ -157,16 +148,9 @@ class FilesActivity : AppCompatActivity() {
         outer.addView(root, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         setContentView(outer)
 
-        // ── Thanh điều hướng 2 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start - đồng bộ với mọi
-        // màn hình khác (WpNavBar.kt). Màn này là màn "gốc" khi mở từ Start/DS Ứng Dụng (không
-        // có trang cha bên trong app để lùi), nên Start cũng chỉ thoát hẳn màn Quản lý tệp giống
-        // Back - ĐÚNG hành vi onBackPressed() đã có sẵn (lùi thư mục cha trước, hết thì thoát). ──
-        navBarHandle = WpNavBar.attach(
-            activity = this,
-            root = outer,
-            onBack = { onBackPressed() },
-            onStart = { onBackPressed() }
-        )
+        // ĐÃ XOÁ HẲN: thanh điều hướng nổi 2 nút "Back/Start" (WpNavBar) theo yêu cầu - màn này
+        // giờ chỉ dùng đúng nút Back thật của hệ thống (luôn hiện sẵn vì không còn ẩn thanh điều
+        // hướng - xem hideStatusBar() ở UiUtils.kt).
 
         listView.setOnItemClickListener { _, _, position, _ ->
             if (selectionMode) toggleSelect(position) else onItemClick(position)
@@ -197,13 +181,9 @@ class FilesActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Đọc lại vị trí thanh Back/Start mới nhất - xem giải thích đồng bộ ở WpNavBar.kt
-        // (giống cách mọi Activity khác trong app đã làm).
-        navBarHandle?.resync()
     }
 
     override fun onDestroy() {
-        navBarHandle?.detach()
         super.onDestroy()
     }
 
@@ -475,7 +455,9 @@ class FilesActivity : AppCompatActivity() {
         if (parent != null && currentDir != Environment.getExternalStorageDirectory()) {
             openDir(parent)
         } else {
-            super.onBackPressed()
+            // Ở thư mục gốc rồi (không còn thư mục cha để lùi) -> Back ở đây THOÁT LUÔN CẢ APP
+            // (không quay lại màn chọn 3 app) theo yêu cầu mới, thay vì chỉ đóng màn Quản lý tệp.
+            finishAffinity()
         }
     }
 }

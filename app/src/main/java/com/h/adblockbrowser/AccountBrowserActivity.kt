@@ -85,7 +85,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private lateinit var outer: FrameLayout
     private lateinit var browserRoot: LinearLayout
     private lateinit var fullscreenContainer: FrameLayout
-    private var floatingBackButtonHandle: WpNavBar.Handle? = null
     private var taskViewHandle: TaskView.Handle? = null
     private var starredViewHandle: StarredView.Handle? = null
     private lateinit var tabBar: LinearLayout
@@ -98,14 +97,8 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        // Ẩn CẢ status bar LẪN thanh điều hướng hệ thống - xem giải thích đầy đủ ở
-        // UiUtils.hideStatusBar()/MainActivity.enableImmersiveMode(). Đa nhiệm ở màn này dùng
-        // nút "Đa nhiệm" của WpNavBar (xem toggleTaskView()), không cần nút Recent hệ thống.
-        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        insetsController.systemBarsBehavior =
-            androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        // KHÔNG còn ẩn status bar/thanh điều hướng hệ thống nữa (khác bản cũ) - để đa nhiệm
+        // (Recents) thật của hệ thống luôn dùng được ở màn này, đúng yêu cầu mới.
 
         // Cho phép cookie (kể cả cookie bên thứ ba, Google đăng nhập cần) được LƯU LẠI bình
         // thường - mỗi tiến trình :acctN đã có thư mục dữ liệu riêng nên việc bật ở đây chỉ
@@ -280,7 +273,8 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             v.setPadding(0, 0, 0, 0)
             insets
         }
-        addFloatingBackHomeButtons(outer)
+        // ĐÃ XOÁ HẲN: thanh điều hướng nổi (WpNavBar) Back/Start/Đa nhiệm theo yêu cầu - dùng
+        // đúng nút Back thật của hệ thống (luôn hiện sẵn); chuyển tab vẫn dùng dải tab ở trên.
 
         val savedUrls = AccountSessionStore.load(this, slot)
         val startUrl = intent.getStringExtra("initial_url")
@@ -296,23 +290,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-
-    // ---------- Thanh điều hướng kiểu Windows Phone thật: ◁ Back / ⊞ Start / Đa nhiệm ----------
-    // TRƯỚC ĐÂY dùng 1 nút tròn nổi kéo-thả (kiểu nút Home iPhone đời cũ), GIỜ thay bằng nút cố
-    // định giữa cạnh dưới màn hình (xem WpNavBar.kt). Back = lùi trang trong tab hiện tại (hoặc
-    // đóng Đa nhiệm nếu đang mở - xem onBackPressed()). Start = thoát hồ sơ này, quay về danh
-    // sách tài khoản (đúng vai trò "về Start" của WP thật). Đa nhiệm (nút thứ 3, xem
-    // toggleTaskView()) = xem/đóng nhanh các tab của hồ sơ này dạng card toàn màn hình.
-    @SuppressLint("ClickableViewAccessibility")
-    private fun addFloatingBackHomeButtons(root: FrameLayout) {
-        floatingBackButtonHandle = WpNavBar.attach(
-            activity = this,
-            root = root,
-            onBack = { onBackPressed() },
-            onStart = { finish() },
-            onTaskView = { toggleTaskView() }
-        )
-    }
 
     // ---------- Đa nhiệm (Task View) - xem TaskView.kt để biết chi tiết cách overlay này gắn
     // vào màn hình và vì sao KHÔNG dùng cửa sổ hệ thống riêng như WpNavBar. ----------
@@ -563,13 +540,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                 browserRoot.visibility = View.GONE
                 fullscreenContainer.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                fullscreenContainer.addView(buildSwipeRevealZone(), FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(40)).also { it.gravity = Gravity.BOTTOM })
                 fullscreenContainer.visibility = View.VISIBLE
-                // ẨN thanh Back/Start/Đa nhiệm khi xem video toàn màn hình - thanh này là 1 CỬA
-                // SỔ HỆ THỐNG riêng luôn nổi trên cùng (xem WpNavBar.kt) nên nếu không ẩn sẽ đè
-                // lên góc video suốt lúc xem. Vuốt lên từ mép đáy (xem buildSwipeRevealZone())
-                // sẽ hiện lại thoáng qua rồi tự ẩn lại sau vài giây.
-                floatingBackButtonHandle?.hide()
             }
 
             override fun onHideCustomView() {
@@ -726,24 +697,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         AccountSessionStore.save(this, slot, tabs.mapNotNull { it.webView.url })
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        // FIX (giống MainActivity - xem giải thích đầy đủ 3 lần sửa ở
-        // MainActivity.onWindowFocusChanged()): nguyên nhân gốc là nút Back nổi (FloatingBackButton,
-        // đã sửa tận gốc bằng FLAG_NOT_FOCUSABLE) từng tranh giành input focus. Ở đây thêm lớp
-        // bảo vệ đáng tin cậy hơn việc đoán qua loại View: hỏi thẳng hệ thống bàn phím có đang
-        // hiển thị không, đúng cho mọi loại ô nhập (EditText, ô nhập trong WebView...).
-        if (hasFocus) {
-            val imeVisible = androidx.core.view.ViewCompat
-                .getRootWindowInsets(window.decorView)
-                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
-            if (!imeVisible) {
-                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            }
-        }
-    }
-
     /** Thoát chế độ video toàn màn hình - tách riêng thành hàm dùng chung cho cả
      *  onHideCustomView() (người dùng bấm nút thoát trên trình phát) LẪN onBackPressed()
      *  (người dùng bấm nút Back của hệ thống), KHÔNG gọi qua WebView.getWebChromeClient() vì
@@ -755,40 +708,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         requestedOrientation = orientationBeforeFullscreen
         customViewCallback?.onCustomViewHidden()
         customView = null
-        // Thoát video toàn màn hình -> hiện lại thanh Back/Start/Đa nhiệm bình thường (đã ẩn khi
-        // vào toàn màn hình - xem onShowCustomView()).
-        floatingBackButtonHandle?.show()
-    }
-
-    /** Dải trong suốt cao 40dp áp SÁT MÉP ĐÁY màn hình, CHỈ dùng để bắt cử chỉ vuốt LÊN trong
-     *  lúc xem video toàn màn hình - KHÔNG phủ hết video (sẽ chặn mất các nút tua/play của
-     *  trình phát) mà chỉ nằm ở dải mép đáy, giống đúng cách Windows 10 Mobile lẫn YouTube thật
-     *  cho vuốt từ mép để gọi lại thanh điều hướng đang ẩn. Vuốt lên đủ xa (>24dp) trong dải này
-     *  -> hiện thanh NavBar thoáng qua rồi tự ẩn lại sau 3 giây nếu người dùng không vuốt tiếp. */
-    @SuppressLint("ClickableViewAccessibility")
-    private fun buildSwipeRevealZone(): View {
-        val autoHide = Runnable { if (customView != null) floatingBackButtonHandle?.hide() }
-        var downY = 0f
-        return View(this).apply {
-            setOnTouchListener { v, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        downY = event.rawY
-                        false // không tiêu thụ ACTION_DOWN - để sự kiện vẫn truyền được xuống
-                        // video bên dưới nếu người dùng chỉ chạm/tua chứ không vuốt lên thật sự.
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        if (downY - event.rawY > dp(24)) {
-                            v.removeCallbacks(autoHide)
-                            floatingBackButtonHandle?.show()
-                            v.postDelayed(autoHide, 3000)
-                        }
-                        false
-                    }
-                    else -> false
-                }
-            }
-        }
     }
 
     override fun onBackPressed() {
@@ -842,8 +761,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         for (t in tabs) t.webView.onResume()
-        // Đọc lại vị trí nút Back nổi mới nhất - xem giải thích đồng bộ ở FloatingBackButton.kt.
-        floatingBackButtonHandle?.resync()
     }
 
     private fun pauseAllVideosInAllTabs() {
@@ -859,7 +776,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     override fun onDestroy() {
         saveSession()
         for (t in tabs) t.webView.destroy()
-        floatingBackButtonHandle?.detach()
         taskViewHandle?.dismiss()
         starredViewHandle?.dismiss()
         super.onDestroy()

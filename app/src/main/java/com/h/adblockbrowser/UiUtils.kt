@@ -82,12 +82,12 @@ fun Activity.buildBackArrow(onBack: () -> Unit = { finish() }): TextView =
  *  vuốt nhẹ từ mép màn hình vẫn hiện TẠM thời thanh điều hướng thật, làm lối thoát khẩn cấp an
  *  toàn (ví dụ 1 màn hình lỗi/treo không có nút Back nào dùng được) - đây là hành vi immersive
  *  tiêu chuẩn Google khuyến nghị, không phải để dùng làm cách đa nhiệm chính. */
+/** ĐÃ ĐỔI THEO YÊU CẦU MỚI: KHÔNG còn ẩn thanh trạng thái/thanh điều hướng hệ thống ở bất kỳ màn
+ *  hình nào nữa - để đa nhiệm (Recents) THẬT của hệ thống luôn dùng được ở mọi lúc, mọi màn hình
+ *  ("luôn bật đa nhiệm của hệ thống"). Giữ lại hàm rỗng (thay vì xoá + sửa lại mọi nơi gọi nó)
+ *  để không phải sửa từng Activity đang gọi [hideStatusBar()]. */
 fun Activity.hideStatusBar() {
-    androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-    val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-    controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-    controller.systemBarsBehavior =
-        androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    // Cố ý để trống.
 }
 
 /** Toggle bật/tắt kiểu Windows Phone/Windows 10 Mobile thật - hình viên thuốc (pill) bo tròn 2

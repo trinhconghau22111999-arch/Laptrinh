@@ -34,7 +34,6 @@ class AccountsActivity : AppCompatActivity() {
 
 
     private lateinit var grid: GridLayout
-    private var floatingBackButtonHandle: WpNavBar.Handle? = null
 
     // Dùng đúng bảng 20 màu Live Tile gốc của Windows Phone (ThemePrefs.PALETTE) thay vì bảng
     // màu Material tự bịa riêng cho màn này - trước đây màn "Nhiều tài khoản" là màn hình DUY
@@ -45,14 +44,8 @@ class AccountsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        // Ẩn CẢ status bar LẪN thanh điều hướng hệ thống - xem giải thích đầy đủ ở
-        // UiUtils.hideStatusBar()/MainActivity.enableImmersiveMode(). Màn này không có nhiều
-        // tab nên không có nút "Đa nhiệm" riêng (chỉ Back/Start) - xem WpNavBar.attach() bên dưới.
-        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        insetsController.systemBarsBehavior =
-            androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        // KHÔNG còn ẩn status bar/thanh điều hướng hệ thống nữa (khác bản cũ) - để đa nhiệm
+        // (Recents) thật của hệ thống luôn dùng được ở màn này, đúng yêu cầu mới.
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -91,47 +84,22 @@ class AccountsActivity : AppCompatActivity() {
             v.setPadding(0, 0, 0, 0)
             insets
         }
-        addFloatingBackButton(outer)
         render()
     }
 
-    // ---------- Thanh điều hướng 2 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start (dùng chung
-    // WpNavBar.kt - đồng bộ với MainActivity / AccountBrowserActivity / IncognitoActivity, thay
-    // vì tự dựng widget riêng như trước) ----------
-    // Màn hình này không có ô địa chỉ nào để "tìm kiếm" nên KHÔNG truyền onSearch - WpNavBar tự
-    // chỉ vẽ 2 nút Back/Start khi thiếu tham số đó (xem WpNavBar.attach). Đây là màn "gốc"
-    // (không có trang con để lùi), nên cả Back lẫn Start đều thoát về lại nơi đã mở màn này.
-    private fun addFloatingBackButton(root: FrameLayout) {
-        floatingBackButtonHandle = WpNavBar.attach(
-            activity = this,
-            root = root,
-            onBack = { onBackPressed() },
-            onStart = { onBackPressed() }
-        )
-    }
+    // ĐÃ XOÁ HẲN: thanh điều hướng nổi 2 nút "Back/Start" (WpNavBar) theo yêu cầu - màn này giờ
+    // chỉ dùng đúng nút Back thật của hệ thống (luôn hiện sẵn vì không còn ẩn thanh điều hướng).
 
     override fun onResume() {
         super.onResume()
         render()
-        // Đọc lại vị trí nút Back nổi mới nhất - xem giải thích đồng bộ ở FloatingBackButton.kt.
-        floatingBackButtonHandle?.resync()
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        // Áp lại ẩn thanh trạng thái/điều hướng mỗi lần cửa sổ lấy lại focus (chuyển app đi rồi
-        // quay lại, đóng dialog hệ thống...) - xem giải thích chi tiết ở
-        // MainActivity.onWindowFocusChanged(). Màn này dùng AlertDialog hệ thống (cửa sổ riêng)
-        // cho các thao tác Thêm/Đổi tên nên không cần kiểm tra IME như MainActivity.
-        if (hasFocus) {
-            val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-            insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        }
-    }
-
-    override fun onDestroy() {
-        floatingBackButtonHandle?.detach()
-        super.onDestroy()
+    /** Màn "gốc" của app con "Nhiều tài khoản" (không có trang con để lùi trong app con này) -
+     *  Back ở đây thoát LUÔN CẢ APP (không quay lại màn chọn 3 app) theo yêu cầu mới, thay vì chỉ
+     *  quay lại MainActivity như trước. */
+    override fun onBackPressed() {
+        finishAffinity()
     }
 
     private fun render() {

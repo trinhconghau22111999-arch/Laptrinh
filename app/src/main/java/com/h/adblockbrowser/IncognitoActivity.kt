@@ -54,7 +54,6 @@ class IncognitoActivity : AppCompatActivity() {
     private val tabs = ArrayList<Tab>()
     private var activeIndex = 0
     private var programmaticLoad = false
-    private var floatingBackButtonHandle: WpNavBar.Handle? = null
     // Màn hình gốc (chứa webContainer/tabBar) - lưu lại thành field để showTaskView() có nơi
     // add overlay Đa nhiệm vào, thay vì chỉ là biến cục bộ "outer" trong onCreate() như trước.
     private lateinit var overlayRoot: FrameLayout
@@ -73,14 +72,8 @@ class IncognitoActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-        // Ẩn CẢ status bar LẪN thanh điều hướng hệ thống - xem giải thích đầy đủ ở
-        // UiUtils.hideStatusBar()/MainActivity.enableImmersiveMode(). Đa nhiệm ở màn này dùng
-        // nút "Đa nhiệm" của WpNavBar (xem toggleTaskView()), không cần nút Recent hệ thống.
-        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        insetsController.systemBarsBehavior =
-            androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        // KHÔNG còn ẩn status bar/thanh điều hướng hệ thống nữa (khác bản cũ) - để đa nhiệm
+        // (Recents) thật của hệ thống luôn dùng được ở màn này, đúng yêu cầu mới.
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -184,7 +177,8 @@ class IncognitoActivity : AppCompatActivity() {
             v.setPadding(0, 0, 0, 0)
             insets
         }
-        addFloatingBackHomeButtons(outer)
+        // ĐÃ XOÁ HẲN: thanh điều hướng nổi (WpNavBar) Back/Start/Đa nhiệm theo yêu cầu - dùng
+        // đúng nút Back thật của hệ thống (luôn hiện sẵn); chuyển tab vẫn dùng dải tab ở trên.
 
         // ── Thông báo giải thích vì sao KHÔNG cho chạm 1 lần vào link để chuyển trang ──
         // (xem thêm logic chặn thật ở shouldOverrideUrlLoading() bên dưới). Hiện MỖI LẦN mở Ẩn
@@ -217,23 +211,6 @@ class IncognitoActivity : AppCompatActivity() {
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-
-    // ---------- Thanh điều hướng kiểu Windows Phone thật: ◁ Back / ⊞ Start / Đa nhiệm ----------
-    // TRƯỚC ĐÂY dùng 1 nút tròn nổi kéo-thả (kiểu nút Home iPhone đời cũ), GIỜ thay bằng nút cố
-    // định giữa cạnh dưới màn hình (xem WpNavBar.kt). Back = lùi trang trong tab hiện tại (hoặc
-    // đóng Đa nhiệm nếu đang mở - xem onBackPressed()). Start = thoát hẳn Ẩn danh, quay về màn
-    // hình chính app (xoá sạch dữ liệu phiên Ẩn danh như trước). Đa nhiệm (nút thứ 3, xem
-    // toggleTaskView()) = xem/đóng nhanh các tab đang mở dạng card toàn màn hình.
-    @SuppressLint("ClickableViewAccessibility")
-    private fun addFloatingBackHomeButtons(root: FrameLayout) {
-        floatingBackButtonHandle = WpNavBar.attach(
-            activity = this,
-            root = root,
-            onBack = { onBackPressed() },
-            onStart = { saveSession(); finish() },
-            onTaskView = { toggleTaskView() }
-        )
-    }
 
     // ---------- Đa nhiệm (Task View) - xem TaskView.kt để biết chi tiết cách overlay này gắn
     // vào màn hình và vì sao KHÔNG dùng cửa sổ hệ thống riêng như WpNavBar. ----------
@@ -582,24 +559,6 @@ class IncognitoActivity : AppCompatActivity() {
         IncognitoSessionStore.clear(this)
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        // FIX (giống MainActivity - xem giải thích đầy đủ 3 lần sửa ở
-        // MainActivity.onWindowFocusChanged()): nguyên nhân gốc là nút Back nổi (FloatingBackButton,
-        // đã sửa tận gốc bằng FLAG_NOT_FOCUSABLE) từng tranh giành input focus. Ở đây thêm lớp
-        // bảo vệ đáng tin cậy hơn việc đoán qua loại View: hỏi thẳng hệ thống bàn phím có đang
-        // hiển thị không, đúng cho mọi loại ô nhập (EditText, ô nhập trong WebView...).
-        if (hasFocus) {
-            val imeVisible = androidx.core.view.ViewCompat
-                .getRootWindowInsets(window.decorView)
-                ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
-            if (!imeVisible) {
-                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            }
-        }
-    }
-
     override fun onBackPressed() {
         // Đang mở màn "đã gắn dấu" -> Back chỉ ĐÓNG màn đó, KHÔNG lùi trang/thoát Ẩn danh.
         val sv = starredViewHandle
@@ -619,8 +578,10 @@ class IncognitoActivity : AppCompatActivity() {
             isInitiatedLoad = true
             current.goBack()
         } else {
+            // Hết trang để lùi trong tab hiện tại, không còn tab khác -> Back ở đây THOÁT LUÔN
+            // CẢ APP (không quay lại màn chọn 3 app) theo yêu cầu mới.
             saveSession()
-            finish()
+            finishAffinity()
         }
     }
 
@@ -637,8 +598,6 @@ class IncognitoActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         for (t in tabs) t.webView.onResume()
-        // Đọc lại vị trí nút Back nổi mới nhất - xem giải thích đồng bộ ở FloatingBackButton.kt.
-        floatingBackButtonHandle?.resync()
     }
 
     private fun pauseAllVideosInAllTabs() {
@@ -654,7 +613,6 @@ class IncognitoActivity : AppCompatActivity() {
     override fun onDestroy() {
         saveSession()
         for (t in tabs) t.webView.destroy()
-        floatingBackButtonHandle?.detach()
         taskViewHandle?.dismiss()
         starredViewHandle?.dismiss()
         super.onDestroy()

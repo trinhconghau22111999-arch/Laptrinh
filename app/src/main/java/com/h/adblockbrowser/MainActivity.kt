@@ -1,1212 +1,141 @@
 package com.h.adblockbrowser
 
-import android.Manifest
-import android.annotation.SuppressLint
-import android.content.pm.ActivityInfo
-import android.app.DownloadManager
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
-import android.os.Environment
 import android.view.Gravity
-import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
-import android.webkit.PermissionRequest
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.WebStorage
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.ArrayAdapter
-import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.GridLayout
-import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import java.io.ByteArrayInputStream
 
+/**
+ * ĐÃ VIẾT LẠI HOÀN TOÀN theo yêu cầu mới - MainActivity giờ CHỈ còn đúng 1 việc: hiện màn hình
+ * "chọn 1 trong 3 app" mỗi khi mở app, KHÔNG còn là 1 trình duyệt/Start Screen kiểu Windows
+ * Phone nữa. Cụ thể đã BỎ HẲN so với bản trước:
+ *  - Xin quyền (Camera/Mic/Vị trí/Bộ nhớ/Thông báo...) lúc vào app - [requestAllPermissions]
+ *    cũ đã xoá, KHÔNG còn hộp thoại xin quyền nào hiện ra khi mở app nữa.
+ *  - Trang "DS Ứng dụng" (liệt kê toàn bộ app cài trên máy) - đã xoá cùng với cả hệ thống
+ *    Start Screen kiểu Pivot 2 trang (xem HomeScreenManager.kt bản mới, đã viết lại hoàn toàn).
+ *  - 2 nút nổi "Back / Start" (WpNavBar) từng thay thế thanh điều hướng hệ thống - đã xoá, vì
+ *    giờ KHÔNG còn ẩn thanh điều hướng/trạng thái hệ thống nữa (xem bên dưới), đa nhiệm hệ
+ *    thống (nút Recents/vuốt đa nhiệm thật của máy) luôn dùng được ở mọi màn hình.
+ *  - Toàn bộ WebView/thanh địa chỉ/hình nền/widget/ghim tile/YouTube... của bản trình duyệt cũ -
+ *    không còn cần thiết vì màn chính giờ không tự duyệt web nữa, chỉ mở 1 trong 3 Activity có
+ *    sẵn (Ẩn danh / Nhiều tài khoản / Quản lý tệp).
+ *
+ * Hành vi "Back thoát app con = thoát hẳn app": xử lý ở TỪNG activity con (IncognitoActivity/
+ * AccountsActivity/FilesActivity) - khi Back tới điểm "hết lịch sử, thoát màn gốc của app con
+ * đó", các activity này gọi finishAffinity() thay vì finish() như trước, nên thoát LUÔN cả app
+ * (không quay lại màn chọn 3 app này). Mở lại app từ đầu vì vậy luôn bắt đầu lại đúng ở màn
+ * chọn 3 app này - đúng yêu cầu "vào lại là vào lại từ đầu", không cần lưu/khôi phục gì thêm.
+ */
 class MainActivity : AppCompatActivity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    /** Nền ô địa chỉ kiểu Windows Phone: nền đen phẳng + 1 gạch chân màu NHẤN ở đáy (đặc trưng
-     *  của TextBox trên WP/Windows 10 Mobile) - vẽ bằng code (thay vì @drawable/edit_url_bg cố
-     *  định trong XML) để luôn dùng đúng màu nhấn người dùng vừa chọn ở Cài đặt, không cần build
-     *  lại app mỗi lần đổi màu. */
-    private fun buildUrlBarBackground(): android.graphics.drawable.Drawable {
-        val bg = android.graphics.drawable.GradientDrawable().apply {
-            setColor(android.graphics.Color.BLACK)
-        }
-        val underline = android.graphics.drawable.GradientDrawable().apply {
-            setColor(ThemePrefs.accent(this@MainActivity))
-        }
-        return android.graphics.drawable.LayerDrawable(arrayOf(bg, underline)).apply {
-            setLayerGravity(1, Gravity.BOTTOM)
-            setLayerHeight(1, dp(2))
-        }
-    }
-
-    private fun enableImmersiveMode() {
-        // Ẩn CẢ thanh trạng thái (giờ/mạng/pin) LẪN thanh điều hướng hệ thống (3 phím
-        // Back/Home/Recent hoặc gesture bar) - toàn màn hình thật sự, đúng tinh thần Windows
-        // Phone (bản thân WP không có thanh điều hướng phần mềm của Android). Đa nhiệm trong
-        // app giờ CHỈ dùng nút "Đa nhiệm" của WpNavBar (xem WpNavBar.kt/TaskView.kt), KHÔNG còn
-        // dựa vào nút Recent/Overview hệ thống nữa.
-        //
-        // TRƯỚC ĐÂY hàm này CHỈ ẩn thanh trạng thái, CỐ Ý giữ nguyên thanh điều hướng hệ thống -
-        // đã đổi lại theo yêu cầu (3 phím điều hướng Android vẫn lộ ra phá vỡ giao diện WP).
-        //
-        // Dùng WindowInsetsControllerCompat của androidx để hoạt động đúng trên mọi phiên bản
-        // Android (kể cả các máy Android cũ hơn không có API ẩn thanh điều hướng mới).
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.hide(WindowInsetsCompat.Type.systemBars())
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        // Chế độ ẩn toàn màn hình có thể bị huỷ khi bàn phím hiện lên, chuyển app đi rồi quay
-        // lại... - áp dụng lại mỗi lần cửa sổ được lấy focus để luôn giữ đúng trạng thái ẩn.
-        //
-        // LỖI ĐÃ SỬA (lần 1): bấm vào ô địa chỉ (edtUrl) để gõ chữ thì bàn phím ảo KHÔNG bật lên
-        // được, vì enableImmersiveMode() bị gọi lại đúng lúc IME đang hiện lên -> huỷ mất.
-        // Sửa lần 1 bằng cách loại trừ theo LOẠI VIEW đang giữ focus (currentFocus !is EditText).
-        //
-        // LỖI ĐÃ SỬA (lần 2): cách loại trừ theo loại View ở lần 1 không bắt được trường hợp ô
-        // nhập liệu NẰM TRONG WebView (currentFocus lúc đó là WebView, không phải EditText) ->
-        // vẫn bị gọi enableImmersiveMode() giữa lúc bàn phím đang hiện cho web -> vẫn lỗi.
-        //
-        // LỖI ĐÃ SỬA (lần 3 - NGUYÊN NHÂN GỐC, đây mới là lý do lần 2 sửa xong vẫn không hết
-        // lỗi): đoán qua LOẠI VIEW (currentFocus) là cách không đáng tin - còn có nút Back nổi
-        // (FloatingBackButton, xem file đó) là 1 WINDOW RIÊNG luôn hiện sẵn, trước đây tranh
-        // giành input focus với window chính, khiến chính bản thân hasFocus/currentFocus báo cáo
-        // sai lệch. Đã sửa tận gốc ở FloatingBackButton.kt (thêm FLAG_NOT_FOCUSABLE). Ở ĐÂY sửa
-        // thêm lớp bảo vệ thứ 2, ĐÁNG TIN CẬY HƠN NHIỀU: hỏi THẲNG hệ thống "bàn phím ảo (IME) có
-        // đang thật sự hiển thị không" qua WindowInsetsCompat, thay vì đoán qua loại View đang
-        // giữ focus - cách này đúng với MỌI trường hợp (EditText, ô nhập trong WebView, hay bất
-        // kỳ ô nhập nào khác sau này), không cần liệt kê từng loại View một nữa.
-        if (hasFocus) {
-            val imeVisible = androidx.core.view.ViewCompat
-                .getRootWindowInsets(window.decorView)
-                ?.isVisible(WindowInsetsCompat.Type.ime()) == true
-            if (!imeVisible) enableImmersiveMode()
-        }
-    }
-
-    private lateinit var webView: WebView
-    private lateinit var edtUrl: EditText
-    private lateinit var toolbarUrl: View
-    private var progressBar: ProgressBar? = null
-    private lateinit var homeOverlay: View
-    private lateinit var imgWallpaper: android.widget.ImageView
-    private var edtHomeSearch: EditText? = null
-    private lateinit var homeScreenManager: HomeScreenManager
-
-    // ── Widget Android THẬT (App Widget hệ thống của các app khác đã cài trên máy - đồng hồ,
-    // thời tiết, lịch...) gắn được vào trang Start qua menu nhấn giữ > "Tiện ích" - dùng
-    // [android.appwidget.AppWidgetHost], KHÔNG phụ thuộc việc app này có đang là "trình chạy
-    // mặc định" (Default Launcher) của máy hay không: BẤT KỲ app nào cũng tự lưu trữ (host)
-    // được widget của app khác, đây là API công khai của Android, không cần quyền đặc biệt vì
-    // luồng chọn/cấp quyền qua đúng UI hệ thống (ACTION_APPWIDGET_PICK) - người dùng tự chọn +
-    // xác nhận, không phải app tự ý bind ngầm. HOST_ID chỉ cần 1 số cố định, DUY NHẤT trong
-    // phạm vi app này (không trùng ứng dụng khác trên máy - mỗi app host luôn tự quản danh sách
-    // widget riêng của mình dựa theo HOST_ID). ──
-    private val appWidgetManager: android.appwidget.AppWidgetManager by lazy {
-        android.appwidget.AppWidgetManager.getInstance(this)
-    }
-    private val appWidgetHost: android.appwidget.AppWidgetHost by lazy {
-        android.appwidget.AppWidgetHost(this, WIDGET_HOST_ID)
-    }
-    // Widget vừa được CHỌN xong (ACTION_APPWIDGET_PICK) nhưng còn đang chờ bước CẤU HÌNH
-    // (ACTION_APPWIDGET_CONFIGURE) trước khi chính thức thêm vào Start - 1 số widget (vd đồng hồ
-    // thế giới cho chọn múi giờ, thời tiết cho chọn thành phố) BẮT BUỘC qua bước này mới dùng
-    // được, bỏ qua sẽ hiện sai/rỗng.
-    private var pendingConfigureWidgetId: Int = -1
-
-    // Đánh dấu điều hướng do chính app gọi (từ thanh địa chỉ / menu đề xuất / mở lại tab)
-    // để KHÔNG hỏi xác nhận, chỉ hỏi khi người dùng bấm link ngay trên trang.
-    private var programmaticLoad = false
-
-    // Bấm nút "🖥 Bản máy tính" nổi -> ép trang HIỆN TẠI sang UA máy tính tới khi tắt lại.
-    private var forceDesktop = false
-
-    // ĐÃ BỎ (theo yêu cầu): tính năng "cửa sổ nổi trong app" (mini-player WebView riêng tự动
-    // mở khi xem YouTube) - gây lỗi bàn phím ảo không bật lên được (WebView nổi tự cướp focus)
-    // và lỗi "153 - Lỗi cấu hình trình phát video" (tải embed sai cách). Không đáng công sửa
-    // tiếp vì tính năng "phát nền thật" khi thoát hẳn app (bấm Home vật lý) vốn không làm được
-    // bằng WebView (xem giải thích trong hội thoại) - giữ app đơn giản, ổn định hơn.
-    private var floatingBackButtonHandle: WpNavBar.Handle? = null
-    // ĐÃ XOÁ HẲN: Thanh App Bar kiểu WP (dãy nền đen chứa icon Tải lại / Bản máy tính-di động /
-    // Chia sẻ + nút "..." mở rộng) theo yêu cầu - xem WpAppBar.kt (không còn được dùng nữa).
-
-    // Nút "Off" nổi thứ 2, cùng kiểu nút tròn nổi kéo-thả với nút Back (xem FloatingBackButton),
-    // nhưng bấm vào sẽ phủ màn hình "giả tắt" (FakeScreenOff) thay vì lùi trang - dùng khi đang
-    // xem video (Youtube...) muốn "tắt màn hình" tạm thời (video/nhạc vẫn phát, chỉ chặn chạm
-    // nhầm) mà không phải tắt màn hình thật của máy (tắt thật thì Youtube tự dừng video).
-    private var floatingOffButtonHandle: FloatingBackButton.Handle? = null
-
-    // Video/trang toàn màn hình HTML5 (xem onShowCustomView/onHideCustomView) - dùng chung với
-    // logic chia 3 màn hình: khi đang ngang, customView (nếu có) sẽ là ô đầu tiên của chia 3
-    // thay cho webView; khi đang dọc, customView hiện toàn màn hình bình thường trong
-    // fullscreenContainer.
-    private var customView: View? = null
-    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
-    private lateinit var fullscreenContainer: FrameLayout
-
-    companion object {
-        const val REQ_PERMISSIONS = 101
-        const val REQ_LOCK = 103
-        const val REQ_PICK_WALLPAPER = 104
-        const val REQ_PICK_WIDGET = 105
-        const val REQ_CONFIGURE_WIDGET = 106
-        const val WIDGET_HOST_ID = 1985
-        const val DOWNLOAD_FOLDER = "AdBlockBrowser"
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        // FIX khoảng đen dư ở trên cùng: dù đã setDecorFitsSystemWindows(false), 1 số máy vẫn tự
-        // đệm (padding) view gốc theo chiều cao thanh trạng thái/điều hướng theo cơ chế insets
-        // kiểu cũ, tạo ra khoảng đen trống phía trên/dưới nội dung thật. Gắn listener KHÔNG áp
-        // dụng padding gì cả (chỉ trả nguyên insets) để ép nội dung tràn hết viền màn hình.
-        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.rootFrame)) { v, insets ->
-            v.setPadding(0, 0, 0, 0)
-            insets
-        }
-        enableImmersiveMode()
 
-        // Khoá ứng dụng (PIN/Hình, đặt ở Cài đặt) - nếu đang bật, bắt buộc mở khoá đúng mới cho
-        // vào màn chính. LockScreenActivity không cho back thoát ra (chỉ đưa app xuống nền).
+        // CHỦ Ý: không gọi bất kỳ hàm ẩn status bar/thanh điều hướng hệ thống nào ở đây (khác
+        // hẳn bản cũ) - để thanh điều hướng/status bar + đa nhiệm (Recents) THẬT của hệ thống
+        // luôn hiện, luôn dùng được ở mọi lúc, đúng yêu cầu "luôn bật đa nhiệm của hệ thống".
+
+        // Khoá ứng dụng (PIN/Hình, đặt ở Cài đặt trước đây) - giữ nguyên tính năng này, KHÔNG
+        // thuộc diện "yêu cầu quyền" (đây là khoá riêng của app, không phải hộp thoại quyền hệ
+        // thống) nên không bị xoá theo yêu cầu "xoá yêu cầu quyền khi vào app".
         if (AppLockPrefs.isEnabled(this)) {
             startActivityForResult(Intent(this, LockScreenActivity::class.java), REQ_LOCK)
         } else {
-            initAfterUnlock()
+            showChooser()
         }
     }
 
-    private fun initAfterUnlock() {
-        AdBlocker.init(applicationContext)
-        AdBlocker.enabled = true // luôn bật, không cho tắt
-
-        webView = findViewById(R.id.webView)
-        webView.setBackgroundColor(android.graphics.Color.BLACK) // tránh WebView chớp trắng lúc mới vào/đang tải trang (bề mặt render riêng của WebView mặc định trắng, đặt màu nền XML không đủ)
-        edtUrl = findViewById(R.id.edtUrl)
-        // Gạch chân màu nhấn của ô địa chỉ trước đây cố định trong edit_url_bg.xml (không đổi
-        // được lúc chạy) - giờ vẽ lại bằng code theo đúng màu nhấn người dùng đã chọn ở Cài đặt
-        // > Giao diện, để đổi màu ở đó là ô địa chỉ lên màu mới ngay từ lần mở app kế tiếp.
-        edtUrl.background = buildUrlBarBackground()
-        toolbarUrl = findViewById(R.id.toolbarUrl)
-        // Thanh tiến trình tải trang mỏng kiểu Windows Phone (IE Mobile/Edge): 1 vạch phẳng màu
-        // NHẤN nằm sát cạnh trên màn hình, không bo góc, không đổ bóng - trước đây bị xoá hẳn
-        // khỏi layout (progressBar = null cứng) nên lúc tải trang KHÔNG còn dấu hiệu gì cho biết
-        // trang đang load, thiếu hẳn 1 chi tiết đặc trưng của trình duyệt WP thật. Dựng lại bằng
-        // code (giống cách AccountBrowserActivity/IncognitoActivity đã làm) để luôn lên đúng màu
-        // nhấn người dùng vừa chọn ở Cài đặt, không cần build lại app.
-        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progressTintList = android.content.res.ColorStateList.valueOf(ThemePrefs.accent(this@MainActivity))
-            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.BLACK)
-            visibility = View.GONE
-        }
-        findViewById<FrameLayout>(R.id.rootFrame).addView(
-            progressBar,
-            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)).also {
-                it.gravity = Gravity.TOP
-            }
-        )
-        homeOverlay = findViewById(R.id.homeOverlay)
-        imgWallpaper = findViewById(R.id.imgWallpaper)
-        edtHomeSearch = null  // đã xoá khỏi layout
-
-        // Khởi tạo màn hình chính - chỉ còn 3 icon cố định (YouTube, Ẩn danh, YouTube+Ẩn danh)
-        homeScreenManager = HomeScreenManager(
-            this,
-            onOpenShortcut = { item -> openShortcutByKey(item.key) },
-            onPickWallpaper = { pickCustomWallpaper() },
-            appWidgetManager = appWidgetManager,
-            appWidgetHost = appWidgetHost,
-            onPickWidget = { pickWidget() }
-        )
-        val homeContainer = homeOverlay as android.widget.FrameLayout
-        homeContainer.addView(homeScreenManager.build())
-
-        requestAllPermissions()
-        setupWebView()
-        fullscreenContainer = FrameLayout(this).apply { visibility = View.GONE }
-        findViewById<FrameLayout>(R.id.rootFrame).addView(
-            fullscreenContainer,
-            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        )
-        addFloatingBackHomeButtons()
-        loadWallpaper()
-
-        findViewById<android.widget.ImageButton>(R.id.btnDesktopSite).setOnClickListener { toggleDesktopSite() }
-
-        edtUrl.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_GO ||
-                (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER)) {
-                loadFromInput()
-                true
-            } else {
-                false
-            }
-        }
-        edtHomeSearch?.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_GO ||
-                (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER)) {
-                loadFromHomeSearch()
-                true
-            } else {
-                false
-            }
-        }
-
-        showHomeOverlay()
-        // Nếu Activity được mở kèm extra "initial_url" (vd shortcut YouTube + Ẩn danh), điều
-        // hướng thẳng qua navigateTo() thay vì dừng ở Start (hàm này tự ẩn homeOverlay giúp).
-        intent.getStringExtra("initial_url")?.let { url -> navigateTo(url) }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Sau khi đổi hình nền ở Cài đặt rồi bấm Back quay lại đây, MainActivity không bị tạo lại
-        // (onCreate không chạy lần nữa) nên hình nền cũ vẫn còn - phải tự tải lại ở đây thì ảnh
-        // mới mới hiện ngay, không cần thoát hẳn app rồi mở lại như trước.
-        if (::imgWallpaper.isInitialized) {
-            loadWallpaper()
-        }
-        // Cho WebView chạy lại bình thường (đối xứng với onPause() ở dưới).
-        if (::webView.isInitialized) webView.onResume()
-        // App vừa gỡ cài đặt (menu "Gỡ cài đặt" ở trang DS Ứng Dụng, mở hộp thoại gỡ HỆ THỐNG
-        // riêng) có thể vừa biến mất khỏi máy trong lúc màn hình này ở nền - dựng lại Start/App
-        // List để nó biến mất khỏi danh sách ngay khi quay về, không cần thoát hẳn app.
-        if (::homeScreenManager.isInitialized) homeScreenManager.refreshPages()
-        // Đọc lại vị trí nút Back nổi mới nhất (có thể vừa bị kéo sang chỗ khác ở màn hình
-        // khác trong lúc màn hình này ở nền) - xem giải thích đồng bộ ở FloatingBackButton.kt.
-        floatingBackButtonHandle?.resync()
-        floatingOffButtonHandle?.resync()
-    }
-
-    private fun loadWallpaper() {
-        val uriStr = WallpaperPrefs.get(this)
-        if (uriStr != null) {
-            try {
-                imgWallpaper.setImageURI(Uri.parse(uriStr))
-            } catch (e: Exception) { }
-        }
-    }
-
-    /** Điều hướng "về nhà" dùng chung cho nút Start (WpNavBar) và bước cuối của doBack() - LUÔN
-     *  về Start ([showHomeOverlay]), đúng quy tắc gốc "Trang Start là trang chính". */
-    private fun goHome() {
-        showHomeOverlay()
-    }
-
-    private fun showHomeOverlay() {
-        homeOverlay.visibility = View.VISIBLE
-        toolbarUrl.visibility = View.GONE
-        progressBar?.visibility = View.GONE
-        pauseAllVideos()
-        floatingOffButtonHandle?.setVisible(false)
-        // Luôn về trang "start" (trang 0) khi quay về màn chính - dù đang ở trang "DS Ứng Dụng"
-        homeScreenManager.goToStart()
-    }
-
-    private val pauseRetryHandler = android.os.Handler(android.os.Looper.getMainLooper())
-
-    /** Dừng phát TẤT CẢ thẻ <video> VÀ <audio> đang có trên trang hiện tại trong WebView (kể cả
-     *  video YouTube dạng bình thường chưa fullscreen, và các trang nghe nhạc dùng thẻ <audio>
-     *  như Zing MP3, SoundCloud, NhacCuaTui...) - dùng mỗi khi người dùng rời khỏi trang/rời
-     *  khỏi app để tiếng không tiếp tục phát ngầm ngoài ý muốn.
-     *  FIX (lỗi #5): trước đây chỉ pause thẻ <video>, bỏ sót thẻ <audio>.
-     *  FIX (YouTube vẫn phát sau khi rời app): evaluateJavascript() ở đây là lệnh "bắn rồi
-     *  thôi" (bất đồng bộ) - nếu webView.onPause() được gọi ngay sau đó (ở onPause()/
-     *  onUserLeaveHint()) làm WebView tạm ngưng xử lý ĐÚNG lúc lệnh JS này chưa kịp chạy tới,
-     *  video/nhạc có thể lỡ không bị dừng dù code trông như đã gọi pause(). Gọi lại 1 lần nữa
-     *  sau 150ms (khi WebView chắc chắn đã xử lý xong lượt đầu) để đảm bảo chắc chắn dừng hẳn. */
-    private fun pauseAllVideos() {
-        if (!::webView.isInitialized) return
-        val js = "(function(){" +
-            "var els=document.querySelectorAll('video,audio');" +
-            "for(var i=0;i<els.length;i++){try{els[i].pause();}catch(e){}}" +
-            "})();"
-        webView.evaluateJavascript(js, null)
-        pauseRetryHandler.postDelayed({
-            if (::webView.isInitialized) webView.evaluateJavascript(js, null)
-        }, 150)
-    }
-
-    private fun hideHomeOverlay() {
-        homeOverlay.visibility = View.GONE
-        // Đã ẩn hẳn thanh địa chỉ dưới cùng theo yêu cầu - không hiện lại kể cả khi đang xem
-        // trang web. Điều hướng dùng trang chủ (icon/tìm kiếm) + nút Back tròn nổi.
-    }
-
-    private fun loadFromHomeSearch() {
-        val search = edtHomeSearch ?: return
-        var input = search.text.toString().trim()
-        if (input.isEmpty()) return
-        if (!input.startsWith("http://") && !input.startsWith("https://")) {
-            input = if (input.contains(".") && !input.contains(" ")) "https://$input"
-            else "https://www.google.com/search?q=" + Uri.encode(input)
-        }
-        search.setText("")
-        navigateTo(input)
-    }
-
-    private fun toggleDesktopSite() {
-        forceDesktop = !forceDesktop
-        val btn = findViewById<android.widget.ImageButton>(R.id.btnDesktopSite)
-        btn.setImageResource(
-            if (forceDesktop) R.drawable.ic_desktop_mode else R.drawable.ic_mobile_mode
-        )
-        Toast.makeText(
-            this,
-            if (forceDesktop) "Đã chuyển sang bản máy tính" else "Đã chuyển về bản di động",
-            Toast.LENGTH_SHORT
-        ).show()
-        webView.url?.let { navigateTo(it) }
-        // ĐÃ BỎ App Bar kiểu WP (thanh đen chứa Tải lại / Bản máy tính-di động / Chia sẻ / "...")
-        // theo yêu cầu - không dựng lại nữa, icon đổi trạng thái vẫn nằm ở btnDesktopSite riêng.
-    }
-
-    /** Chia sẻ địa chỉ trang đang xem qua app khác (Zalo, Messenger, email...) bằng hộp thoại
-     *  chia sẻ HỆ THỐNG - hộp thoại này KHÔNG thuộc app nên để hệ thống tự vẽ theo ROM máy, không
-     *  can thiệp theme (giống cách app xử lý các Intent mở ứng dụng ngoài khác). */
-    private fun shareCurrentPage() {
-        val url = webView.url ?: return
-        val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(android.content.Intent.EXTRA_TEXT, url)
-        }
-        try {
-            startActivity(android.content.Intent.createChooser(send, "Chia sẻ trang qua"))
-        } catch (e: Exception) { }
-    }
-
-    /** Xoá cookie/cache duyệt web - giống hệt lệnh cùng tên ở [SettingsActivity], đặt lại đây để
-     *  bấm được ngay từ App Bar mà không cần rời khỏi trang đang xem. */
-    private fun clearBrowsingData() {
-        android.webkit.CookieManager.getInstance().removeAllCookies(null)
-        android.webkit.CookieManager.getInstance().flush()
-        android.webkit.WebStorage.getInstance().deleteAllData()
-        Toast.makeText(this, "Đã xoá dữ liệu duyệt web", Toast.LENGTH_SHORT).show()
-    }
-
-    // ---------- Quyền ----------
-
-    private fun requestAllPermissions() {
-        // Android 11+: xin quyền truy cập toàn bộ tệp (MANAGE_EXTERNAL_STORAGE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!android.os.Environment.isExternalStorageManager()) {
-                try {
-                    val intent = android.content.Intent(
-                        android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                        android.net.Uri.parse("package:$packageName")
-                    )
-                    startActivity(intent)
-                } catch (e: Exception) {
-                    startActivity(android.content.Intent(
-                        android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                    ))
-                }
-            }
-        }
-
-        val perms = ArrayList<String>()
-        perms.add(Manifest.permission.CAMERA)
-        perms.add(Manifest.permission.RECORD_AUDIO)
-        perms.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        perms.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        if (Build.VERSION.SDK_INT >= 33) {
-            perms.add(Manifest.permission.READ_MEDIA_IMAGES)
-            perms.add(Manifest.permission.READ_MEDIA_VIDEO)
-            perms.add(Manifest.permission.READ_MEDIA_AUDIO)
-            perms.add(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            perms.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            if (Build.VERSION.SDK_INT < 29) {
-                perms.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
-        }
-        val need = perms.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (need.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, need.toTypedArray(), REQ_PERMISSIONS)
-        }
-    }
-
-    // ---------- Điều hướng ----------
-
-    private fun navigateTo(url: String) {
-        // Đặt User-Agent ĐÚNG cho từng trang TRƯỚC khi tải (Zalo luôn máy tính, nút nổi "🖥ản máy
-        // tính" ép toàn bộ, còn lại dùng UA di động "sạch" - xem UserAgentManager.kt để biết vì
-        // sao việc này giúp Gmail hiện đúng bản đầy đủ/cá nhân thay vì bản HTML rút gọn).
-        val uri = try { Uri.parse(url) } catch (e: Exception) { null }
-        webView.settings.userAgentString = UserAgentManager.uaFor(uri?.host, forceDesktop, uri?.path)
-        hideHomeOverlay()
-        programmaticLoad = true
-        webView.loadUrl(url)
-    }
-
-    private fun loadFromInput() {
-        var input = edtUrl.text.toString().trim()
-        if (input.isEmpty()) return
-        if (!input.startsWith("http://") && !input.startsWith("https://")) {
-            input = if (input.contains(".") && !input.contains(" ")) {
-                "https://$input"
-            } else {
-                "https://www.google.com/search?q=" + Uri.encode(input)
-            }
-        }
-        navigateTo(input)
-    }
-
-    // Màn hình chính (MainActivity) chỉ có ĐÚNG 1 WebView, không có khái niệm "nhiều tab" nên
-    // KHÔNG có nút/màn hình Đa nhiệm ở đây. Tính năng Đa nhiệm (xem TaskView.kt) chỉ áp dụng
-    // cho 2 màn hình thật sự có nhiều tab để chuyển qua lại: Ẩn danh (IncognitoActivity) và 1
-    // hồ sơ Nhiều tài khoản (AccountBrowserActivityBase) - xem toggleTaskView() ở 2 file đó.
-
-    private fun clearAllSessionData() {
-        webView.clearHistory()
-        webView.clearCache(true)
-        CookieManager.getInstance().removeAllCookies(null)
-        CookieManager.getInstance().flush()
-        WebStorage.getInstance().deleteAllData()
-        Toast.makeText(this, "Đã xoá toàn bộ lịch sử", Toast.LENGTH_SHORT).show()
-    }
-
-    // ---------- Menu đề xuất trang (tam giác) ----------
-
-    /** Mở trình chọn ẢNH của HỆ THỐNG (không phải trình chọn hình nền hệ thống - xem giải thích
-     *  ở [HomeScreenManager] constructor) để người dùng chọn 1 ảnH bất kỳ trong máy làm hình nền
-     *  RIÊNG của trang Start app này - lưu lại qua [WallpaperPrefs] + [loadWallpaper] áp dụng
-     *  ngay, không cần khởi động lại app. Dùng ACTION_OPEN_DOCUMENT (không phải ACTION_GET_CONTENT)
-     *  để xin được QUYỀN ĐỌC LÂU DÀI (persistable) qua [android.content.ContentResolver.
-     *  takePersistableUriPermission] - nếu không, URI chỉ đọc được 1 lần ngay lúc chọn, lần mở
-     *  app kế tiếp ảnh sẽ không hiện được nữa (mất quyền truy cập). */
-    private fun pickCustomWallpaper() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "image/*"
-        }
-        try {
-            startActivityForResult(intent, REQ_PICK_WALLPAPER)
-        } catch (e: Exception) {
-            Toast.makeText(this, "Không mở được trình chọn ảnh", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    /** Mở đúng trang HỆ THỐNG cho người dùng chọn 1 TIỆN ÍCH (App Widget) THẬT trong số tất cả
-     *  widget mà CÁC APP KHÁC đã cài trên máy khai báo sẵn (đồng hồ, thời tiết, lịch...) - gọi
-     *  từ menu nhấn giữ khoảng trống Start > "Tiện ích" (xem [HomeScreenManager]). KHÔNG cần app
-     *  này đang là "trình chạy mặc định" của máy - [appWidgetHost] là cơ chế lưu trữ widget độc
-     *  lập, app nào cũng dùng được (xem giải thích đầy đủ ở khai báo [appWidgetHost] phía trên). */
-    private fun pickWidget() {
-        val appWidgetId = appWidgetHost.allocateAppWidgetId()
-        val pickIntent = Intent(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_PICK).apply {
-            putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-        }
-        try {
-            startActivityForResult(pickIntent, REQ_PICK_WIDGET)
-        } catch (e: Exception) {
-            appWidgetHost.deleteAppWidgetId(appWidgetId)
-            Toast.makeText(this, "Máy không hỗ trợ chọn tiện ích", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    /** Widget đã CHỌN xong (hoặc vừa CẤU HÌNH xong, nếu cần) -> chính thức lưu vào
-     *  [StartWidgetStore] rồi dựng lại trang Start để hiện ngay, không cần thoát vào lại. */
-    private fun finalizeWidgetPick(appWidgetId: Int) {
-        StartWidgetStore.add(this, appWidgetId)
-        if (::homeScreenManager.isInitialized) homeScreenManager.refreshPages()
+    companion object {
+        const val REQ_LOCK = 103
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_LOCK) {
             if (resultCode == RESULT_OK) {
-                initAfterUnlock()
+                showChooser()
             }
-            // resultCode khác OK (bị đưa xuống nền qua nút back của LockScreenActivity) -
-            // không làm gì cả, app vẫn ở màn khoá lúc quay lại foreground lần sau.
-            return
-        }
-        if (requestCode == REQ_PICK_WALLPAPER) {
-            val uri = data?.data
-            if (resultCode == RESULT_OK && uri != null) {
-                try {
-                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                } catch (e: Exception) { /* 1 số máy/nguồn ảnh không hỗ trợ quyền lâu dài - vẫn
-                    thử lưu, ảnh có thể mất hiệu lực sau khi khởi động lại máy, chấp nhận được. */ }
-                WallpaperPrefs.set(this, uri.toString())
-                loadWallpaper()
-            }
-            return
-        }
-        if (requestCode == REQ_PICK_WIDGET) {
-            val appWidgetId = data?.getIntExtra(
-                android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID,
-                android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID
-            ) ?: android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID
-            if (resultCode != RESULT_OK || appWidgetId == android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID) {
-                // Người dùng bấm back/huỷ ở trang chọn - dọn luôn id vừa cấp phát, tránh rác.
-                if (appWidgetId != android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID) {
-                    appWidgetHost.deleteAppWidgetId(appWidgetId)
-                }
-                return
-            }
-            val info = appWidgetManager.getAppWidgetInfo(appWidgetId)
-            if (info?.configure != null) {
-                // Widget này BẮT BUỘC cấu hình trước (vd chọn thành phố/múi giờ) - mở màn cấu
-                // hình CỦA CHÍNH APP CUNG CẤP widget đó, chờ nó trả kết quả rồi mới thêm chính
-                // thức (xem nhánh REQ_CONFIGURE_WIDGET bên dưới).
-                pendingConfigureWidgetId = appWidgetId
-                try {
-                    appWidgetHost.startAppWidgetConfigureActivityForResult(
-                        this, appWidgetId, 0, REQ_CONFIGURE_WIDGET, null
-                    )
-                } catch (e: Exception) {
-                    appWidgetHost.deleteAppWidgetId(appWidgetId)
-                    Toast.makeText(this, "Không mở được màn cấu hình tiện ích", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                finalizeWidgetPick(appWidgetId)
-            }
-            return
-        }
-        if (requestCode == REQ_CONFIGURE_WIDGET) {
-            val widgetId = pendingConfigureWidgetId
-            pendingConfigureWidgetId = -1
-            if (resultCode == RESULT_OK && widgetId != -1) {
-                finalizeWidgetPick(widgetId)
-            } else if (widgetId != -1) {
-                // Huỷ cấu hình -> widget coi như không thêm, dọn luôn id đã cấp phát.
-                appWidgetHost.deleteAppWidgetId(widgetId)
-            }
-            return
+            // Khác RESULT_OK (bị đưa xuống nền qua nút back của màn khoá) - không làm gì, app
+            // vẫn ở màn khoá lúc quay lại foreground lần sau.
         }
     }
 
-    private fun openShortcutByKey(key: String) {
-        val item = ShortcutsRepository.ALL[key] ?: return
-        if (item.type == ShortcutType.WEB) {
-            navigateTo(item.target)
-        } else {
-            // "YouTube + Ẩn danh" (nếu có) mã hoá target dạng "IncognitoActivity:<url ban đầu>"
-            // để mở luôn tab YouTube ngay khi vào Ẩn danh, thay vì phải tự gõ địa chỉ. Các
-            // shortcut ACTIVITY khác chỉ cần đúng tên class, không có phần ":<url>".
-            val parts = item.target.split(":", limit = 2)
-            val activityName = parts[0]
-            val initialUrl = parts.getOrNull(1)
-            val activityClass = when (activityName) {
-                "IncognitoActivity" -> IncognitoActivity::class.java
-                "AccountsActivity" -> AccountsActivity::class.java
-                "FilesActivity" -> FilesActivity::class.java
-                else -> null
-            }
-            if (activityClass != null) {
-                val intent = Intent(this, activityClass)
-                if (initialUrl != null) intent.putExtra("initial_url", initialUrl)
-                startActivityWp(intent)
-            }
-        }
-    }
-
-    // ---------- (Đã bỏ hộp thoại xác nhận mở liên kết - link bấm trong trang mở luôn) ----------
-
-    // ---------- Tải video đang xem về máy ----------
-
-    private fun sanitizeFileName(name: String): String {
-        val cleaned = name.replace(Regex("[^a-zA-Z0-9_\\- ]"), "_").trim().take(50)
-        return if (cleaned.isBlank()) "video_${System.currentTimeMillis()}" else cleaned
-    }
-
-    inner class VideoDownloadBridge {
-        @JavascriptInterface
-        fun downloadVideo(url: String, title: String) {
-            runOnUiThread {
-                if (url.isBlank()) {
-                    Toast.makeText(this@MainActivity, "Không tìm thấy video trên trang này", Toast.LENGTH_SHORT).show()
-                    return@runOnUiThread
-                }
-                if (url.startsWith("blob:")) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Trang này (vd. YouTube) mã hoá luồng video, không thể tải trực tiếp kiểu này",
-                        Toast.LENGTH_LONG
-                    ).show()
-                    return@runOnUiThread
-                }
-                try {
-                    val fileName = sanitizeFileName(title) + ".mp4"
-                    val request = DownloadManager.Request(Uri.parse(url))
-                    request.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url) ?: "")
-                    request.addRequestHeader("User-Agent", webView.settings.userAgentString)
-                    request.setTitle(fileName)
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    request.setDestinationInExternalPublicDir(
-                        Environment.DIRECTORY_MOVIES, "$DOWNLOAD_FOLDER/$fileName"
-                    )
-                    val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-                    dm.enqueue(request)
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Đang tải về thư mục Movies/$DOWNLOAD_FOLDER...",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } catch (e: Exception) {
-                    Toast.makeText(this@MainActivity, "Không tải được video này", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
-    // ---------- WebView ----------
-
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView() {
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.settings.loadWithOverviewMode = true
-        webView.settings.useWideViewPort = true
-        webView.settings.setSupportZoom(true)
-        webView.settings.builtInZoomControls = true
-        webView.settings.displayZoomControls = false
-        webView.settings.mediaPlaybackRequiresUserGesture = false
-        webView.settings.javaScriptCanOpenWindowsAutomatically = false
-        webView.settings.setSupportMultipleWindows(false)
-        // Cho phép trang web (Google Maps...) xin vị trí thật của máy - mặc định WebView chặn
-        // hoàn toàn API định vị của trình duyệt (navigator.geolocation) nếu không bật dòng này.
-        webView.settings.setGeolocationEnabled(true)
-
-        webView.addJavascriptInterface(VideoDownloadBridge(), "AndroidDownloader")
-
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                progressBar?.progress = newProgress
-                progressBar?.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
-            }
-
-            // Chặn popup / tab mới do quảng cáo tự mở (window.open)
-            override fun onCreateWindow(
-                view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?
-            ): Boolean = false
-
-            // ── Video/trang toàn màn hình HTML5 (nút phóng to của YouTube, hoặc YouTube TỰ
-            // BẬT fullscreen khi xoay ngang) ── QUAN TRỌNG: nếu không bắt sự kiện này, trang sẽ
-            // tự xử lý fullscreen theo kiểu riêng của nó (phóng to video trong khung WebView cũ),
-            // hoàn toàn bỏ qua logic chia 3 màn hình của app. Bắt lấy customView này rồi đưa vào
-            // refreshLayoutMode() để nó được xử lý CHUNG với webView chính (chia 3 nếu đang
-            // ngang, toàn màn hình nếu đang dọc).
-            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-                if (view == null) return
-                if (customView != null) {
-                    callback?.onCustomViewHidden()
-                    return
-                }
-                customView = view
-                customViewCallback = callback
-                refreshLayoutMode()
-            }
-
-            override fun onHideCustomView() {
-                if (customView == null) return
-                (customView?.parent as? ViewGroup)?.removeView(customView)
-                customView = null
-                customViewCallback?.onCustomViewHidden()
-                customViewCallback = null
-                refreshLayoutMode()
-            }
-
-            // FIX (lý do "bấm mở mic là tắt liền"): trước đây CẤP LUÔN mọi quyền WebView yêu
-            // cầu mà không kiểm tra quyền HỆ THỐNG (RECORD_AUDIO/CAMERA) có thực sự đã được
-            // người dùng đồng ý hay chưa - nếu người dùng từng bấm "Từ chối" ở hộp thoại xin
-            // quyền lúc mở app lần đầu (hoặc thu hồi quyền sau đó trong Cài đặt), WebView vẫn
-            // được báo "đã cấp" -> trang (YouTube tìm bằng giọng nói...) hiện UI ghi âm lên,
-            // nhưng phần cứng mic bị hệ điều hành CHẶN THẬT NGAY LẬP TỨC vì thiếu quyền hệ
-            // thống -> luồng ghi âm kết thúc tức khắc, nhìn như "bấm mở là tắt liền" dù giao
-            // diện tưởng đã được cấp quyền. Giờ CHỈ cấp đúng resource nào có quyền hệ thống
-            // tương ứng đã thực sự được cấp; thiếu quyền nào thì từ chối riêng resource đó và
-            // báo cho người dùng biết, thay vì cấp khống rồi để lỗi âm thầm khó hiểu.
-            override fun onPermissionRequest(request: PermissionRequest?) {
-                if (request == null) return
-                val granted = request.resources.filter { resource ->
-                    when (resource) {
-                        PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
-                            ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                        PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
-                            ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                        else -> true
-                    }
-                }
-                if (granted.isNotEmpty()) {
-                    request.grant(granted.toTypedArray())
-                } else {
-                    request.deny()
-                }
-                if (granted.size < request.resources.size) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Chưa cấp quyền micro/camera cho ứng dụng - vào Cài đặt máy để cấp quyền",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-
-            // Tự cấp quyền VỊ TRÍ THẬT cho trang web (Google Maps...) khi trang yêu cầu qua
-            // navigator.geolocation - chỉ cấp nếu bản thân app ĐÃ được cấp quyền vị trí hệ thống
-            // (xin ở đầu app, xem requestAllPermissions()); nếu chưa có, từ chối an toàn thay vì
-            // để WebView tự treo hộp thoại mà không có quyền hệ thống đứng sau.
-            override fun onGeolocationPermissionsShowPrompt(
-                origin: String?, callback: android.webkit.GeolocationPermissions.Callback?
-            ) {
-                val granted = ContextCompat.checkSelfPermission(
-                    this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(
-                        this@MainActivity, Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-                callback?.invoke(origin, granted, false)
-                if (!granted) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Chưa cấp quyền vị trí cho ứng dụng - vào Cài đặt máy để cấp quyền",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-        }
-
-        webView.webViewClient = object : WebViewClient() {
-
-            override fun shouldInterceptRequest(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): WebResourceResponse? {
-                val host = request?.url?.host
-                return if (AdBlocker.isAd(host)) {
-                    AdBlocker.blockedResponse()
-                } else {
-                    super.shouldInterceptRequest(view, request)
-                }
-            }
-
-            override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): Boolean {
-                val url = request?.url?.toString() ?: return false
-                val scheme = request.url.scheme ?: ""
-
-                // Điều hướng do chính app gọi (thanh địa chỉ, menu, mở lại tab...) -> cho qua luôn
-                if (programmaticLoad) {
-                    programmaticLoad = false
-                    return if (scheme == "http" || scheme == "https") false else true
-                }
-
-                // Link không phải web (intent://, market://, tel:, mailto:, app riêng...) ->
-                // MỞ THẬT bằng app tương ứng trên máy (Intent.ACTION_VIEW) thay vì chặn âm thầm
-                // không làm gì cả như trước.
-                if (scheme != "http" && scheme != "https") {
-                    try {
-                        val intent = if (scheme == "intent") {
-                            Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
-                        } else {
-                            Intent(Intent.ACTION_VIEW, request.url)
-                        }
-                        intent.addCategory(Intent.CATEGORY_BROWSABLE)
-                        startActivity(intent)
-                    } catch (e: Exception) {
-                        // Không có app nào mở được link này -> bỏ qua, không làm gì thêm
-                    }
-                    return true
-                }
-
-                // Link do người dùng bấm trong trang -> mở thẳng luôn, KHÔNG hỏi xác nhận
-                return false
-            }
-
-            // FIX "màn hình đen" khi mở YouTube (hoặc trang bất kỳ): trước đây KHÔNG bắt lỗi tải
-            // trang nào cả -> nếu trang tải thất bại (mất mạng, DNS lỗi, timeout, lỗi chứng chỉ...)
-            // WebView chỉ đứng im, không hiển thị gì, mà nền WebView lại bị đặt cứng màu ĐEN (xem
-            // initAfterUnlock() - để tránh chớp trắng lúc mới vào) -> kết quả là 1 màn hình đen
-            // tuyệt đối, không có bất kỳ thông báo lỗi nào cho người dùng biết chuyện gì đã xảy ra.
-            // Giờ bắt lỗi ở KHUNG CHÍNH (isForMainFrame - bỏ qua lỗi của các tài nguyên phụ như
-            // ảnh/quảng cáo bị chặn) và báo rõ nguyên nhân + tự thử tải lại 1 lần.
-            private var lastErrorReloadAt = 0L
-
-            override fun onReceivedError(
-                view: WebView?,
-                request: WebResourceRequest?,
-                error: android.webkit.WebResourceError?
-            ) {
-                super.onReceivedError(view, request, error)
-                if (request?.isForMainFrame != true) return
-                runOnUiThread {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Không tải được trang (${error?.description ?: "lỗi mạng"}). Đang thử lại...",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-                // Tự thử tải lại 1 lần (tối đa 1 lần mỗi 3 giây để tránh lặp vô hạn nếu mất mạng
-                // hẳn) - nhiều trường hợp chỉ là lỗi mạng thoáng qua lúc mới bật WebView.
-                val now = System.currentTimeMillis()
-                if (now - lastErrorReloadAt > 3000) {
-                    lastErrorReloadAt = now
-                    view?.postDelayed({ view.reload() }, 800)
-                }
-            }
-
-            override fun onReceivedHttpError(
-                view: WebView?,
-                request: WebResourceRequest?,
-                errorResponse: android.webkit.WebResourceResponse?
-            ) {
-                super.onReceivedHttpError(view, request, errorResponse)
-                val code = errorResponse?.statusCode ?: return
-                if (request?.isForMainFrame == true && code >= 400) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@MainActivity, "Máy chủ trả lỗi $code khi tải trang", Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-            }
-
-            override fun onReceivedSslError(
-                view: WebView?,
-                handler: android.webkit.SslErrorHandler?,
-                error: android.net.http.SslError?
-            ) {
-                // KHÔNG tự ý bỏ qua lỗi chứng chỉ (mất an toàn) - chỉ báo rõ cho người dùng biết
-                // vì sao trang không tải được thay vì để màn hình đen im lặng như trước.
-                Toast.makeText(
-                    this@MainActivity,
-                    "Lỗi chứng chỉ bảo mật khi tải trang - đã chặn để an toàn",
-                    Toast.LENGTH_LONG
-                ).show()
-                handler?.cancel()
-            }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                edtUrl.setText(url)
-                updateOffButtonVisibility(url)
-                view?.evaluateJavascript(AdOverlayBlocker.JS, null)
-                if (YoutubeAdSkipper.isYoutube(url)) {
-                    // AdOverlayBlocker KHÔNG chạy trên YouTube - nó dùng querySelectorAll('body *')
-                    // quét toàn bộ DOM mỗi 700ms, YouTube có hàng nghìn element -> gây lag nặng.
-                    // YoutubeAdSkipper đã xử lý overlay quảng cáo YouTube rồi, không cần thêm.
-                    view?.evaluateJavascript(YoutubeAdSkipper.JS, null)
-                } else {
-                    // Nút "Tải về" (VideoDownloadUI) KHÔNG chèn trên YouTube - vì YouTube mã
-                    // hoá luồng video dạng blob: nên nút này bấm vào không tải được gì cả (xem
-                    // giải thích ở VideoDownloadUI), chỉ án ngữ giao diện vô ích. Các trang khác
-                    // có video link file trực tiếp (mp4/webm...) vẫn hiện nút bình thường.
-                    view?.evaluateJavascript(VideoDownloadUI.JS, null)
-                }
-                if (ZaloDesktopStyler.isZalo(try { Uri.parse(url).host } catch (e: Exception) { null })) {
-                    view?.evaluateJavascript(ZaloDesktopStyler.JS, null)
-                }
-            }
-        }
-    }
-
-    // Logic Back DÙNG CHUNG cho cả nút Back trên thanh điều hướng nổi VÀ nút/cử chỉ back vật lý
-    // của điện thoại, để 2 nơi luôn nhất quán: lùi từng trang web đã xem -> hết thì về TRANG CHỦ
-    // của app (không nhảy thẳng qua app khác) -> chỉ khi đã ở sẵn trang chủ rồi, bấm back thêm
-    // lần nữa mới thực sự thoát app.
-    //
-    // RIÊNG YouTube: các trang con (xem video, kênh, tìm kiếm...) thường xếp chồng RẤT NHIỀU
-    // trang trong lịch sử (mỗi lần chuyển video/kết quả tìm kiếm là 1 trang mới), lùi từng trang
-    // một sẽ phải bấm Back rất nhiều lần mới ra khỏi YouTube. Nếu đang ở 1 trang con YouTube (và
-    // KHÔNG ở sẵn trang chủ rồi) -> back NHẢY THẲNG về trang chủ YouTube (bỏ qua toàn bộ lịch sử
-    // các trang con đã xem) thay vì lùi từng bước. NẾU đang có video phát -> trước khi chuyển,
-    // THU NHỎ video đang xem thành cửa sổ nổi (mini-player) kéo/di chuyển được, để video vẫn
-    // tiếp tục phát trong lúc duyệt trang chủ chọn video khác. Đã ở trang chủ YouTube rồi thì
-    // back tiếp theo xử lý bình thường như các trang khác (lùi tiếp lịch sử trước khi vào
-    // YouTube, hoặc về màn hình chính app).
-    fun doBack() {
-        // Đang ở fullscreen HTML5 THẬT (người dùng tự bấm nút fullscreen của YouTube, hoặc
-        // trang tự bật khi xoay ngang) -> Back chỉ thoát fullscreen bình thường.
-        if (customView != null) {
-            webView.webChromeClient?.onHideCustomView()
-            return
-        }
-        val currentUrl = webView.url
-        when {
-            webView.canGoBack() && YoutubeAdSkipper.isYoutube(currentUrl) && !YoutubeAdSkipper.isYoutubeHome(currentUrl) -> {
-                programmaticLoad = true
-                webView.loadUrl("https://www.youtube.com")
-            }
-            // ĐÃ Ở SẴN trang chủ YouTube (vd. do back lần trước vừa nhảy về đây) -> back lần
-            // NÀY = THOÁT HẲN khỏi YouTube, không chỉ lùi 1 bước lịch sử (lùi 1 bước dễ vẫn còn
-            // là 1 trang con khác của YouTube, ví dụ trang kênh/tìm kiếm còn sót trong lịch sử,
-            // khiến người dùng cảm giác "chưa ra khỏi YouTube"). Xem exitYoutube().
-            YoutubeAdSkipper.isYoutube(currentUrl) && YoutubeAdSkipper.isYoutubeHome(currentUrl) -> {
-                exitYoutube()
-            }
-            webView.canGoBack() -> {
-                programmaticLoad = true
-                webView.goBack()
-            }
-            homeOverlay.visibility != View.VISIBLE -> {
-                goHome()
-            }
-            homeScreenManager.isOnAppListPage() -> {
-                // Đang ở trang "DS Ứng Dụng" (trang 1) → Back về trang "start" (trang 0) trước
-                homeScreenManager.goToStart()
-            }
-            else -> {
-                super.onBackPressed()
-            }
-        }
-    }
-
-    /** Thoát hẳn khỏi YouTube khi đang đứng ở trang chủ YouTube: duyệt lịch sử NGƯỢC (không tải
-     *  lại trang, chỉ tra danh sách có sẵn) để tìm trang GẦN NHẤT KHÔNG PHẢI YouTube - nếu có,
-     *  nhảy thẳng về đúng trang đó (bỏ qua mọi trang con YouTube còn sót ở giữa: kênh, tìm
-     *  kiếm, video khác đã xem...). Nếu TOÀN BỘ lịch sử phía trước đều là YouTube (vd. mở
-     *  YouTube ngay từ trang chủ app, chưa từng duyệt trang nào khác trước đó) -> không còn gì
-     *  để lùi về nữa, coi như "ra khỏi YouTube" = về màn hình chính app. */
-    private fun exitYoutube() {
-        val list = webView.copyBackForwardList()
-        val currentIndex = list.currentIndex
-        var targetIndex = -1
-        for (i in currentIndex - 1 downTo 0) {
-            val url = list.getItemAtIndex(i)?.url
-            if (!YoutubeAdSkipper.isYoutube(url)) {
-                targetIndex = i
-                break
-            }
-        }
-        if (targetIndex >= 0) {
-            programmaticLoad = true
-            webView.goBackOrForward(targetIndex - currentIndex)
-        } else if (homeOverlay.visibility != View.VISIBLE) {
-            goHome()
-        } else {
-            super.onBackPressed()
-        }
-    }
-
-    override fun onBackPressed() {
-        doBack()
-    }
-
-    // Gọi TỰ ĐỘNG bởi Android ngay trước khi Activity bị đưa xuống nền do HÀNH ĐỘNG CỦA NGƯỜI
-    // DÙNG (bấm nút Home, vuốt sang app khác, mở Recents...).
-    //
-    // Ý ĐỊNH: nhạc/video đang phát PHẢI tiếp tục chạy nền như 1 app nghe nhạc bình thường khi
-    // rời app (tắt màn hình, bấm Home, chuyển app khác) - CHỈ dừng khi người dùng tự bấm dừng
-    // trên trang, hoặc khi tiến trình app bị dọn hẳn (vuốt xoá khỏi Recents). Vì vậy KHÔNG gọi
-    // pauseAllVideos()/webView.onPause() ở đây - để mặc WebView tiếp tục xử lý JS/video/audio
-    // bình thường dù activity không còn hiển thị.
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-    }
-
-    // ── Tự cập nhật trang "DS Ứng Dụng" khi có app MỚI CÀI/GỠ/CẬP NHẬT trên máy - không cần
-    // thoát app rồi mở lại mới thấy app mới. Đăng ký ĐỘNG (không khai báo tĩnh trong Manifest)
-    // trong onStart()/gỡ trong onStop() thay vì đăng ký suốt vòng đời app, vì hiếm khi có ích
-    // lúc app đang ở nền hoàn toàn (không hiển thị), tiết kiệm tài nguyên hệ thống. Bắt cả 3
-    // hành động: PACKAGE_ADDED (cài mới), PACKAGE_REMOVED (gỡ), PACKAGE_REPLACED (cập nhật app -
-    // icon/tên hiển thị có thể đổi). ──
-    private val packageChangeReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(ctx: android.content.Context?, intent: Intent?) {
-            if (::homeScreenManager.isInitialized) homeScreenManager.refreshPages()
-        }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        // AppWidgetHost PHẢI startListening() thì các widget đang hiện mới nhận được cập nhật
-        // trực tiếp từ app cung cấp (đồng hồ tự nhảy số, thời tiết tự làm mới...) - quên gọi thì
-        // widget bị "đứng hình" y nguyên nội dung lúc mới thêm.
-        appWidgetHost.startListening()
-        val filter = android.content.IntentFilter().apply {
-            addAction(Intent.ACTION_PACKAGE_ADDED)
-            addAction(Intent.ACTION_PACKAGE_REMOVED)
-            addAction(Intent.ACTION_PACKAGE_REPLACED)
-            addDataScheme("package")
-        }
-        androidx.core.content.ContextCompat.registerReceiver(
-            this, packageChangeReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
-        )
-    }
-
-    // Gọi khi Activity bị đưa xuống nền vì BẤT KỲ lý do gì (Home, chuyển app khác, tắt màn
-    // hình, mở app khác đè lên...). KHÔNG dừng video/audio ở đây (xem giải thích ở
-    // onUserLeaveHint() phía trên) - để nhạc/video tiếp tục phát nền đúng như yêu cầu.
-    override fun onPause() {
-        super.onPause()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        appWidgetHost.stopListening()
-        try {
-            unregisterReceiver(packageChangeReceiver)
-        } catch (e: IllegalArgumentException) {
-            // Chưa từng đăng ký (vd onStop() gọi mà onStart() lỡ chưa chạy) - bỏ qua, tránh crash.
-        }
-    }
-
-    /** Bố cục "ô đầu tiên" (pane1) LUÔN LUÔN là customView (video HTML5 đang toàn màn hình,
-     *  nếu có) HOẶC webView chính (bình thường). Hàm này XÂY LẠI layout cho khớp với việc có
-     *  đang fullscreen video hay không, mỗi khi bật/tắt fullscreen video. */
-    private fun refreshLayoutMode() {
+    /** Dựng màn "chọn 1 trong 3 app": nền đen tuyệt đối phủ toàn màn hình, CHỈ có 3 icon (đã
+     *  phóng to) xếp thành 1 CỘT DỌC, nằm giữa màn hình cả theo chiều ngang lẫn chiều dọc -
+     *  ngoài 3 icon này ra không còn gì khác (không chữ tiêu đề, không thanh trạng thái riêng,
+     *  không nút phụ). Chạm vào 1 icon sẽ mở đúng app con tương ứng. */
+    private fun showChooser() {
         val root = findViewById<FrameLayout>(R.id.rootFrame)
-        val pane1: View = customView ?: webView
-        (pane1.parent as? ViewGroup)?.removeView(pane1)
-        fullscreenContainer.removeAllViews()
-        fullscreenContainer.visibility = View.GONE
+        root.removeAllViews()
+        root.setBackgroundColor(Color.BLACK)
 
-        if (customView != null) {
-            pane1.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            fullscreenContainer.addView(pane1, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-            fullscreenContainer.addView(buildSwipeRevealZone(), FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(40)).also { it.gravity = Gravity.BOTTOM })
-            fullscreenContainer.visibility = View.VISIBLE
-            // ẨN thanh Back/Start/Đa nhiệm khi xem video toàn màn hình - thanh này là 1 CỬA SỔ
-            // HỆ THỐNG riêng luôn nổi trên cùng (xem WpNavBar.kt) nên nếu không ẩn sẽ đè lên góc
-            // video suốt lúc xem. Vuốt lên từ mép đáy (xem buildSwipeRevealZone()) sẽ hiện lại
-            // thoáng qua rồi tự ẩn lại sau vài giây.
-            floatingBackButtonHandle?.hide()
-        } else {
-            pane1.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            root.addView(pane1, 0)
-            // Thoát video toàn màn hình -> hiện lại thanh Back/Start/Đa nhiệm bình thường.
-            floatingBackButtonHandle?.show()
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
         }
-    }
 
-    /** Dải trong suốt cao 40dp áp SÁT MÉP ĐÁY màn hình, CHỈ dùng để bắt cử chỉ vuốt LÊN trong
-     *  lúc xem video toàn màn hình - KHÔNG phủ hết video (sẽ chặn mất các nút tua/play của
-     *  trình phát) mà chỉ nằm ở dải mép đáy, giống đúng cách Windows 10 Mobile lẫn YouTube thật
-     *  cho vuốt từ mép để gọi lại thanh điều hướng đang ẩn. Vuốt lên đủ xa (>24dp) trong dải này
-     *  -> hiện thanh NavBar thoáng qua rồi tự ẩn lại sau 3 giây nếu người dùng không vuốt tiếp. */
-    @SuppressLint("ClickableViewAccessibility")
-    private fun buildSwipeRevealZone(): View {
-        val autoHide = Runnable { if (customView != null) floatingBackButtonHandle?.hide() }
-        var downY = 0f
-        return View(this).apply {
-            setOnTouchListener { v, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        downY = event.rawY
-                        false // không tiêu thụ ACTION_DOWN - chạm/tua video bên dưới vẫn hoạt
-                        // động bình thường nếu người dùng không thực sự vuốt lên.
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        if (downY - event.rawY > dp(24)) {
-                            v.removeCallbacks(autoHide)
-                            floatingBackButtonHandle?.show()
-                            v.postDelayed(autoHide, 3000)
-                        }
-                        false
-                    }
-                    else -> false
-                }
-            }
-        }
-    }
-
-
-    // ---------- Thanh điều hướng 3 nút kiểu Windows Phone thật: ◁ Back / ⊞ Start / 🔍 Search ----------
-    // App ẩn thanh điều hướng hệ thống (enableImmersiveMode) để full màn hình, nên cần nút
-    // điều hướng RIÊNG trong app - TRƯỚC ĐÂY dùng 1 nút tròn nổi kéo-thả tự do (kiểu nút Home
-    // vật lý của iPhone đời cũ), GIỜ thay bằng đúng 3 nút cố định ở giữa cạnh dưới màn hình như
-    // 3 nút cứng/cảm ứng thật của điện thoại Windows Phone (xem WpNavBar.kt). Back = lùi trang,
-    // Start = về màn hình chính app (⊞, đúng vai trò nút Start thật), Search = focus vào ô địa
-    // chỉ để gõ ngay (không có ô tìm kiếm hệ thống riêng như WP thật nên dùng tạm ô địa chỉ).
-    @SuppressLint("ClickableViewAccessibility")
-    private fun addFloatingBackHomeButtons() {
-        val root = findViewById<FrameLayout>(R.id.rootFrame)
-        floatingBackButtonHandle = WpNavBar.attach(
-            activity = this,
-            root = root,
-            onBack = { doBack() },
-            onStart = { if (homeOverlay.visibility != View.VISIBLE) goHome() },
-            onSearch = {
-                if (homeOverlay.visibility == View.VISIBLE) showHomeOverlay() // trang chủ không có ô địa chỉ, thoát trước
-                toolbarUrl.visibility = View.VISIBLE
-                edtUrl.requestFocus()
-                val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-                imm?.showSoftInput(edtUrl, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-            }
+        val items = listOf(
+            Triple("Ẩn danh", R.drawable.ic_shortcut_incognito, IncognitoActivity::class.java),
+            Triple("Nhiều tài khoản", R.drawable.ic_shortcut_accounts, AccountsActivity::class.java),
+            Triple("Quản lý tệp", R.drawable.ic_shortcut_files, FilesActivity::class.java)
         )
 
-        // ĐÃ XOÁ HẲN App Bar kiểu WP (dãy nền đen chứa icon Tải lại/Bản máy tính-di động/
-        // Chia sẻ + nút "...") theo yêu cầu - không còn dựng/hiện lại nữa.
+        val iconSize = dp(120)
+        items.forEachIndexed { index, (label, iconRes, activityClass) ->
+            val itemContainer = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                isClickable = true
+                isFocusable = true
+                val outValue = android.util.TypedValue()
+                theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                setBackgroundResource(outValue.resourceId)
+                setPadding(dp(24), dp(20), dp(24), dp(20))
+                setOnClickListener { startActivity(Intent(this@MainActivity, activityClass)) }
+            }
 
-        // Nút "Off" nổi - bấm để phủ màn hình giả tắt (xem FakeScreenOff). Icon "⏻" (nút nguồn)
-        // để phân biệt rõ với mũi tên "◁" của nút Back.
-        //
-        // fixed = false: nút NỔI và KÉO-THẢ được tự do như nút Back (không còn cố định 1 chỗ ở
-        // góc dưới-trái nữa) - kéo đi đâu tuỳ ý, thả tay tự "hít" vào cạnh trái/phải gần nhất,
-        // vị trí được nhớ riêng (key theo id "off", không đụng vị trí đã lưu của nút Back) và
-        // đồng bộ giữa các màn hình như nút Back. defaultYFraction = 0.7f (khác 0.5f mặc định
-        // của nút Back) để lần đầu xuất hiện 2 nút không chồng lên nhau.
-        //
-        // CHỈ HIỆN KHI ĐANG Ở TRANG YOUTUBE: nút này dùng để giả tắt màn hình lúc nghe video/
-        // nhạc YouTube chạy nền, không có ý nghĩa gì ở các trang khác -> ẩn đi (setVisible(false)
-        // ngay sau khi attach) để đỡ chiếm chỗ/gây rối màn hình chính và các trang web khác.
-        // updateOffButtonVisibility() (gọi ở onPageFinished) sẽ tự hiện lại đúng lúc vào YouTube.
-        //
-        // doubleTapOnly = false: chỉ cần CHẠM 1 LẦN là kích hoạt ngay (không cần double-tap như
-        // nút Back) - vì nút Off chỉ hiện đúng lúc đang ở YouTube nên ít nguy cơ chạm nhầm hơn.
-        floatingOffButtonHandle = FloatingBackButton.attach(
-            activity = this,
-            root = root,
-            // Truyền [webView] để FakeScreenOff tự hạ chất lượng video xuống thấp nhất lúc bật
-            // (tiết kiệm CPU/GPU giải mã -> đỡ pin hơn khi không ai nhìn hình), và tự phục hồi
-            // đúng chất lượng cũ lúc tắt lớp phủ - xem giải thích chi tiết ở FakeScreenOff.kt.
-            onTap = { FakeScreenOff.show(this, webView) },
-            id = "off",
-            icon = "⏻",
-            defaultIsRight = false,
-            defaultYFraction = 0.7f,
-            fixed = false,
-            doubleTapOnly = false
+            itemContainer.addView(ImageView(this).apply {
+                setImageResource(iconRes)
+                layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+            })
+
+            itemContainer.addView(TextView(this).apply {
+                text = label
+                textSize = 20f
+                setTextColor(Color.WHITE)
+                typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(0, dp(12), 0, 0)
+            })
+
+            val itemLp = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            if (index > 0) itemLp.topMargin = dp(28)
+            column.addView(itemContainer, itemLp)
+        }
+
+        root.addView(
+            column,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER
+            )
         )
-        floatingOffButtonHandle?.setVisible(false)
-    }
-
-    /** Hiện nút "Off" giả tắt màn hình CHỈ khi đang ở trang YouTube, ẩn đi ở mọi trang khác.
-     *  Gọi mỗi khi trang tải xong (onPageFinished) để luôn khớp đúng trang hiện tại. */
-    private fun updateOffButtonVisibility(url: String?) {
-        floatingOffButtonHandle?.setVisible(YoutubeAdSkipper.isYoutube(url))
-    }
-
-    // Thoát app -> xoá sạch mọi dấu vết phiên làm việc
-    override fun onDestroy() {
-        clearAllSessionData()
-        floatingBackButtonHandle?.detach()
-        floatingOffButtonHandle?.detach()
-        FakeScreenOff.hide()
-        super.onDestroy()
     }
 }
 
