@@ -58,13 +58,7 @@ class AccountsActivity : AppCompatActivity() {
             textSize = 30f
             setTextColor(Color.WHITE)
             typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
-        })
-        root.addView(TextView(this).apply {
-            text = "Mỗi hồ sơ là 1 phiên đăng nhập riêng, hoàn toàn tách biệt (cookie & dữ liệu\nkhông chung nhau). Bạn có thể tạo nhiều hồ sơ để đăng nhập nhiều tài\nkhoản khác nhau cùng lúc - mỗi tài khoản tương ứng với 1 hồ sơ riêng."
-            textSize = 12f
-            setTextColor(0xFF999999.toInt())
-            typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
-            setPadding(0, dp(6), 0, dp(20))
+            setPadding(0, 0, 0, dp(20))
         })
 
         val scroll = ScrollView(this).apply {

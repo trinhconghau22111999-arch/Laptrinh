@@ -180,22 +180,9 @@ class IncognitoActivity : AppCompatActivity() {
         // ĐÃ XOÁ HẲN: thanh điều hướng nổi (WpNavBar) Back/Start/Đa nhiệm theo yêu cầu - dùng
         // đúng nút Back thật của hệ thống (luôn hiện sẵn); chuyển tab vẫn dùng dải tab ở trên.
 
-        // ── Thông báo giải thích vì sao KHÔNG cho chạm 1 lần vào link để chuyển trang ──
-        // (xem thêm logic chặn thật ở shouldOverrideUrlLoading() bên dưới). Hiện MỖI LẦN mở Ẩn
-        // danh (không lưu cờ "đã xem" - đúng tinh thần Ẩn danh không lưu lại gì), để người dùng
-        // luôn được nhắc, tránh tưởng app bị lỗi khi bấm link không thấy chuyển trang.
-        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
-            .setTitle("Vì sao chạm vào link không chuyển trang?")
-            .setMessage(
-                "Vì mục đích của app là chặn quảng cáo, để tránh các quảng cáo ngầm trên " +
-                "màn hình - khi người dùng chạm phải nó kéo qua trang khác không mong muốn - " +
-                "nên nhà phát triển quyết định không cho phép chạm 1 lần để chuyển trang.\n\n" +
-                "Nếu bạn muốn mở trang mới hoặc thêm tab, hãy nhấn giữ vào link rồi chọn " +
-                "\"Mở trong tab mới\" nhé."
-            )
-            .setPositiveButton("Đã hiểu", null)
-            .setCancelable(true)
-            .show()
+        // ĐÃ XOÁ HẲN: thông báo giải thích vì sao không cho chạm 1 lần vào link để chuyển
+        // trang (trước đây tự bật mỗi lần mở Ẩn danh) - theo yêu cầu, không hiện nữa. Hành vi
+        // chặn chạm 1 lần vẫn giữ nguyên ở shouldOverrideUrlLoading() bên dưới, chỉ bỏ dialog.
 
         // ĐÚNG NGHĨA Ẩn danh: KHÔNG khôi phục tab của lần trước nữa - mỗi lần mở Ẩn danh luôn
         // bắt đầu từ đầu (trống), và khi thoát (onDestroy) sẽ xoá sạch mọi tab đang mở, không
