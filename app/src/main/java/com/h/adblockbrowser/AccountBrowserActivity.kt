@@ -4,14 +4,11 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Message
 import android.view.Gravity
 import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -110,73 +107,13 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             setBackgroundColor(0xFF000000.toInt())
         }
 
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(6), dp(10), dp(2))
-        }
-        // Nút "3" bọc vòng tròn - góc TRÁI trên cùng. CHỈ hoạt động khi NHẤN ĐÚP (double-tap),
-        // nhấn 1 cái không có tác dụng gì - tránh bấm nhầm khi thao tác các nút khác gần đó.
-        // Nhấn đúp lần nữa để tắt, quay lại xem 1 tab bình thường.
-        // FIX "không nhạy": SimpleOnGestureListener mặc định onDown() trả về false khiến
-        // GestureDetector đôi khi không theo dõi đúng chuỗi chạm -> double-tap bị bỏ sót. Ghi
-        // đè onDown() trả về true để nhận diện double-tap ổn định. Vùng chạm cũng được PHÓNG TO
-        // hẳn lên 44dp (thay vì chỉ vừa khít icon chữ nhỏ như trước) cho dễ bấm trúng hơn.
-        val split3Detector = android.view.GestureDetector(
-            this,
-            object : android.view.GestureDetector.SimpleOnGestureListener() {
-                override fun onDown(e: MotionEvent): Boolean = true
-                override fun onDoubleTap(e: MotionEvent): Boolean {
-                    toggleSplit3()
-                    return true
-                }
-            }
-        )
-        btnSplit3 = TextView(this).apply {
-            text = "3"
-            textSize = 16f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(0xFFCCCCCC.toInt())
-            gravity = Gravity.CENTER
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setStroke(dp(2), 0xFFCCCCCC.toInt())
-                setColor(Color.TRANSPARENT)
-            }
-            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
-            isClickable = true
-            setOnTouchListener { _, event -> split3Detector.onTouchEvent(event) }
-        }
-        header.addView(btnSplit3)
-
-        // Nút "✕" kế bên nút chia 3 màn hình - ĐÓNG NGAY hồ sơ đang xem, quay thẳng về màn
-        // "Nhiều tài khoản" (khác với Back: Back lùi từng trang lịch sử trong tab, còn nút này
-        // thoát hẳn 1 phát không cần lùi hết lịch sử).
-        val btnCloseProfile = ImageView(this).apply {
-            setImageResource(R.drawable.ic_wp_close)
-            imageTintList = ColorStateList.valueOf(0xFFCCCCCC.toInt())
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setStroke(dp(2), 0xFFCCCCCC.toInt())
-                setColor(Color.TRANSPARENT)
-            }
-            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
-                marginStart = dp(10)
-            }
-            contentDescription = "Đóng hồ sơ"
-            isClickable = true
-            setOnClickListener {
-                saveSession()
-                finish()
-            }
-        }
-        header.addView(btnCloseProfile)
+        // ĐÃ XOÁ HẲN theo yêu cầu: hàng nút tròn "3" (chia 3 màn hình) và "✕" (đóng hồ sơ) từng
+        // nằm trên cùng - đẩy hẳn dải tab lên sát mép trên, không còn khoảng trống phía trên nó.
+        // toggleSplit3()/splitMode vẫn còn trong code (không dùng tới) phòng khi cần bật lại; nút
+        // đóng hồ sơ không còn nhưng Back vẫn thoát được hồ sơ khi lùi hết lịch sử (xem bên dưới).
 
         // Đã ẩn hoàn toàn dòng chữ "👤 <tên hồ sơ>" theo yêu cầu (trước đây hiển thị ở đây,
         // xem AccountProfileStore.load() để lấy tên hồ sơ nếu cần dùng lại sau này).
-        browserRoot.addView(header)
 
         val tabScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
         tabBar = LinearLayout(this).apply {

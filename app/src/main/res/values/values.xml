@@ -83,5 +83,15 @@
         <item name="android:colorAccent">@color/wp_accent</item>
         <item name="android:windowMinWidthMajor">85%</item>
         <item name="android:windowMinWidthMinor">85%</item>
+        <!-- FIX chữ nội dung (setMessage) bị đen trên nền đen ở một số máy dòng Trung Quốc/MIUI:
+             các máy này tự ép màu chữ theo giao diện hệ thống, bỏ qua android:textColorSecondary
+             khai báo ở trên. TextView "message" trong layout AlertDialog gốc của Android lấy màu
+             qua thuộc tính android:textAppearanceMedium (KHÔNG phải textColorSecondary) - ép rõ
+             thuộc tính này về trắng ở đây mới chắc chắn đúng trên MỌI máy. -->
+        <item name="android:textAppearanceMedium">@style/WPDialogMessageTextAppearance</item>
+    </style>
+
+    <style name="WPDialogMessageTextAppearance" parent="@android:style/TextAppearance.Medium">
+        <item name="android:textColor">@color/pure_white</item>
     </style>
 </resources>

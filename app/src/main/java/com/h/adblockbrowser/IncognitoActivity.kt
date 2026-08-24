@@ -139,7 +139,7 @@ class IncognitoActivity : AppCompatActivity() {
         urlRow.addView(btnStar, LinearLayout.LayoutParams(dp(34), dp(34)))
 
         urlRow.addView(TextView(this).apply {
-            text = "Đã gắn dấu"
+            text = "Mở toàn bộ (trang đánh dấu sao)"
             textSize = 12f
             setTextColor(ThemePrefs.accent(this@IncognitoActivity))
             setPadding(dp(8), dp(6), dp(4), dp(6))

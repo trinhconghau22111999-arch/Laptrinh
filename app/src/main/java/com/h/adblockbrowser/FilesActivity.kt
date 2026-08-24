@@ -417,7 +417,7 @@ class FilesActivity : AppCompatActivity() {
 
     private fun confirmDeleteSelected() {
         val count = selected.size
-        AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
+        val dlg = AlertDialog.Builder(this, R.style.Theme_WP_Dialog)
             .setTitle("Xoá $count mục?")
             .setMessage("Các tệp/thư mục đã chọn sẽ bị xoá vĩnh viễn.")
             .setPositiveButton("Xoá") { _, _ ->
@@ -444,6 +444,9 @@ class FilesActivity : AppCompatActivity() {
             }
             .setNegativeButton("Huỷ", null)
             .show()
+        // Ép thêm 1 lần nữa trực tiếp ở đây (ngoài fix trong theme Theme.WP.Dialog) - phòng khi
+        // máy vẫn ép màu đen đè lên bất chấp style, để chắc chắn 100% chữ luôn đọc được.
+        dlg.findViewById<TextView>(android.R.id.message)?.setTextColor(0xFFFFFFFF.toInt())
     }
 
     override fun onBackPressed() {
