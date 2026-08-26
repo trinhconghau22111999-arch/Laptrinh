@@ -66,7 +66,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         overridePendingTransition(R.anim.wp_slide_in_left, R.anim.wp_slide_out_right)
     }
 
-    private data class Tab(val webView: WebView, var title: String = "Tab mới")
+    private data class Tab(val webView: WebView, var title: String = "Tab mới", var translatedToVi: Boolean = false)
 
     private val tabs = ArrayList<Tab>()
     private var activeIndex = 0
@@ -89,6 +89,9 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private lateinit var btnStar: ImageView
     private lateinit var progressBar: ProgressBar
     private lateinit var btnSplit3: TextView
+    // Nút dịch nổi (kéo-thả được, giống nút Back/Off ở các màn khác - xem FloatingBackButton.kt)
+    // - bấm để dịch tab đang xem sang tiếng Việt / bấm lại để trả về tiếng Anh (bản gốc).
+    private var translateBtnHandle: FloatingBackButton.Handle? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -211,6 +214,21 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         }
         // ĐÃ XOÁ HẲN: thanh điều hướng nổi (WpNavBar) Back/Start/Đa nhiệm theo yêu cầu - dùng
         // đúng nút Back thật của hệ thống (luôn hiện sẵn); chuyển tab vẫn dùng dải tab ở trên.
+
+        // Nút dịch nổi - kéo-thả được, tự nhớ vị trí (dùng chung component FloatingBackButton,
+        // xem giải thích ở đầu file đó). Icon "VI" cố định làm biểu tượng "dịch", KHÔNG đổi
+        // theo trạng thái hiện tại (giống icon dịch của Chrome luôn giữ nguyên hình chữ A/文 dù
+        // trang đang ở ngôn ngữ nào) - bấm để dịch tab đang xem sang tiếng Việt, bấm lại (đang ở
+        // tiếng Việt) để tải lại trang, trả về tiếng Anh/ngôn ngữ gốc (xem toggleTranslate()).
+        translateBtnHandle = FloatingBackButton.attach(
+            activity = this,
+            root = outer,
+            onTap = { toggleTranslate() },
+            id = "translate",
+            icon = "VI",
+            defaultIsRight = true,
+            defaultYFraction = 0.35f
+        )
 
         val savedUrls = AccountSessionStore.load(this, slot)
         val startUrl = intent.getStringExtra("initial_url")
@@ -356,7 +374,10 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
-            settings.userAgentString = UserAgentManager.MOBILE_UA
+            // Mặc định mở TRANG DẠNG MÁY TÍNH (Request Desktop Site) cho mọi tab trong "Nhiều
+            // tài khoản" - theo yêu cầu, khác MainActivity/IncognitoActivity vẫn dùng MOBILE_UA
+            // mặc định (xem UserAgentManager.kt để biết các UA có sẵn).
+            settings.userAgentString = UserAgentManager.DESKTOP_UA
             // Hồ sơ tài khoản: CHO PHÉP lưu mật khẩu/form như trình duyệt bình thường, khác
             // hẳn "Ẩn danh" (mục đích ở đây là giữ đăng nhập lâu dài).
             settings.saveFormData = true
@@ -497,13 +518,22 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                // Vừa tải xong 1 trang MỚI (kể cả do bấm link sang trang khác, không chỉ do
+                // vào lại trang cũ) -> trang này CHƯA dịch, dù trước đó tab từng bấm nút dịch -
+                // reset lại trạng thái để nút dịch nổi hoạt động đúng cho trang mới. Tìm tab
+                // theo webView (không dùng [index] đóng gói ở tham số hàm ngoài) vì index có
+                // thể đã lệch nếu người dùng đóng tab khác từ lúc setupWebViewCallbacks() được
+                // gọi - xem cách closeTab() dồn lại danh sách [tabs].
+                tabs.find { it.webView === webView }?.translatedToVi = false
                 if (tabs.getOrNull(activeIndex)?.webView === webView) {
                     edtUrl.setText(url)
                     refreshStarIcon()
                 }
                 view?.evaluateJavascript(ZoomEnabler.JS, null)
                 view?.evaluateJavascript(AdOverlayBlocker.JS, null)
-                view?.evaluateJavascript(TranslateInjector.JS, null)
+                // ĐÃ BỎ dịch tự động (trước đây luôn evaluateJavascript(TranslateInjector.JS)
+                // ở đây cho MỌI trang) - giờ CHỈ dịch khi người dùng chủ động bấm nút dịch nổi
+                // (xem toggleTranslate(), FloatingBackButton.attach() ở onCreate()).
                 if (YoutubeAdSkipper.isYoutube(url)) view?.evaluateJavascript(YoutubeAdSkipper.JS, null)
                 CookieManager.getInstance().flush()
                 saveSession()
@@ -678,6 +708,22 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         for (t in tabs) t.webView.onResume()
+        translateBtnHandle?.resync()
+    }
+
+    /** Bấm nút dịch nổi: tab đang xem CHƯA dịch -> dịch sang tiếng Việt (bơm TranslateInjector.JS,
+     *  xem TranslateInjector.kt). Tab đang xem ĐÃ dịch rồi -> tải lại trang để trả về nguyên bản
+     *  (tiếng Anh/ngôn ngữ gốc) - đơn giản và chắc chắn hơn hẳn so với gọi lại API "khôi phục
+     *  ngôn ngữ gốc" của widget Google Dịch (hay lỗi vặt, không phải lúc nào cũng khôi phục đúng). */
+    private fun toggleTranslate() {
+        val tab = tabs.getOrNull(activeIndex) ?: return
+        if (tab.translatedToVi) {
+            tab.webView.reload()
+            tab.translatedToVi = false
+        } else {
+            tab.webView.evaluateJavascript(TranslateInjector.JS, null)
+            tab.translatedToVi = true
+        }
     }
 
     private fun pauseAllVideosInAllTabs() {
@@ -694,6 +740,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         saveSession()
         for (t in tabs) t.webView.destroy()
         taskViewHandle?.dismiss()
+        translateBtnHandle?.detach()
         super.onDestroy()
     }
 }
