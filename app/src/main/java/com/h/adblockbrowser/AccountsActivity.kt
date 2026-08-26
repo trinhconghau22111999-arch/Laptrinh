@@ -179,7 +179,7 @@ class AccountsActivity : AppCompatActivity() {
     private fun showAddDialog() {
         val input = EditText(this).apply {
             hint = "Ví dụ: Cá nhân, Công việc..."
-            setTextColor(Color.WHITE)
+            setTextColor(Color.BLACK)
             setHintTextColor(0xFF888888.toInt())
             // Ép bàn phím hiện nút "Xong" (Done) ở góc dưới-phải THAY VÌ nút xuống dòng "↵" mặc
             // định - trước đây EditText không khai inputType/imeOptions nên Android coi là ô
@@ -233,7 +233,7 @@ class AccountsActivity : AppCompatActivity() {
     private fun showRenameDialog(profile: AccountProfileStore.Profile) {
         val input = EditText(this).apply {
             setText(profile.name)
-            setTextColor(Color.WHITE)
+            setTextColor(Color.BLACK)
             // Cùng lý do như [showAddDialog]: ép nút "Xong" thay vì nút xuống dòng "↵".
             inputType = android.text.InputType.TYPE_CLASS_TEXT
             setSingleLine(true)

@@ -1,24 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Lớp TRƯỚC icon app - ĐÚNG logo "Start" 4 ô vuông trắng (2x2, khe hở nhỏ ở giữa) của
-     Windows Phone/Windows 10 Mobile thật, giống hệt [R.drawable.ic_wp_start] dùng cho nút
-     "Start" trong dock ở trang Điện thoại (xem DesktopActivity.kt).
+<!-- Lớp TRƯỚC icon app - biểu tượng dấu ngoặc code "</>" (kinh điển, dễ nhận diện ngay là ứng
+     dụng liên quan lập trình/mã nguồn), khớp với tên app "Lập trình". Trước đây là logo "Start"
+     4 ô vuông (Windows Phone) - đổi hẳn sang biểu tượng này cho ĐÚNG NGHĨA với tên app mới, vẫn
+     giữ phong cách PHẲNG 2 màu (xanh dương nền + trắng hình) như cũ.
 
-     SỬA LẦN NÀY: bản trước đặt 4 ô từ toạ độ 27→93 (66 đơn vị, đúng CHIỀU RỘNG "vùng an toàn"
-     nhưng LỆCH VỊ TRÍ) - "vùng an toàn" chuẩn của icon adaptive Android nằm giữa canvas 108x108,
-     trải từ 21→87 (không phải 27→93). Icon cũ vượt ra khỏi mép phải/dưới của vùng an toàn 6 đơn
-     vị, bị NHIỀU launcher (viền tròn/bo góc vuông) TỰ ĐỘNG CẮT MẤT phần thừa đó khi hiển thị,
-     khiến icon trông như bị phóng to/lệch tâm, mất cân đối - đúng như phản ánh trong ảnh.
-     Giờ căn ĐÚNG GIỮA canvas, gọn lại trong khung 66x66 (21→87) với lề 8 đơn vị mỗi bên (thay vì
-     ô vuông to sát mép như trước) để không bị cắt trên BẤT KỲ kiểu mặt nạ icon nào (tròn/bo góc
-     vuông/giọt nước...), nhìn gọn gàng, cân đối như các icon app khác trên màn hình. -->
+     Vẽ bằng 3 nét STROKE (không phải path đặc) - 2 dấu ngoặc nhọn "<" ">" + 1 gạch chéo "/" ở
+     giữa, giống hệt icon "code" quen thuộc. Toạ độ nằm gọn trong "vùng an toàn" chuẩn của icon
+     adaptive Android (giữa canvas 108x108, trải từ 21→87 - xem giải thích ở lần sửa vị trí 4 ô
+     vuông trước đây) nên không bị cắt trên bất kỳ kiểu mặt nạ icon nào (tròn/bo góc vuông/giọt
+     nước...). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <path android:fillColor="#FFFFFF" android:pathData="M29,29h22v22h-22z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M57,29h22v22h-22z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M29,57h22v22h-22z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M57,57h22v22h-22z" />
+    <!-- Dấu ngoặc nhọn trái "<" -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M40,34 L26,54 L40,74" />
+
+    <!-- Dấu ngoặc nhọn phải ">" -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M68,34 L82,54 L68,74" />
+
+    <!-- Gạch chéo "/" ở giữa -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:pathData="M48,78 L60,30" />
 </vector>

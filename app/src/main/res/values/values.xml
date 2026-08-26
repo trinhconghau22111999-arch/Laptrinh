@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Trình duyệt của tôi</string>
+    <string name="app_name">Lập trình</string>
 
     <!-- ================= BẢNG MÀU WINDOWS PHONE / WINDOWS 10 MOBILE (METRO) =================
          Giữ tên biến "neon_purple" để KHÔNG phải sửa hàng chục chỗ tham chiếu R.color trong
@@ -68,30 +68,33 @@
         <item name="elevationOverlayEnabled">false</item>
     </style>
 
-    <!-- Giao diện hộp thoại PHẲNG kiểu Windows Phone: nền đen tuyệt đối, KHÔNG bo góc, chữ nút
+    <!-- Giao diện hộp thoại PHẲNG kiểu Windows Phone: nền TRẮNG tuyệt đối, KHÔNG bo góc, chữ nút
          bấm màu accent - dùng cho MỌI AlertDialog trong app qua AlertDialog.Builder(this,
          R.style.Theme_WP_Dialog) thay vì để hộp thoại tự vẽ theo style HỆ THỐNG mặc định (đa số
          máy ra nền trắng bo góc + nút xanh Google, phá vỡ hoàn toàn phong cách WP ngay khi có
          hộp thoại hiện lên - lỗi này trước đây có ở CalendarActivity, ClockActivity,
-         FilesActivity vì dùng nhầm android.app.AlertDialog gốc thay vì bản có theme riêng). -->
+         FilesActivity vì dùng nhầm android.app.AlertDialog gốc thay vì bản có theme riêng).
+         ĐỔI: trước đây nền đen tuyệt đối/chữ trắng - giờ đổi hẳn sang nền TRẮNG/chữ ĐEN theo yêu
+         cầu (áp dụng cho mọi hộp thoại dùng chung style này, gồm cả "Cần quyền truy cập tệp" và
+         "Thêm tài khoản mới"). -->
     <style name="Theme.WP.Dialog" parent="Theme.AppCompat.Dialog.Alert">
-        <item name="android:windowBackground">@color/wp_black</item>
-        <item name="android:textColor">@color/pure_white</item>
-        <item name="android:textColorPrimary">@color/pure_white</item>
-        <item name="android:textColorSecondary">@color/wp_gray_light</item>
+        <item name="android:windowBackground">@color/pure_white</item>
+        <item name="android:textColor">@color/pure_black</item>
+        <item name="android:textColorPrimary">@color/pure_black</item>
+        <item name="android:textColorSecondary">@color/wp_gray_mid</item>
         <item name="colorAccent">@color/wp_accent</item>
         <item name="android:colorAccent">@color/wp_accent</item>
         <item name="android:windowMinWidthMajor">85%</item>
         <item name="android:windowMinWidthMinor">85%</item>
-        <!-- FIX chữ nội dung (setMessage) bị đen trên nền đen ở một số máy dòng Trung Quốc/MIUI:
-             các máy này tự ép màu chữ theo giao diện hệ thống, bỏ qua android:textColorSecondary
+        <!-- FIX chữ nội dung (setMessage) bị trắng trên nền trắng ở một số máy dòng Trung Quốc/
+             MIUI: các máy này tự ép màu chữ theo giao diện hệ thống, bỏ qua android:textColorSecondary
              khai báo ở trên. TextView "message" trong layout AlertDialog gốc của Android lấy màu
              qua thuộc tính android:textAppearanceMedium (KHÔNG phải textColorSecondary) - ép rõ
-             thuộc tính này về trắng ở đây mới chắc chắn đúng trên MỌI máy. -->
+             thuộc tính này về đen ở đây mới chắc chắn đúng trên MỌI máy. -->
         <item name="android:textAppearanceMedium">@style/WPDialogMessageTextAppearance</item>
     </style>
 
     <style name="WPDialogMessageTextAppearance" parent="@android:style/TextAppearance.Medium">
-        <item name="android:textColor">@color/pure_white</item>
+        <item name="android:textColor">@color/pure_black</item>
     </style>
 </resources>
