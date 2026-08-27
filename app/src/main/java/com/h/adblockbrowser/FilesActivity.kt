@@ -458,9 +458,10 @@ class FilesActivity : AppCompatActivity() {
         if (parent != null && currentDir != Environment.getExternalStorageDirectory()) {
             openDir(parent)
         } else {
-            // Ở thư mục gốc rồi (không còn thư mục cha để lùi) -> Back ở đây THOÁT LUÔN CẢ APP
-            // (không quay lại màn chọn 3 app) theo yêu cầu mới, thay vì chỉ đóng màn Quản lý tệp.
-            finishAffinity()
+            // Ở thư mục gốc rồi (không còn thư mục cha để lùi) -> Back ở đây QUAY LẠI màn chọn 3
+            // app (MainActivity) như bản gốc - ĐẢO NGƯỢC thay đổi trước đó (finishAffinity() thoát
+            // luôn cả app) theo đúng yêu cầu khôi phục hành vi cũ.
+            finish()
         }
     }
 }

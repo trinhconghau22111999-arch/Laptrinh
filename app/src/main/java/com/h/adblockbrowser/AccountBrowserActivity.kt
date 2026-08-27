@@ -374,10 +374,13 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
-            // Mặc định mở TRANG DẠNG MÁY TÍNH (Request Desktop Site) cho mọi tab trong "Nhiều
-            // tài khoản" - theo yêu cầu, khác MainActivity/IncognitoActivity vẫn dùng MOBILE_UA
-            // mặc định (xem UserAgentManager.kt để biết các UA có sẵn).
-            settings.userAgentString = UserAgentManager.DESKTOP_UA
+            // ĐẢO NGƯỢC lại: trước đây thử đổi mặc định sang UA máy tính (DESKTOP_UA) cho "Nhiều
+            // tài khoản" - vừa KHÔNG thật sự làm trang hiện đúng giao diện máy tính (đa số trang
+            // hiện đại tự nhận diện độ rộng khung nhìn/viewport, không chỉ dựa vào UA để quyết
+            // định bố cục di động/máy tính), VỪA làm GÃY luồng đăng nhập Google nhiều bước (2 lớp,
+            // "Chọn tài khoản"...) - UA di động "sạch" (MOBILE_UA) được chọn cố ý từ đầu chính vì
+            // lý do này (xem giải thích ở UserAgentManager.kt). Trả lại như bản gốc theo yêu cầu.
+            settings.userAgentString = UserAgentManager.MOBILE_UA
             // Hồ sơ tài khoản: CHO PHÉP lưu mật khẩu/form như trình duyệt bình thường, khác
             // hẳn "Ẩn danh" (mục đích ở đây là giữ đăng nhập lâu dài).
             settings.saveFormData = true

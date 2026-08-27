@@ -544,10 +544,11 @@ class IncognitoActivity : AppCompatActivity() {
             isInitiatedLoad = true
             current.goBack()
         } else {
-            // Hết trang để lùi trong tab hiện tại, không còn tab khác -> Back ở đây THOÁT LUÔN
-            // CẢ APP (không quay lại màn chọn 3 app) theo yêu cầu mới.
+            // Hết trang để lùi trong tab hiện tại, không còn tab khác -> Back ở đây QUAY LẠI màn
+            // chọn 3 app (MainActivity) như bản gốc - ĐẢO NGƯỢC thay đổi trước đó (finishAffinity()
+            // thoát luôn cả app) theo đúng yêu cầu khôi phục hành vi cũ.
             saveSession()
-            finishAffinity()
+            finish()
         }
     }
 

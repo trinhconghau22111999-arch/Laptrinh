@@ -90,10 +90,11 @@ class AccountsActivity : AppCompatActivity() {
     }
 
     /** Màn "gốc" của app con "Nhiều tài khoản" (không có trang con để lùi trong app con này) -
-     *  Back ở đây thoát LUÔN CẢ APP (không quay lại màn chọn 3 app) theo yêu cầu mới, thay vì chỉ
-     *  quay lại MainActivity như trước. */
+     *  Back ở đây QUAY LẠI màn chọn 3 app (MainActivity) như bản gốc - ĐẢO NGƯỢC lại thay đổi
+     *  trước đó (finishAffinity() thoát luôn cả app, không quay lại màn chọn 3 app) theo đúng
+     *  yêu cầu khôi phục hành vi cũ. */
     override fun onBackPressed() {
-        finishAffinity()
+        finish()
     }
 
     private fun render() {
