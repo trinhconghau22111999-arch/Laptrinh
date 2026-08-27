@@ -27,14 +27,14 @@ Daemon will be stopped at the end of the build
 > Task :app:extractDeepLinksDebug
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
-> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:desugarDebugFileDependencies
+> Task :app:processDebugManifestForPackage
 > Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
 > Task :app:processDebugResources
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugStartupProfile
@@ -51,9 +51,9 @@ Daemon will be stopped at the end of the build
 Unable to strip the following libraries, packaging them as they are: libimage_processing_util_jni.so.
 
 > Task :app:compileDebugKotlin
-w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:383:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
-w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:666:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
-w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountsActivity.kt:95:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:386:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:669:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountsActivity.kt:96:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/FilesActivity.kt:452:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:246:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:534:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
@@ -79,7 +79,7 @@ w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbro
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 1m 55s
+BUILD SUCCESSFUL in 1m 37s
 40 actionable tasks: 40 executed
 
 === APK thực tế tìm thấy sau build (find app/build/outputs -iname '*.apk') ===
