@@ -387,6 +387,10 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             // Cho phép video tự phát trong trang (không cần cử chỉ người dùng) - cần cho nút
             // "phóng to toàn màn hình" trên nhiều trình phát video hoạt động mượt.
             settings.mediaPlaybackRequiresUserGesture = false
+            // Cho phép trang web mở tab/cửa sổ mới (window.open, target=_blank) - cần thiết
+            // để onCreateWindow() được gọi khi trang yêu cầu mở tab mới.
+            settings.setSupportMultipleWindows(true)
+            settings.javaScriptCanOpenWindowsAutomatically = true
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
         val tab = Tab(webView)
@@ -449,7 +453,27 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                     renderTabBar()
                 }
             }
-            override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?): Boolean = false
+            override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?): Boolean {
+                // ĐÃ BỎ chặn: trước đây luôn trả về false (chặn mọi yêu cầu mở tab/cửa sổ mới
+                // từ trang web, kể cả do người dùng chủ động chạm). Giờ cho phép mở tab mới và
+                // hộp thoại: tạo WebView tạm nhận resultMsg để trang web lấy được URL đích, rồi
+                // dùng URL đó mở tab mới đúng cách qua newTab() có đầy đủ settings/cookies/callbacks.
+                if (resultMsg == null) return false
+                val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
+                val helperWebView = WebView(this@AccountBrowserActivityBase).apply {
+                    settings.javaScriptEnabled = true
+                    webViewClient = object : android.webkit.WebViewClient() {
+                        override fun shouldOverrideUrlLoading(v: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                            val url = request?.url?.toString() ?: return false
+                            if (url != "about:blank") newTab(url)
+                            return true
+                        }
+                    }
+                }
+                transport.webView = helperWebView
+                resultMsg.sendToTarget()
+                return true
+            }
 
             // FIX (lý do "bấm mở mic là tắt liền"): trước đây CẤP LUÔN mọi quyền WebView yêu
             // cầu mà không kiểm tra quyền HỆ THỐNG (RECORD_AUDIO/CAMERA) có thực sự đã được

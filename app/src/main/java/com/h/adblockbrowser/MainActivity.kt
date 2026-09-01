@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity() {
     private fun showChooser() {
         val root = findViewById<FrameLayout>(R.id.rootFrame)
         root.removeAllViews()
-        root.setBackgroundColor(Color.BLACK)
+        root.setBackgroundColor(0xFFFFE0B2.toInt()) // cam nhạt
 
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
