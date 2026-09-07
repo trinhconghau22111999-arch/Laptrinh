@@ -28,19 +28,10 @@ jobs:
         with:
           gradle-version: 8.7
 
-      - name: Decode keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/laptrinh.jks
-
       - name: Build debug APK
         id: build
         continue-on-error: true
         shell: bash
-        env:
-          KEYSTORE_PATH: laptrinh.jks
-          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASS: ${{ secrets.KEY_PASS }}
         run: |
           set -o pipefail
           set +e
