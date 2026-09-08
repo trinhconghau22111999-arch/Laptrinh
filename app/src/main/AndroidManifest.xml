@@ -125,7 +125,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.h.adblockbrowser.fileprovider"
+            android:authorities="com.h.adblockbrowser2.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

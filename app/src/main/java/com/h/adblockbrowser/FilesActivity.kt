@@ -377,7 +377,7 @@ class FilesActivity : AppCompatActivity() {
 
     private fun openFile(file: File) {
         try {
-            val uri: Uri = FileProvider.getUriForFile(this, "com.h.adblockbrowser.fileprovider", file)
+            val uri: Uri = FileProvider.getUriForFile(this, "com.h.adblockbrowser2.fileprovider", file)
             val mime = contentResolver.getType(uri) ?: guessMime(file.name)
             val intent = Intent(Intent.ACTION_VIEW)
             intent.setDataAndType(uri, mime)
