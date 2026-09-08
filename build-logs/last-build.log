@@ -19,10 +19,10 @@ Daemon will be stopped at the end of the build
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
 > Task :app:mergeDebugResources
-> Task :app:checkDebugAarMetadata
-> Task :app:mapDebugSourceSetPaths
 > Task :app:parseDebugLocalResources
+> Task :app:checkDebugAarMetadata
 > Task :app:dataBindingGenBaseClassesDebug
+> Task :app:mapDebugSourceSetPaths
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:processDebugMainManifest
@@ -32,21 +32,21 @@ Daemon will be stopped at the end of the build
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
+> Task :app:compressDebugAssets
 > Task :app:mergeDebugStartupProfile
 > Task :app:mergeDebugJniLibFolders
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugNativeLibs
 > Task :app:processDebugManifestForPackage
 > Task :app:mergeLibDexDebug
-> Task :app:validateSigningDebug
-> Task :app:writeDebugAppMetadata
-> Task :app:writeDebugSigningConfigVersions
 
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libimage_processing_util_jni.so.
 
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
 > Task :app:processDebugResources
 > Task :app:mergeExtDexDebug
 
@@ -79,7 +79,7 @@ w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbro
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 1m 47s
+BUILD SUCCESSFUL in 1m 43s
 40 actionable tasks: 40 executed
 
 === APK thực tế tìm thấy sau build (find app/build/outputs -iname '*.apk') ===
