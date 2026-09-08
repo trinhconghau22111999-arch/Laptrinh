@@ -92,6 +92,10 @@
              qua thuộc tính android:textAppearanceMedium (KHÔNG phải textColorSecondary) - ép rõ
              thuộc tính này về đen ở đây mới chắc chắn đúng trên MỌI máy. -->
         <item name="android:textAppearanceMedium">@style/WPDialogMessageTextAppearance</item>
+        <!-- FIX chữ list items (setItems/setSingleChoiceItems) bị trắng trên nền trắng:
+             AlertDialog list dùng textColorAlertDialogListItem riêng, không kế thừa textColor -->
+        <item name="android:textColorAlertDialogListItem">@color/pure_black</item>
+        <item name="textColorAlertDialogListItem">@color/pure_black</item>
     </style>
 
     <style name="WPDialogMessageTextAppearance" parent="@android:style/TextAppearance.Medium">
