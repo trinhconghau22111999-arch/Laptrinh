@@ -57,11 +57,13 @@ import androidx.core.content.ContextCompat
  *    gắn dấu sao (bookmark riêng của hồ sơ đó, xem AccountStarredStore) thành tab, KHÔNG mở lại
  *    các tab của phiên làm việc trước đó nữa (xem onCreate()).
  *  - BONG BÓNG CHAT NỔI (💬, chỉ hiện khi có TỪ 2 TAB TRỞ LÊN, xem toggleTabBubble()): đại diện
- *    cho TAB BÊN TRÁI CÙNG (tabs[0]). Bấm vào -> chuyển hẳn sang xem tab đó (như bấm vào ô tab
- *    đó trên dải tab). Bấm lại lần nữa -> quay về đúng tab đang xem TRƯỚC ĐÓ (trước khi bấm bong
- *    bóng lần đầu) - giống hệt cách bong bóng chat của Messenger/Zalo: bấm mở ra xem, bấm lại
- *    "thu gọn" về lại đúng chỗ đang dở trước đó. Đây là nút nổi kéo-thả được, tự nhớ vị trí,
- *    dùng chung component FloatingBackButton như các nút nổi khác trong app. */
+ *    cho TAB BÊN TRÁI CÙNG (tabs[0]). Bấm vào -> hiện thêm 1 CỬA SỔ NỔI RIÊNG (TabPeekWindow)
+ *    NẰM NGAY DƯỚI bong bóng, chứa nội dung tab đó - đúng cách bong bóng chat Messenger/Zalo
+ *    hoạt động (bấm mở ra xem, bấm lại/bấm nút ✕ trên cửa sổ để "thu gọn" về lại đúng 1 bong
+ *    bóng tròn). KHÔNG đụng/đổi tab đang hiển thị chính trong webArea - tab đó vẫn nguyên như
+ *    trước khi bấm bong bóng, vì cửa sổ xem trước là 1 WINDOW HỆ THỐNG RIÊNG (WindowManager),
+ *    tách hẳn khỏi cây view chính của Activity. Bản thân bong bóng là nút nổi kéo-thả được, tự
+ *    nhớ vị trí, dùng chung component FloatingBackButton như các nút nổi khác trong app. */
 abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
     private companion object {
@@ -116,11 +118,10 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     // đầu file. Thay thế cho nút dịch nổi (FloatingBackButton id "translate") đã bị xoá vì
     // không dùng đến - dùng lại đúng component/kiểu dáng đó (tròn, viền trắng, kéo-thả được).
     private var tabBubbleHandle: FloatingBackButton.Handle? = null
-    // true = bong bóng đang "mở" (đang cho xem tab bên trái cùng thay vì tab người dùng đang
-    // xem trước đó). [indexBeforeBubbleExpand] nhớ lại đúng tab đó để bấm bong bóng lần nữa thì
-    // quay về đúng chỗ, không phải luôn về tab đầu tiên trong danh sách.
-    private var bubbleExpanded = false
-    private var indexBeforeBubbleExpand = 0
+    // Cửa sổ "xem trước" tab bên trái cùng đang mở (null = đang thu gọn, chỉ còn bong bóng) -
+    // xem TabPeekWindow.kt và toggleTabBubble(). Đây là 1 WINDOW HỆ THỐNG RIÊNG (không phải view
+    // con của Activity) nên KHÔNG đụng gì tới tab đang hiển thị chính trong webArea.
+    private var tabPeekHandle: TabPeekWindow.Handle? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -434,9 +435,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         setupWebViewCallbacks(webView, index)
         setupLongPress(webView)
         activeIndex = index
-        // Danh sách tab vừa đổi (thêm 1 tab mới) -> bỏ trạng thái "đang mở bong bóng" nếu có,
-        // xem giải thích ở toggleTabBubble()/switchTab().
-        bubbleExpanded = false
         webView.loadUrl(url)
         layoutWebArea()
         renderTabBar()
@@ -637,14 +635,18 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         }
     }
 
-    private fun switchTab(index: Int, fromBubble: Boolean = false) {
+    private fun switchTab(index: Int) {
         if (index !in tabs.indices) return
-        // [fromBubble] = true CHỈ khi lệnh chuyển tab này đến từ chính toggleTabBubble() (xem
-        // hàm đó) - trường hợp đó KHÔNG được reset [bubbleExpanded] vì chính nó đang chủ động
-        // đổi cờ này. Mọi cách chuyển tab KHÁC (bấm thẳng vào ô tab trên dải tab, chọn từ Task
-        // View...) đều coi như người dùng đã "thoát" khỏi trạng thái bong bóng đang mở, để lần
-        // bấm bong bóng TIẾP THEO nhớ đúng tab hiện tại làm mốc quay về, không bị lệch.
-        if (!fromBubble) bubbleExpanded = false
+        // AN TOÀN: nếu tab sắp chuyển sang xem CHÍNH LÀ tab đang bị "mượn" hiển thị trong cửa sổ
+        // xem trước của bong bóng chat (tabPeekHandle, xem TabPeekWindow.kt) - trường hợp hiếm
+        // (người dùng bấm thẳng vào ô tab đó trên dải tab trong lúc cửa sổ xem trước đang mở) -
+        // phải đóng cửa sổ đó lại TRƯỚC, nếu không layoutWebArea() bên dưới sẽ gỡ WebView này ra
+        // khỏi cửa sổ xem trước (mỗi View chỉ có 1 parent) làm cửa sổ đó còn trơ lại khung rỗng.
+        if (tabPeekHandle?.webView === tabs[index].webView && tabPeekHandle?.isShowing == true) {
+            tabPeekHandle?.dismiss()
+            tabPeekHandle = null
+            tabBubbleHandle?.restoreSavedPositionAnimated()
+        }
         activeIndex = index
         edtUrl.setText(tabs[index].webView.url ?: "")
         refreshStarIcon()
@@ -655,12 +657,16 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private fun closeTab(index: Int) {
         if (index !in tabs.indices) return
         val tab = tabs.removeAt(index)
+        // Tab sắp đóng ĐANG được hiển thị trong cửa sổ xem trước (bong bóng chat, xem
+        // TabPeekWindow.kt) -> đóng cửa sổ đó TRƯỚC (và trả bong bóng về đúng vị trí đã kéo),
+        // tránh giữ 1 cửa sổ nổi trỏ tới WebView sắp bị destroy() ngay bên dưới.
+        if (tabPeekHandle?.webView === tab.webView) {
+            tabPeekHandle?.dismiss()
+            tabPeekHandle = null
+            tabBubbleHandle?.restoreSavedPositionAnimated()
+        }
         (tab.webView.parent as? ViewGroup)?.removeView(tab.webView)
         tab.webView.destroy()
-        // Danh sách tab vừa đổi (đóng bớt 1 tab) -> bỏ trạng thái "đang mở bong bóng" nếu có -
-        // các index đã dịch chuyển do 1 tab bị xoá, [indexBeforeBubbleExpand] cũ không còn đáng
-        // tin cậy nữa (xem giải thích ở toggleTabBubble()/switchTab()).
-        bubbleExpanded = false
         if (tabs.isEmpty()) {
             saveSession()
             finish()
@@ -673,23 +679,53 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         saveSession()
     }
 
-    /** Bấm bong bóng chat nổi (💬, xem doc comment đầu file): CHƯA mở -> nhớ lại tab đang xem
-     *  hiện tại rồi chuyển sang xem tab BÊN TRÁI CÙNG (tabs[0]). ĐANG mở rồi (bấm lần nữa) ->
-     *  quay lại đúng tab đã nhớ trước đó - giống hệt cách bong bóng chat Messenger/Zalo hoạt
-     *  động (bấm mở ra xem, bấm lại "thu gọn" về đúng chỗ đang dở). Nút này TỰ ẨN khi chỉ còn
-     *  1 tab (xem renderTabBar()) nên hàm này về lý thuyết không bị gọi khi tabs.size < 2, kiểm
-     *  tra lại ở đây cho chắc (phòng trường hợp gọi nhầm/race condition). */
+    /** Bấm bong bóng chat nổi (💬, xem doc comment đầu file): CHƯA mở -> tự né bong bóng lên GÓC
+     *  PHẢI TRÊN CÙNG màn hình rồi mở 1 CỬA SỔ XEM TRƯỚC (TabPeekWindow) ngay dưới nó, chứa nội
+     *  dung tab BÊN TRÁI CÙNG (tabs[0]) - KHÔNG động tới tab đang hiển thị chính. ĐANG mở rồi
+     *  (bấm lần nữa, hoặc bấm nút ✕ trên chính cửa sổ đó) -> đóng cửa sổ xem trước, trả bong
+     *  bóng về ĐÚNG vị trí đã kéo trước đó - giống hệt cách bong bóng chat Messenger/Zalo hoạt
+     *  động. Nút này TỰ ẨN khi chỉ còn 1 tab (xem renderTabBar()) nên hàm này về lý thuyết không
+     *  bị gọi khi tabs.size < 2, kiểm tra lại ở đây cho chắc (phòng trường hợp gọi nhầm/race
+     *  condition). */
     private fun toggleTabBubble() {
-        if (tabs.size < 2) return
-        if (bubbleExpanded) {
-            val restoreIndex = indexBeforeBubbleExpand.coerceIn(0, tabs.size - 1)
-            bubbleExpanded = false
-            switchTab(restoreIndex, fromBubble = true)
-        } else {
-            indexBeforeBubbleExpand = activeIndex
-            bubbleExpanded = true
-            switchTab(0, fromBubble = true)
+        val peek = tabPeekHandle
+        if (peek != null && peek.isShowing) {
+            peek.dismiss()
+            tabPeekHandle = null
+            tabBubbleHandle?.restoreSavedPositionAnimated()
+            return
         }
+        if (tabs.size < 2) return
+        val target = tabs.getOrNull(0) ?: return
+        // tabs[0] ĐANG hiển thị sẵn trong webArea chính rồi (là tab đang active, HOẶC đang ở chế
+        // độ chia màn hình - lúc đó tabs[0] LUÔN nằm trong số các ô đang chia, xem
+        // layoutWebArea()) -> không có gì thêm để "xem trước" bằng cửa sổ nổi cả, WebView đó
+        // đang có sẵn 1 parent (webArea) rồi nên cũng KHÔNG THỂ đưa vào cửa sổ nổi được nữa
+        // (1 View chỉ có 1 parent tại 1 thời điểm).
+        if (target.webView.parent != null) {
+            Toast.makeText(this, "Tab này đang hiển thị rồi", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val bubble = tabBubbleHandle ?: return
+        val margin = dp(12)
+        // Né bong bóng lên góc phải trên cùng TRƯỚC, rồi neo cửa sổ xem trước theo ĐÚNG vị trí
+        // MỚI này (không phải vị trí cũ trước khi né) - để cửa sổ luôn xuất hiện ngay dưới góc
+        // phải trên cùng, cố định và dễ đoán, thay vì lúc thì góc này lúc thì góc khác tuỳ chỗ
+        // người dùng đang kéo bong bóng dở trước đó.
+        bubble.moveToTopRightCorner(margin)
+        val bubbleSize = bubble.size
+        val screenW = resources.displayMetrics.widthPixels
+        val anchorX = (screenW - bubbleSize - margin).coerceAtLeast(0)
+        val anchorY = margin
+        tabPeekHandle = TabPeekWindow.show(
+            activity = this,
+            webView = target.webView,
+            anchorScreenX = anchorX,
+            anchorScreenY = anchorY,
+            anchorSize = bubbleSize,
+            title = target.title,
+            onCollapseTapped = { toggleTabBubble() }
+        )
     }
 
     private fun renderTabBar() {
@@ -880,6 +916,10 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
     override fun onDestroy() {
         saveSession()
+        // Đóng cửa sổ xem trước (nếu đang mở) TRƯỚC khi destroy() toàn bộ WebView bên dưới -
+        // gỡ đúng WebView ra khỏi panel của nó trước, tránh giữ tham chiếu tới 1 WebView đã bị
+        // destroy() và tránh rò rỉ (leak) window khi Activity đóng.
+        tabPeekHandle?.dismiss()
         for (t in tabs) t.webView.destroy()
         taskViewHandle?.dismiss()
         tabBubbleHandle?.detach()

@@ -151,7 +151,12 @@ object FloatingBackButton {
         private val resyncCallback: () -> Unit,
         // [fixed]: true = nút cố định, không đăng ký vào callbacksFor(id) (nút cố định không
         // bao giờ kéo-thả nên không cần đẩy vị trí sang các Activity khác cùng tiến trình).
-        private val fixed: Boolean
+        private val fixed: Boolean,
+        // Dùng làm giá trị dự phòng khi CHƯA có gì lưu trong SharedPreferences (y hệt tham số
+        // truyền vào [attach] lúc tạo nút) - cần giữ lại ở đây để [restoreSavedPositionAnimated]
+        // tính đúng ngay cả lần đầu tiên, chưa từng lưu vị trí nào.
+        private val defaultIsRight: Boolean,
+        private val defaultYFraction: Float
     ) {
         fun resync() {
             resyncCallback()
@@ -162,6 +167,85 @@ object FloatingBackButton {
          *  khi hiện lại vị trí vẫn y nguyên chỗ cũ, không bị "nhảy" hay tính lại từ đầu. */
         fun setVisible(visible: Boolean) {
             btn.visibility = if (visible) View.VISIBLE else View.GONE
+        }
+
+        /** Toạ độ MÀN HÌNH THẬT (không phải toạ độ bên trong [root]) của góc trên-trái nút nổi
+         *  ngay lúc gọi hàm này - dùng cho các thành phần KHÁC cần "neo" đúng theo vị trí hiện
+         *  tại của nút (ví dụ TabPeekWindow đặt cửa sổ xem trước ngay dưới bong bóng chat). Lấy
+         *  qua View.getLocationOnScreen() thay vì đọc [lp].x/y - vì nút này nằm trong 1 WINDOW
+         *  RIÊNG (WindowManager, xem giải thích ở đầu file) nên toạ độ [lp] vốn ĐÃ LÀ toạ độ màn
+         *  hình rồi, nhưng getLocationOnScreen() vẫn đáng tin cậy hơn (không phụ thuộc animation
+         *  đang chạy dở của animateSnapX() có thể khiến lp.x đọc được chưa phải giá trị đang vẽ
+         *  thật trên màn hình). */
+        fun screenLocation(): IntArray {
+            val loc = IntArray(2)
+            btn.getLocationOnScreen(loc)
+            return loc
+        }
+
+        /** Kích thước (vuông) hiện tại của nút nổi, tính bằng pixel thật - dùng kèm
+         *  [screenLocation] để tính điểm NGAY DƯỚI nút. */
+        val size: Int get() = if (btn.width > 0) btn.width else lp.width
+
+        /** Di chuyển nút nổi tới toạ độ (trong hệ [root], KHÔNG phải toạ độ màn hình tuyệt đối -
+         *   2 hệ này trùng nhau với nút nổi vì [root] luôn phủ kín màn hình) [xPx]/[yPx], có hoạt
+         *  ảnh trượt mượt nếu [animate] = true. KHÔNG lưu vị trí này vào SharedPreferences (khác
+         *  lúc người dùng tự thả tay sau khi kéo) - dùng cho các trường hợp cần TẠM đẩy nút sang
+         *  chỗ khác theo 1 sự kiện nào đó, ví dụ bong bóng chat tự né lên góc phải trên khi mở
+         *  cửa sổ xem trước (xem [moveToTopRightCorner], toggleTabBubble() ở
+         *  AccountBrowserActivity.kt). Gọi [restoreSavedPositionAnimated] sau đó để trả nút về
+         *  đúng chỗ đã kéo trước đó. */
+        fun moveTo(xPx: Int, yPx: Int, animate: Boolean = true) {
+            if (root.width == 0 || root.height == 0) return
+            val targetX = xPx.coerceIn(0, (root.width - lp.width).coerceAtLeast(0))
+            val targetY = yPx.coerceIn(0, (root.height - lp.height).coerceAtLeast(0))
+            if (!animate) {
+                lp.x = targetX
+                lp.y = targetY
+                try {
+                    wm.updateViewLayout(btn, lp)
+                } catch (e: Exception) {
+                }
+                return
+            }
+            val fromX = lp.x
+            val fromY = lp.y
+            val animator = android.animation.ValueAnimator.ofFloat(0f, 1f)
+            animator.duration = 220
+            animator.addUpdateListener {
+                val f = it.animatedValue as Float
+                lp.x = (fromX + (targetX - fromX) * f).toInt()
+                lp.y = (fromY + (targetY - fromY) * f).toInt()
+                try {
+                    wm.updateViewLayout(btn, lp)
+                } catch (e: Exception) {
+                }
+            }
+            animator.start()
+        }
+
+        /** Tiện ích của [moveTo]: đẩy nút lên đúng GÓC PHẢI TRÊN CÙNG màn hình, cách mép
+         *  [marginPx] mỗi bên - dùng khi cần "né" chỗ cho 1 nội dung khác sắp mở lên gần vị trí
+         *  nút đang đứng (ví dụ bong bóng chat tự né lên góc này khi mở cửa sổ xem trước). */
+        fun moveToTopRightCorner(marginPx: Int) {
+            moveTo((root.width - lp.width - marginPx).coerceAtLeast(0), marginPx)
+        }
+
+        /** Trả nút về ĐÚNG vị trí đã lưu trước đó (SharedPreferences - chỗ người dùng tự kéo tới
+         *  lần gần nhất, hoặc vị trí mặc định [defaultIsRight]/[defaultYFraction] nếu chưa từng
+         *  lưu gì) - CÓ hoạt ảnh trượt mượt, khác [resync] (nhảy tức thì, dùng nội bộ ở
+         *  onResume - không cần đẹp mắt bằng lúc xử lý trực tiếp 1 thao tác của người dùng). Đi
+         *  cùng cặp với [moveToTopRightCorner]/[moveTo] khi cần tạm đẩy nút đi rồi trả về sau. */
+        fun restoreSavedPositionAnimated() {
+            if (root.width == 0 || root.height == 0) return
+            val p = prefs(root.context)
+            val isRight = p.getBoolean(keyIsRight(id), defaultIsRight)
+            val yFraction = p.getFloat(keyYFraction(id), defaultYFraction)
+            val btnSize = if (lp.width > 0) lp.width else btn.width
+            val targetX = if (isRight) (root.width - btnSize).coerceAtLeast(0) else 0
+            val maxY = (root.height - btnSize).coerceAtLeast(0)
+            val targetY = (yFraction * maxY).toInt().coerceIn(0, maxY)
+            moveTo(targetX, targetY, animate = true)
         }
 
         fun detach() {
@@ -425,6 +509,6 @@ object FloatingBackButton {
             }
         }
 
-        return Handle(id, wm, btn, lp, root, resyncCallback, fixed)
+        return Handle(id, wm, btn, lp, root, resyncCallback, fixed, defaultIsRight, defaultYFraction)
     }
 }
