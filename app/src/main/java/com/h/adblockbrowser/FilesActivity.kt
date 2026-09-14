@@ -39,7 +39,17 @@ class FilesActivity : AppCompatActivity() {
     private lateinit var listView: ListView
     private lateinit var actionBar: LinearLayout
     private lateinit var tvSelCount: TextView
-    private var currentDir: File = Environment.getExternalStorageDirectory()
+    private var currentDir: File = run {
+        // Mặc định mở THẲNG vào thư mục "Download" (đúng yêu cầu) thay vì thư mục gốc bộ nhớ
+        // trong như trước đây - vì hầu hết file người dùng cần tìm (đã tải về từ trình duyệt...)
+        // đều nằm ở đây. getExternalStoragePublicDirectory() chỉ ghép ĐƯỜNG DẪN (không cần
+        // quyền/Context gì thêm ở bước này) nên gọi an toàn ngay lúc khởi tạo property, TRƯỚC cả
+        // onCreate() - nếu vì lý do gì đó thư mục này không tồn tại/không phải thư mục (máy lạ,
+        // ROM tuỳ biến...) thì dự phòng về lại thư mục gốc như hành vi cũ, tránh mở lên đã báo
+        // lỗi "không truy cập được" ngay từ đầu.
+        val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        if (downloadDir.isDirectory) downloadDir else Environment.getExternalStorageDirectory()
+    }
     private var entries: List<File> = emptyList()
 
     private var selectionMode = false
