@@ -35,7 +35,9 @@ import androidx.core.content.ContextCompat
  *  các tài khoản đang đăng nhập ở đó.
  *  THOÁT RA (đóng màn hình Ẩn danh): TẤT CẢ tab đang mở bị XOÁ SẠCH ngay, KHÔNG lưu lại - mở lại
  *  Ẩn danh lần sau luôn bắt đầu từ đầu (trống), đúng nghĩa duyệt web ẩn danh không để lại dấu vết.
- *  DẤU SAO: lưu VĨNH VIỄN qua IncognitoStarredStore, không mất khi đóng phiên.
+ *  DẤU SAO: lưu VĨNH VIỄN qua IncognitoStarredStore, không mất khi đóng phiên - RIÊNG các trang
+ *  đã đánh dấu sao này thì mở Ẩn danh lên là TỰ ĐỘNG mở sẵn thành tab luôn (xem onCreate()), vì
+ *  đây là lựa chọn có chủ đích của người dùng, không phải "dấu vết duyệt web" cần xoá.
  *  KHÔNG giới hạn số tab; TẤT CẢ các tab ẩn danh dùng CHUNG 1 phiên/cookie với nhau (đăng nhập ở
  *  tab này thì tab kia trong CÙNG phiên ẩn danh cũng thấy đã đăng nhập). */
 class IncognitoActivity : AppCompatActivity() {
@@ -183,12 +185,17 @@ class IncognitoActivity : AppCompatActivity() {
         // trang (trước đây tự bật mỗi lần mở Ẩn danh) - theo yêu cầu, không hiện nữa. Hành vi
         // chặn chạm 1 lần vẫn giữ nguyên ở shouldOverrideUrlLoading() bên dưới, chỉ bỏ dialog.
 
-        // ĐÚNG NGHĨA Ẩn danh: KHÔNG khôi phục tab của lần trước nữa - mỗi lần mở Ẩn danh luôn
-        // bắt đầu từ đầu (trống), và khi thoát (onDestroy) sẽ xoá sạch mọi tab đang mở, không
-        // để lại dấu vết cho lần sau.
+        // ĐÚNG NGHĨA Ẩn danh: KHÔNG khôi phục tab của lần trước nữa - mỗi lần mở Ẩn danh không
+        // giữ lại lịch sử duyệt web/tab của lần trước, và khi thoát (onDestroy) sẽ xoá sạch mọi
+        // tab đang mở, không để lại dấu vết cho lần sau. RIÊNG các trang ĐÃ ĐÁNH DẤU SAO
+        // (IncognitoStarredStore - lưu VĨNH VIỄN, có chủ đích của người dùng, không phải dấu vết
+        // duyệt web tự động) thì TỰ ĐỘNG mở sẵn thành tab ngay khi vào Ẩn danh, theo yêu cầu.
         val startUrl = intent.getStringExtra("initial_url")
+        val starredUrls = IncognitoStarredStore.getAll(this)
         if (startUrl != null) {
             newTab(startUrl)
+        } else if (starredUrls.isNotEmpty()) {
+            starredUrls.forEach { newTab(it) }
         } else {
             // Mở trang TRỐNG (nền đen), để người dùng tự gõ địa chỉ muốn vào, thanh địa chỉ
             // cũng để trống (không điền sẵn) - xem switchTab().
