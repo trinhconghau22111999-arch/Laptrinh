@@ -52,7 +52,13 @@ import androidx.core.content.ContextCompat
  *  - Bấm Back hết lịch sử trong 1 hồ sơ -> QUAY VỀ màn "Nhiều tài khoản" (đóng màn duyệt web
  *    của hồ sơ này, URL các tab đã được lưu lại nên mở lại hồ sơ sau vẫn khôi phục đúng).
  *  - Nút "✕" cạnh nút chia 3 màn hình: đóng ngay hồ sơ đang xem, về thẳng "Nhiều tài khoản"
- *    mà không cần lùi hết lịch sử từng trang như Back. */
+ *    mà không cần lùi hết lịch sử từng trang như Back.
+ *  - BONG BÓNG CHAT NỔI (💬, chỉ hiện khi có TỪ 2 TAB TRỞ LÊN, xem toggleTabBubble()): đại diện
+ *    cho TAB BÊN TRÁI CÙNG (tabs[0]). Bấm vào -> chuyển hẳn sang xem tab đó (như bấm vào ô tab
+ *    đó trên dải tab). Bấm lại lần nữa -> quay về đúng tab đang xem TRƯỚC ĐÓ (trước khi bấm bong
+ *    bóng lần đầu) - giống hệt cách bong bóng chat của Messenger/Zalo: bấm mở ra xem, bấm lại
+ *    "thu gọn" về lại đúng chỗ đang dở trước đó. Đây là nút nổi kéo-thả được, tự nhớ vị trí,
+ *    dùng chung component FloatingBackButton như các nút nổi khác trong app. */
 abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
     private companion object {
@@ -73,7 +79,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         overridePendingTransition(R.anim.wp_slide_in_left, R.anim.wp_slide_out_right)
     }
 
-    private data class Tab(val webView: WebView, var title: String = "Tab mới", var translatedToVi: Boolean = false)
+    private data class Tab(val webView: WebView, var title: String = "Tab mới")
 
     private val tabs = ArrayList<Tab>()
     private var activeIndex = 0
@@ -103,9 +109,15 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private lateinit var btnStar: ImageView
     private lateinit var progressBar: ProgressBar
     private lateinit var btnSplit3: TextView
-    // Nút dịch nổi (kéo-thả được, giống nút Back/Off ở các màn khác - xem FloatingBackButton.kt)
-    // - bấm để dịch tab đang xem sang tiếng Việt / bấm lại để trả về tiếng Anh (bản gốc).
-    private var translateBtnHandle: FloatingBackButton.Handle? = null
+    // Bong bóng chat nổi (💬) - đại diện tab bên trái cùng, xem toggleTabBubble() và doc comment
+    // đầu file. Thay thế cho nút dịch nổi (FloatingBackButton id "translate") đã bị xoá vì
+    // không dùng đến - dùng lại đúng component/kiểu dáng đó (tròn, viền trắng, kéo-thả được).
+    private var tabBubbleHandle: FloatingBackButton.Handle? = null
+    // true = bong bóng đang "mở" (đang cho xem tab bên trái cùng thay vì tab người dùng đang
+    // xem trước đó). [indexBeforeBubbleExpand] nhớ lại đúng tab đó để bấm bong bóng lần nữa thì
+    // quay về đúng chỗ, không phải luôn về tab đầu tiên trong danh sách.
+    private var bubbleExpanded = false
+    private var indexBeforeBubbleExpand = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -229,20 +241,21 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         // ĐÃ XOÁ HẲN: thanh điều hướng nổi (WpNavBar) Back/Start/Đa nhiệm theo yêu cầu - dùng
         // đúng nút Back thật của hệ thống (luôn hiện sẵn); chuyển tab vẫn dùng dải tab ở trên.
 
-        // Nút dịch nổi - kéo-thả được, tự nhớ vị trí (dùng chung component FloatingBackButton,
-        // xem giải thích ở đầu file đó). Icon "VI" cố định làm biểu tượng "dịch", KHÔNG đổi
-        // theo trạng thái hiện tại (giống icon dịch của Chrome luôn giữ nguyên hình chữ A/文 dù
-        // trang đang ở ngôn ngữ nào) - bấm để dịch tab đang xem sang tiếng Việt, bấm lại (đang ở
-        // tiếng Việt) để tải lại trang, trả về tiếng Anh/ngôn ngữ gốc (xem toggleTranslate()).
-        translateBtnHandle = FloatingBackButton.attach(
+        // Bong bóng chat nổi - kéo-thả được, tự nhớ vị trí (dùng chung component
+        // FloatingBackButton, xem giải thích ở đầu file đó). Icon 💬 cố định, đại diện tab bên
+        // trái cùng (tabs[0]). Mặc định ẨN ngay lúc này vì mới có đúng 1 tab (chưa đủ điều kiện
+        // "từ 2 tab trở lên") - renderTabBar() sẽ tự bật/tắt lại đúng theo số tab hiện có mỗi
+        // khi danh sách tab thay đổi (mở/đóng tab), xem setVisible() ở đó.
+        tabBubbleHandle = FloatingBackButton.attach(
             activity = this,
             root = outer,
-            onTap = { toggleTranslate() },
-            id = "translate",
-            icon = "VI",
+            onTap = { toggleTabBubble() },
+            id = "tabbubble",
+            icon = "💬",
             defaultIsRight = true,
             defaultYFraction = 0.35f
         )
+        tabBubbleHandle?.setVisible(false)
 
         val savedUrls = AccountSessionStore.load(this, slot)
         val startUrl = intent.getStringExtra("initial_url")
@@ -413,6 +426,9 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         setupWebViewCallbacks(webView, index)
         setupLongPress(webView)
         activeIndex = index
+        // Danh sách tab vừa đổi (thêm 1 tab mới) -> bỏ trạng thái "đang mở bong bóng" nếu có,
+        // xem giải thích ở toggleTabBubble()/switchTab().
+        bubbleExpanded = false
         webView.loadUrl(url)
         layoutWebArea()
         renderTabBar()
@@ -600,22 +616,12 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // Vừa tải xong 1 trang MỚI (kể cả do bấm link sang trang khác, không chỉ do
-                // vào lại trang cũ) -> trang này CHƯA dịch, dù trước đó tab từng bấm nút dịch -
-                // reset lại trạng thái để nút dịch nổi hoạt động đúng cho trang mới. Tìm tab
-                // theo webView (không dùng [index] đóng gói ở tham số hàm ngoài) vì index có
-                // thể đã lệch nếu người dùng đóng tab khác từ lúc setupWebViewCallbacks() được
-                // gọi - xem cách closeTab() dồn lại danh sách [tabs].
-                tabs.find { it.webView === webView }?.translatedToVi = false
                 if (tabs.getOrNull(activeIndex)?.webView === webView) {
                     edtUrl.setText(url)
                     refreshStarIcon()
                 }
                 view?.evaluateJavascript(ZoomEnabler.JS, null)
                 view?.evaluateJavascript(AdOverlayBlocker.JS, null)
-                // ĐÃ BỎ dịch tự động (trước đây luôn evaluateJavascript(TranslateInjector.JS)
-                // ở đây cho MỌI trang) - giờ CHỈ dịch khi người dùng chủ động bấm nút dịch nổi
-                // (xem toggleTranslate(), FloatingBackButton.attach() ở onCreate()).
                 if (YoutubeAdSkipper.isYoutube(url)) view?.evaluateJavascript(YoutubeAdSkipper.JS, null)
                 CookieManager.getInstance().flush()
                 saveSession()
@@ -623,8 +629,14 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         }
     }
 
-    private fun switchTab(index: Int) {
+    private fun switchTab(index: Int, fromBubble: Boolean = false) {
         if (index !in tabs.indices) return
+        // [fromBubble] = true CHỈ khi lệnh chuyển tab này đến từ chính toggleTabBubble() (xem
+        // hàm đó) - trường hợp đó KHÔNG được reset [bubbleExpanded] vì chính nó đang chủ động
+        // đổi cờ này. Mọi cách chuyển tab KHÁC (bấm thẳng vào ô tab trên dải tab, chọn từ Task
+        // View...) đều coi như người dùng đã "thoát" khỏi trạng thái bong bóng đang mở, để lần
+        // bấm bong bóng TIẾP THEO nhớ đúng tab hiện tại làm mốc quay về, không bị lệch.
+        if (!fromBubble) bubbleExpanded = false
         activeIndex = index
         edtUrl.setText(tabs[index].webView.url ?: "")
         refreshStarIcon()
@@ -637,6 +649,10 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         val tab = tabs.removeAt(index)
         (tab.webView.parent as? ViewGroup)?.removeView(tab.webView)
         tab.webView.destroy()
+        // Danh sách tab vừa đổi (đóng bớt 1 tab) -> bỏ trạng thái "đang mở bong bóng" nếu có -
+        // các index đã dịch chuyển do 1 tab bị xoá, [indexBeforeBubbleExpand] cũ không còn đáng
+        // tin cậy nữa (xem giải thích ở toggleTabBubble()/switchTab()).
+        bubbleExpanded = false
         if (tabs.isEmpty()) {
             saveSession()
             finish()
@@ -649,7 +665,30 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         saveSession()
     }
 
+    /** Bấm bong bóng chat nổi (💬, xem doc comment đầu file): CHƯA mở -> nhớ lại tab đang xem
+     *  hiện tại rồi chuyển sang xem tab BÊN TRÁI CÙNG (tabs[0]). ĐANG mở rồi (bấm lần nữa) ->
+     *  quay lại đúng tab đã nhớ trước đó - giống hệt cách bong bóng chat Messenger/Zalo hoạt
+     *  động (bấm mở ra xem, bấm lại "thu gọn" về đúng chỗ đang dở). Nút này TỰ ẨN khi chỉ còn
+     *  1 tab (xem renderTabBar()) nên hàm này về lý thuyết không bị gọi khi tabs.size < 2, kiểm
+     *  tra lại ở đây cho chắc (phòng trường hợp gọi nhầm/race condition). */
+    private fun toggleTabBubble() {
+        if (tabs.size < 2) return
+        if (bubbleExpanded) {
+            val restoreIndex = indexBeforeBubbleExpand.coerceIn(0, tabs.size - 1)
+            bubbleExpanded = false
+            switchTab(restoreIndex, fromBubble = true)
+        } else {
+            indexBeforeBubbleExpand = activeIndex
+            bubbleExpanded = true
+            switchTab(0, fromBubble = true)
+        }
+    }
+
     private fun renderTabBar() {
+        // Bong bóng chat nổi CHỈ hiện khi có TỪ 2 TAB TRỞ LÊN (đúng yêu cầu) - gọi lại mỗi lần
+        // renderTabBar() vì hàm này đã được gọi sẵn ở MỌI chỗ danh sách/trạng thái tab thay đổi
+        // (mở tab, đóng tab, chuyển tab...), khỏi phải rải thêm lời gọi setVisible() ở từng nơi.
+        tabBubbleHandle?.setVisible(tabs.size >= 2)
         tabBar.removeAllViews()
         for ((i, tab) in tabs.withIndex()) {
             val cell = LinearLayout(this).apply {
@@ -790,7 +829,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         for (t in tabs) t.webView.onResume()
-        translateBtnHandle?.resync()
+        tabBubbleHandle?.resync()
     }
 
     // FIX (không mở được hộp thoại chọn ảnh/video/tệp): trình chọn tệp hệ thống được mở ở
@@ -821,21 +860,6 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         callback.onReceiveValue(results)
     }
 
-    /** Bấm nút dịch nổi: tab đang xem CHƯA dịch -> dịch sang tiếng Việt (bơm TranslateInjector.JS,
-     *  xem TranslateInjector.kt). Tab đang xem ĐÃ dịch rồi -> tải lại trang để trả về nguyên bản
-     *  (tiếng Anh/ngôn ngữ gốc) - đơn giản và chắc chắn hơn hẳn so với gọi lại API "khôi phục
-     *  ngôn ngữ gốc" của widget Google Dịch (hay lỗi vặt, không phải lúc nào cũng khôi phục đúng). */
-    private fun toggleTranslate() {
-        val tab = tabs.getOrNull(activeIndex) ?: return
-        if (tab.translatedToVi) {
-            tab.webView.reload()
-            tab.translatedToVi = false
-        } else {
-            tab.webView.evaluateJavascript(TranslateInjector.JS, null)
-            tab.translatedToVi = true
-        }
-    }
-
     private fun pauseAllVideosInAllTabs() {
         val js = "(function(){" +
             "var vs=document.querySelectorAll('video');" +
@@ -850,7 +874,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         saveSession()
         for (t in tabs) t.webView.destroy()
         taskViewHandle?.dismiss()
-        translateBtnHandle?.detach()
+        tabBubbleHandle?.detach()
         super.onDestroy()
     }
 }
