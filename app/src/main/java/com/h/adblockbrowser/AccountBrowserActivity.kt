@@ -53,6 +53,9 @@ import androidx.core.content.ContextCompat
  *    của hồ sơ này, URL các tab đã được lưu lại nên mở lại hồ sơ sau vẫn khôi phục đúng).
  *  - Nút "✕" cạnh nút chia 3 màn hình: đóng ngay hồ sơ đang xem, về thẳng "Nhiều tài khoản"
  *    mà không cần lùi hết lịch sử từng trang như Back.
+ *  - MỞ HỒ SƠ TỰ ĐỘNG NẠP TRANG ĐÃ ĐÁNH DẤU SAO: mở 1 hồ sơ lên -> tự động mở sẵn các trang đã
+ *    gắn dấu sao (bookmark riêng của hồ sơ đó, xem AccountStarredStore) thành tab, KHÔNG mở lại
+ *    các tab của phiên làm việc trước đó nữa (xem onCreate()).
  *  - BONG BÓNG CHAT NỔI (💬, chỉ hiện khi có TỪ 2 TAB TRỞ LÊN, xem toggleTabBubble()): đại diện
  *    cho TAB BÊN TRÁI CÙNG (tabs[0]). Bấm vào -> chuyển hẳn sang xem tab đó (như bấm vào ô tab
  *    đó trên dải tab). Bấm lại lần nữa -> quay về đúng tab đang xem TRƯỚC ĐÓ (trước khi bấm bong
@@ -257,15 +260,20 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         )
         tabBubbleHandle?.setVisible(false)
 
-        val savedUrls = AccountSessionStore.load(this, slot)
+        // FIX theo yêu cầu: mở 1 hồ sơ ("Nhiều tài khoản") -> TỰ ĐỘNG mở các trang ĐÃ ĐÁNH DẤU
+        // SAO (bookmark riêng của hồ sơ này, xem AccountStarredStore) làm tab sẵn, KHÔNG còn mở
+        // lại các tab của PHIÊN LÀM VIỆC TRƯỚC (AccountSessionStore) nữa như trước đây - dù
+        // saveSession() vẫn tiếp tục ghi lại danh sách tab đang mở mỗi khi có thay đổi (phòng
+        // khi cần dùng lại về sau), giờ đơn giản là KHÔNG ĐỌC lại nó lúc khởi động màn này nữa.
         val startUrl = intent.getStringExtra("initial_url")
+        val starredUrls = AccountStarredStore.getAll(this, slot)
         if (startUrl != null) {
             newTab(startUrl)
-        } else if (savedUrls.isNotEmpty()) {
-            savedUrls.forEach { newTab(it) }
+        } else if (starredUrls.isNotEmpty()) {
+            starredUrls.forEach { newTab(it) }
         } else {
-            // Mặc định vào trang GOOGLE TÌM KIẾM (không phải trang đăng nhập) khi mở 1 hồ sơ
-            // chưa có phiên nào trước đó - đăng nhập là tuỳ chọn (bấm nút 🔑), không ép ngay.
+            // Chưa đánh dấu sao trang nào -> vào trang GOOGLE TÌM KIẾM (không phải trang đăng
+            // nhập) khi mở 1 hồ sơ - đăng nhập là tuỳ chọn (bấm nút 🔑), không ép ngay.
             newTab("https://www.google.com")
         }
     }
