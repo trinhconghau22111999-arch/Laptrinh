@@ -2,6 +2,7 @@ package com.h.adblockbrowser
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -54,6 +55,12 @@ import androidx.core.content.ContextCompat
  *    mà không cần lùi hết lịch sử từng trang như Back. */
 abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
+    private companion object {
+        /** Mã yêu cầu riêng cho trình chọn tệp (ảnh/video/tệp), không trùng với các REQ_ khác
+         *  đang dùng trong app (VD: REQ_LOCK ở MainActivity.kt). */
+        const val REQ_FILE_CHOOSER = 51001
+    }
+
     /** Số hồ sơ (1..MAX_PROFILES) - mỗi lớp con ghi đè giá trị cố định của riêng nó. */
     abstract val slot: Int
 
@@ -78,6 +85,13 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var orientationBeforeFullscreen = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
+    // ── Hộp thoại chọn ảnh/video/tệp (input type="file" trên trang web) ──
+    // FIX: trước đây WebChromeClient KHÔNG override onShowFileChooser() nên khi trang web gọi
+    // input file (chọn ảnh đại diện, đính kèm ảnh/video...) hệ thống dùng hành vi mặc định là
+    // KHÔNG LÀM GÌ CẢ -> bấm nút chọn tệp trên trang không thấy hộp thoại nào hiện lên. Giờ lưu
+    // lại callback của WebView để trả kết quả về sau khi người dùng chọn xong ở onActivityResult.
+    private var fileUploadCallback: android.webkit.ValueCallback<Array<Uri>>? = null
 
     private lateinit var outer: FrameLayout
     private lateinit var browserRoot: LinearLayout
@@ -530,6 +544,47 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             override fun onHideCustomView() {
                 exitFullscreenVideo()
             }
+
+            // FIX (không mở được hộp thoại chọn ảnh/video/tệp): đây là hàm WebView gọi mỗi khi
+            // trang web bấm vào input type="file" (chọn ảnh đại diện, đính kèm ảnh/video/tệp lên
+            // form...). Trước đây hàm này KHÔNG được override nên dùng hành vi mặc định của
+            // WebChromeClient - không mở Intent nào cả, bấm vào coi như không có phản hồi. Giờ
+            // lưu callback lại rồi mở trình chọn tệp hệ thống; kết quả được trả về ở
+            // onActivityResult() bên dưới.
+            override fun onShowFileChooser(
+                view: WebView?,
+                filePathCallback: android.webkit.ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                // Nếu có 1 lượt chọn tệp trước đó chưa trả kết quả (VD: bấm 2 lần liên tiếp) thì
+                // phải huỷ nó trước bằng onReceiveValue(null), nếu không WebView sẽ bị "treo"
+                // (JS Promise của lượt cũ không bao giờ resolve/reject).
+                fileUploadCallback?.onReceiveValue(null)
+                fileUploadCallback = filePathCallback
+
+                val intent = fileChooserParams?.createIntent()?.apply {
+                    // Cho phép chọn nhiều tệp cùng lúc nếu trang web có thuộc tính "multiple",
+                    // và đảm bảo luôn có CATEGORY_OPENABLE để trình chọn hệ thống (ảnh/video/tệp
+                    // trong máy, Google Drive...) hiển thị được.
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                } ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }
+
+                return try {
+                    startActivityForResult(Intent.createChooser(intent, "Chọn tệp"), REQ_FILE_CHOOSER)
+                    true
+                } catch (e: Exception) {
+                    fileUploadCallback = null
+                    Toast.makeText(
+                        this@AccountBrowserActivityBase,
+                        "Không mở được trình chọn tệp trên máy này",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    false
+                }
+            }
         }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
@@ -736,6 +791,34 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         super.onResume()
         for (t in tabs) t.webView.onResume()
         translateBtnHandle?.resync()
+    }
+
+    // FIX (không mở được hộp thoại chọn ảnh/video/tệp): trình chọn tệp hệ thống được mở ở
+    // onShowFileChooser() trả kết quả về ĐÂY - PHẢI gọi fileUploadCallback.onReceiveValue()
+    // dù người dùng chọn xong (trả về URI) hay bấm Huỷ (trả về null), nếu không JS Promise phía
+    // trang web sẽ treo mãi không resolve/reject và mọi lần bấm chọn tệp SAU ĐÓ trên trang sẽ
+    // không còn phản hồi nữa (vì filePathCallback cũ của WebView chưa từng được trả lời).
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_FILE_CHOOSER) return
+        val callback = fileUploadCallback ?: return
+        fileUploadCallback = null
+
+        if (resultCode != RESULT_OK || data == null) {
+            callback.onReceiveValue(null)
+            return
+        }
+
+        // Hỗ trợ cả trường hợp chọn NHIỀU tệp cùng lúc (input có thuộc tính "multiple" -> trình
+        // chọn hệ thống trả về qua data.clipData) lẫn chọn MỘT tệp (trả về qua data.data).
+        val clipData = data.clipData
+        val results: Array<Uri> = if (clipData != null) {
+            Array(clipData.itemCount) { i -> clipData.getItemAt(i).uri }
+        } else {
+            data.data?.let { arrayOf(it) } ?: emptyArray()
+        }
+        callback.onReceiveValue(results)
     }
 
     /** Bấm nút dịch nổi: tab đang xem CHƯA dịch -> dịch sang tiếng Việt (bơm TranslateInjector.JS,
