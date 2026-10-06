@@ -13,6 +13,7 @@ import android.webkit.WebResourceResponse
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import java.io.ByteArrayInputStream
@@ -115,69 +116,85 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /** Dựng màn "chọn 1 trong 3 app": nền đen tuyệt đối phủ toàn màn hình, CHỈ có 3 icon (đã
-     *  phóng to) xếp thành 1 CỘT DỌC, nằm giữa màn hình cả theo chiều ngang lẫn chiều dọc -
-     *  ngoài 3 icon này ra không còn gì khác (không chữ tiêu đề, không thanh trạng thái riêng,
-     *  không nút phụ). Chạm vào 1 icon sẽ mở đúng app con tương ứng. */
+    /** Dựng màn "chọn app": nền cam nhạt phủ toàn màn hình, 4 icon (đã phóng to) xếp LƯỚI 2 CỘT x 2
+     *  HÀNG, nằm giữa màn hình cả theo chiều ngang lẫn chiều dọc - ngoài các icon này ra không còn gì
+     *  khác (không chữ tiêu đề, không nút phụ). Chạm vào 1 icon sẽ mở đúng app con tương ứng.
+     *  (Trước đây là 1 cột dọc 3 icon; thêm icon thứ 4 "Sao lưu & chia sẻ" vào cột dọc sẽ tràn màn hình
+     *  nên đổi sang lưới 2x2. Bọc trong ScrollView phòng máy màn hình thấp/xoay ngang.) */
     private fun showChooser() {
         val root = findViewById<FrameLayout>(R.id.rootFrame)
         root.removeAllViews()
         root.setBackgroundColor(0xFFFFE0B2.toInt()) // cam nhạt
 
-        val column = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-        }
-
         val items = listOf(
             Triple("Ẩn danh", R.drawable.ic_shortcut_incognito, IncognitoActivity::class.java),
             Triple("Nhiều tài khoản", R.drawable.ic_shortcut_accounts, AccountsActivity::class.java),
-            Triple("Quản lý tệp", R.drawable.ic_shortcut_files, FilesActivity::class.java)
+            Triple("Quản lý tệp", R.drawable.ic_shortcut_files, FilesActivity::class.java),
+            Triple("Sao lưu & chia sẻ", R.drawable.ic_shortcut_backup, BackupActivity::class.java)
         )
 
-        val iconSize = dp(120)
-        items.forEachIndexed { index, (label, iconRes, activityClass) ->
-            val itemContainer = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+        }
+        val iconSize = dp(96)
+        items.chunked(2).forEachIndexed { rowIndex, rowItems ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                isClickable = true
-                isFocusable = true
-                val outValue = android.util.TypedValue()
-                theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
-                setBackgroundResource(outValue.resourceId)
-                setPadding(dp(24), dp(20), dp(24), dp(20))
-                setOnClickListener { startActivity(Intent(this@MainActivity, activityClass)) }
             }
-
-            itemContainer.addView(ImageView(this).apply {
-                setImageResource(iconRes)
-                layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
-            })
-
-            itemContainer.addView(TextView(this).apply {
-                text = label
-                textSize = 20f
-                setTextColor(Color.WHITE)
-                typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(0, dp(12), 0, 0)
-            })
-
-            val itemLp = LinearLayout.LayoutParams(
+            for ((label, iconRes, activityClass) in rowItems) {
+                row.addView(
+                    buildChooserItem(label, iconRes, iconSize) {
+                        startActivity(Intent(this@MainActivity, activityClass))
+                    },
+                    LinearLayout.LayoutParams(dp(150), ViewGroup.LayoutParams.WRAP_CONTENT)
+                )
+            }
+            val rowLp = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            if (index > 0) itemLp.topMargin = dp(28)
-            column.addView(itemContainer, itemLp)
+            if (rowIndex > 0) rowLp.topMargin = dp(16)
+            column.addView(row, rowLp)
         }
 
-        root.addView(
+        val scroll = ScrollView(this).apply { isFillViewport = true }
+        scroll.addView(
             column,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER
-            )
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         )
+        root.addView(
+            scroll,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        )
+    }
+
+    private fun buildChooserItem(label: String, iconRes: Int, iconSize: Int, onClick: () -> Unit): View {
+        val itemContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            isClickable = true
+            isFocusable = true
+            val outValue = android.util.TypedValue()
+            theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+            setBackgroundResource(outValue.resourceId)
+            setPadding(dp(8), dp(16), dp(8), dp(16))
+            setOnClickListener { onClick() }
+        }
+        itemContainer.addView(ImageView(this).apply {
+            setImageResource(iconRes)
+            layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+        })
+        itemContainer.addView(TextView(this).apply {
+            text = label
+            textSize = 18f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            gravity = Gravity.CENTER_HORIZONTAL
+            maxLines = 2
+            setPadding(0, dp(10), 0, 0)
+        })
+        return itemContainer
     }
 }
 

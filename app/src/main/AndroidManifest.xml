@@ -75,6 +75,13 @@
              thị danh sách, KHÔNG tự nó dùng WebView nên không cần tiến trình riêng). -->
         <activity android:name=".AccountsActivity" android:exported="false" />
 
+        <!-- "Sao lưu & chia sẻ": gói dữ liệu app (tài khoản đã đăng nhập, hồ sơ, tab, dấu trang...) vào
+             tệp mã hoá bằng mật khẩu để chuyển sang máy khác (xem BackupActivity/BackupManager).
+             configChanges: giữ nguyên màn hình khi xoay máy để không làm đứt tiến trình sao lưu/khôi phục
+             đang chạy ngầm. -->
+        <activity android:name=".BackupActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden" />
+
         <!-- 10 "hồ sơ" tài khoản, MỖI hồ sơ 1 tiến trình RIÊNG (:acct1..:acct10) - giống hệt
              cách ":incognito" ở trên cô lập dữ liệu WebView theo tiến trình, nhưng ở đây dữ
              liệu (cookie/phiên đăng nhập Google...) được GIỮ LẠI lâu dài cho từng hồ sơ, cho
