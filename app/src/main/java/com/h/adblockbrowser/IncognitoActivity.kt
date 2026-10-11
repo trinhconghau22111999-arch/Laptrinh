@@ -377,6 +377,7 @@ class IncognitoActivity : AppCompatActivity() {
                 val scheme = request?.url?.scheme ?: return false
                 // Chặn scheme không phải http/https (tel:, intent:, v.v.)
                 if (scheme != "http" && scheme != "https") return true
+                if (view != null) UserAgentManager.applyFor(view, request.url.toString())
 
                 // ── ẨN DANH: KHÔNG cho phép nhấp link thông thường mở trang ──
                 // Chỉ cho load nếu lệnh đến từ code (loadInTab / goBack / newTab).
@@ -413,7 +414,7 @@ class IncognitoActivity : AppCompatActivity() {
 
     private fun loadInTab(index: Int, url: String) {
         isInitiatedLoad = true
-        tabs.getOrNull(index)?.webView?.loadUrl(url)
+        tabs.getOrNull(index)?.webView?.let { UserAgentManager.applyFor(it, url); it.loadUrl(url) }
     }
 
     private fun switchTab(index: Int) {
