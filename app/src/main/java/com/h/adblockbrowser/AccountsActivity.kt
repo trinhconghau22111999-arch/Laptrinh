@@ -271,6 +271,7 @@ class AccountsActivity : AppCompatActivity() {
             .setMessage("Danh sách tab đã lưu của hồ sơ này sẽ bị xoá khỏi app.")
             .setPositiveButton("Xoá") { _, _ ->
                 AccountProfileStore.remove(this, profile.slot)
+                LegacyProfileCookies.clearSlot(this, profile.slot)
                 render()
             }
             .setNegativeButton("Huỷ", null)
@@ -278,6 +279,16 @@ class AccountsActivity : AppCompatActivity() {
     }
 
     private fun openProfile(profile: AccountProfileStore.Profile) {
+        if (LegacyProfileCookies.enabled) {
+            // Android < 9: tất cả hồ sơ chạy chung 1 tiến trình, mỗi lúc chỉ giữ đăng nhập của 1 hồ sơ.
+            val prev = LegacyProfileCookies.activeSlot(this)
+            if (prev != 0 && prev != profile.slot) {
+                Toast.makeText(this, "Android 7: mỗi lúc chỉ giữ đăng nhập 1 hồ sơ - đang chuyển hồ sơ...", Toast.LENGTH_SHORT).show()
+            }
+            startActivityWp(Intent(this, AccountBrowserActivityLegacy::class.java)
+                .putExtra(AccountBrowserActivityLegacy.EXTRA_SLOT, profile.slot))
+            return
+        }
         val activityClass = classForSlot(profile.slot) ?: return
         startActivityWp(Intent(this, activityClass))
     }
