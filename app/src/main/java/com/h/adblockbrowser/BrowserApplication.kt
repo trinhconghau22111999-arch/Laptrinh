@@ -24,6 +24,7 @@ class BrowserApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashReporter.install(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             val processName = currentProcessName()
             // processName dạng "com.h.adblockbrowser:acct3" / "...:incognito" - tiến trình

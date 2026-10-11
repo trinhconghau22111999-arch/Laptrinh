@@ -86,6 +86,7 @@ class AccountsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        CrashReporter.showIfAny(this)
         render()
     }
 
