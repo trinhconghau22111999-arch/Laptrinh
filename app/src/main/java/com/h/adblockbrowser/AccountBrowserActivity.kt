@@ -434,7 +434,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         setupWebViewCallbacks(webView, index)
         setupLongPress(webView)
         activeIndex = index
-        if (url != null) { UserAgentManager.applyFor(webView, url); webView.loadUrl(url) }
+        if (url != null) webView.loadUrl(url)
         layoutWebArea()
         renderTabBar()
         return webView
@@ -618,12 +618,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 if (legacyMode) LegacyProfileCookies.noteHost(request?.url?.host)
                 val scheme = request?.url?.scheme ?: return false
-                if ((scheme == "http" || scheme == "https") && view != null) UserAgentManager.applyFor(view, request.url.toString())
                 return scheme != "http" && scheme != "https"
-            }
-            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                super.onPageStarted(view, url, favicon)
-                if (view != null) UserAgentManager.applyFor(view, url)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
@@ -813,7 +808,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             input = if (input.contains(".") && !input.contains(" ")) "https://$input"
             else "https://www.google.com/search?q=" + Uri.encode(input)
         }
-        tabs.getOrNull(activeIndex)?.webView?.let { UserAgentManager.applyFor(it, input); it.loadUrl(input) }
+        tabs.getOrNull(activeIndex)?.webView?.loadUrl(input)
     }
 
     private fun saveSession() {
