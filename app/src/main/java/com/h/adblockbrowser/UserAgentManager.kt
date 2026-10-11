@@ -1,9 +1,11 @@
 package com.h.adblockbrowser
 
+import android.content.Context
+import android.webkit.WebSettings
+
 /** Quản lý User-Agent gửi lên các trang web:
- *  - Mặc định: UA di động "sạch" (không có hậu tố ";  wv" mà WebView tự thêm) - hậu tố này khiến
- *    một số dịch vụ Google (Gmail...) nhận diện nhầm là trình duyệt "không đầy đủ tính năng" và tự
- *    chuyển về giao diện HTML rút gọn thay vì giao diện đầy đủ (bản cá nhân) thường thấy.
+ *  - Mặc định: dùng ĐÚNG User-Agent thật của WebView trên máy (WebSettings.getDefaultUserAgent),
+ *    không giả thiết bị/phiên bản Chrome và không xoá dấu hiệu WebView.
  *  - Zalo (chat.zalo.me): LUÔN ép sang UA máy tính, vì bản web di động của Zalo bị giới hạn tính
  *    năng hơn hẳn bản máy tính (xem ZaloDesktopStyler.kt để biết cách "thu gọn" lại bản máy tính
  *    cho vừa mắt trên điện thoại).
@@ -14,10 +16,10 @@ object UserAgentManager {
     const val DESKTOP_UA =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
-    const val MOBILE_UA =
-        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+    /** User-Agent thật của WebView trên máy này (giữ nguyên "; wv", "Version/4.0"...). */
+    fun mobileUa(context: Context): String = WebSettings.getDefaultUserAgent(context)
 
-    fun uaFor(host: String?, forceDesktop: Boolean, path: String? = null): String {
+    fun uaFor(context: Context, host: String?, forceDesktop: Boolean, path: String? = null): String {
         if (forceDesktop) return DESKTOP_UA
         if (host != null && host.contains("zalo.me")) return DESKTOP_UA
         // Google Maps (maps.google.com hoặc google.com/maps): ép UA máy tính để Google KHÔNG
@@ -29,7 +31,7 @@ object UserAgentManager {
             val isMapsPath = host.contains("google.") && (path?.startsWith("/maps") == true)
             if (isMapsHost || isMapsPath) return DESKTOP_UA
         }
-        return MOBILE_UA
+        return mobileUa(context)
     }
 
     fun isDesktopByDefault(host: String?): Boolean = host != null && host.contains("zalo.me")

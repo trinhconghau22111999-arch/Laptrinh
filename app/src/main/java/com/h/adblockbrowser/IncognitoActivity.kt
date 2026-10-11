@@ -248,7 +248,7 @@ class IncognitoActivity : AppCompatActivity() {
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
-            settings.userAgentString = UserAgentManager.MOBILE_UA
+            settings.userAgentString = UserAgentManager.mobileUa(this@IncognitoActivity)
             // Ẩn danh: không lưu mật khẩu/form đã điền, không cho tự động điền lại
             settings.saveFormData = false
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
