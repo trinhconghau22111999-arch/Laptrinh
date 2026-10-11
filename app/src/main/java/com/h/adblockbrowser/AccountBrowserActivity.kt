@@ -75,6 +75,9 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     /** Số hồ sơ (1..MAX_PROFILES) - mỗi lớp con ghi đè giá trị cố định của riêng nó. */
     abstract val slot: Int
 
+    /** true ở lớp Legacy (Android < 9, chạy 1 tiến trình): đổi cookie theo hồ sơ - xem LegacyProfileCookies.kt. */
+    open val legacyMode: Boolean get() = false
+
     /** Ghi đè finish() 1 LẦN ở lớp cơ sở để áp dụng cho CẢ 10 lớp con (AccountBrowserActivity1..10)
      *  - màn này luôn thoát kèm hiệu ứng "trượt ra bên phải" kiểu Windows Phone (xem [finishWp]
      *  ở UiUtils.kt), dù finish() được gọi từ đâu (nút Back nổi, phím Back cứng...). */
@@ -133,6 +136,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         // thường - mỗi tiến trình :acctN đã có thư mục dữ liệu riêng nên việc bật ở đây chỉ
         // ảnh hưởng trong phạm vi hồ sơ hiện tại.
         CookieManager.getInstance().setAcceptCookie(true)
+        if (legacyMode) LegacyProfileCookies.activate(this, slot)
 
         browserRoot = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -611,12 +615,14 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                 val host = request?.url?.host
+                if (legacyMode) LegacyProfileCookies.noteHost(host)
                 return if (AdBlocker.isAd(host)) AdBlocker.blockedResponse() else super.shouldInterceptRequest(view, request)
             }
             // Hồ sơ tài khoản: điều hướng BÌNH THƯỜNG như trình duyệt thật (không chặn bấm
             // link) để luồng đăng nhập Google (nhiều bước chuyển hướng, xác minh 2 lớp,
             // "Chọn tài khoản"...) hoạt động đúng như trên Chrome.
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                if (legacyMode) LegacyProfileCookies.noteHost(request?.url?.host)
                 val scheme = request?.url?.scheme ?: return false
                 return scheme != "http" && scheme != "https"
             }
@@ -865,6 +871,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         saveSession()
+        if (legacyMode) LegacyProfileCookies.captureIfActive(this, slot)
         CookieManager.getInstance().flush()
         pauseAllVideosInAllTabs()
         for (t in tabs) t.webView.onPause()
@@ -872,6 +879,13 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Android < 9: nếu trong lúc ở nền có hồ sơ khác lấy quyền sở hữu cookie thì nạp lại cookie của
+        // hồ sơ này rồi dựng lại màn hình (tab được nạp lại từ danh sách đã lưu).
+        if (legacyMode && LegacyProfileCookies.activeSlot(this) != slot) {
+            LegacyProfileCookies.activate(this, slot)
+            recreate()
+            return
+        }
         for (t in tabs) t.webView.onResume()
         tabBubbleHandle?.resync()
     }
@@ -943,3 +957,11 @@ class AccountBrowserActivity7 : AccountBrowserActivityBase() { override val slot
 class AccountBrowserActivity8 : AccountBrowserActivityBase() { override val slot = 8 }
 class AccountBrowserActivity9 : AccountBrowserActivityBase() { override val slot = 9 }
 class AccountBrowserActivity10 : AccountBrowserActivityBase() { override val slot = 10 }
+
+/** Android < 9 (không tách được dữ liệu WebView theo tiến trình): MỌI hồ sơ dùng lớp này, chạy trong tiến trình
+ *  chính, số hồ sơ truyền qua Intent. Đăng nhập được tách bằng cách đổi cookie (xem LegacyProfileCookies.kt). */
+class AccountBrowserActivityLegacy : AccountBrowserActivityBase() {
+    override val slot: Int get() = intent?.getIntExtra(EXTRA_SLOT, 1) ?: 1
+    override val legacyMode: Boolean get() = true
+    companion object { const val EXTRA_SLOT = "slot" }
+}

@@ -130,6 +130,11 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:resizeableActivity="false" />
 
+        <!-- Android < 9: mọi hồ sơ dùng lớp này, KHÔNG có android:process riêng (xem LegacyProfileCookies.kt). -->
+        <activity android:name=".AccountBrowserActivityLegacy" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:resizeableActivity="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.h.adblockbrowser2.fileprovider"
