@@ -9,10 +9,10 @@ Daemon will be stopped at the end of the build
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
 > Task :app:mapDebugSourceSetPaths
+> Task :app:checkDebugAarMetadata
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:parseDebugLocalResources
-> Task :app:checkDebugAarMetadata
 > Task :app:mergeDebugResources
 > Task :app:processDebugMainManifest
 > Task :app:dataBindingGenBaseClassesDebug
@@ -22,12 +22,12 @@ Daemon will be stopped at the end of the build
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
+> Task :app:processDebugManifestForPackage
+> Task :app:compressDebugAssets
 > Task :app:mergeDebugStartupProfile
 > Task :app:mergeDebugJniLibFolders
 > Task :app:checkDebugDuplicateClasses
-> Task :app:processDebugManifestForPackage
 > Task :app:mergeDebugNativeLibs
 > Task :app:mergeLibDexDebug
 > Task :app:validateSigningDebug
@@ -51,12 +51,12 @@ w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbro
       {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)}
       passing in a {@link StartActivityForResult} object for the {@link ActivityResultContract}.
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountBrowserActivity.kt:836:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
-w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountsActivity.kt:96:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/AccountsActivity.kt:97:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/FilesActivity.kt:462:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:253:22 'setter for saveFormData: Boolean' is deprecated. Deprecated in Java
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/IncognitoActivity.kt:545:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/LockScreenActivity.kt:251:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
-w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:60:13 'startActivityForResult(Intent, Int): Unit' is deprecated. This method has been deprecated in favor of using the Activity Result API
+w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:65:13 'startActivityForResult(Intent, Int): Unit' is deprecated. This method has been deprecated in favor of using the Activity Result API
       which brings increased type safety via an {@link ActivityResultContract} and the prebuilt
       contracts for common intents available in
       {@link androidx.activity.result.contract.ActivityResultContracts}, provides hooks for
@@ -64,7 +64,7 @@ w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbro
       activity. Use
       {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)}
       passing in a {@link StartActivityForResult} object for the {@link ActivityResultContract}.
-w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:73:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/MainActivity.kt:78:18 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
 w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbrowser/WpAppBar.kt:218:13 Variable 'originalSetExpanded' is never used
 
 > Task :app:compileDebugJavaWithJavac
@@ -76,9 +76,9 @@ w: file:///home/runner/work/Laptrinh/Laptrinh/app/src/main/java/com/h/adblockbro
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1791722542925.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1791723552004.json
 
-BUILD SUCCESSFUL in 40s
+BUILD SUCCESSFUL in 46s
 40 actionable tasks: 40 executed
 
 === APK thực tế tìm thấy sau build (find app/build/outputs -iname '*.apk') ===
