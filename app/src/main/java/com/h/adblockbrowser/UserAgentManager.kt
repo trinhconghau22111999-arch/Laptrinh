@@ -36,13 +36,15 @@ object UserAgentManager {
         mobileUa(context).replace("; wv)", ")").replace(" Version/4.0", "")
 
     /** Gọi TRƯỚC khi tải [url] (loadUrl / shouldOverrideUrlLoading / onPageStarted). */
-    fun applyFor(webView: WebView, url: String?) {
+    /** Trả về true nếu vừa ĐỔI UA/header (khi đó nơi gọi phải tự tải lại URL để áp dụng). */
+    fun applyFor(webView: WebView, url: String?): Boolean {
+        var changed = false
         val host = try { Uri.parse(url ?: "").host } catch (e: Exception) { null }
         val s = webView.settings
-        if (s.userAgentString == DESKTOP_UA) return
+        if (s.userAgentString == DESKTOP_UA) return false
         val ex = isExempt(host)
         val want = if (ex) cleanedUa(webView.context) else mobileUa(webView.context)
-        if (s.userAgentString != want) s.userAgentString = want
+        if (s.userAgentString != want) { s.userAgentString = want; changed = true }
         if (headerOff[webView] != ex) {
             try {
                 if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST))
@@ -50,6 +52,7 @@ object UserAgentManager {
                 headerOff[webView] = ex
             } catch (e: Exception) { }
         }
+        return changed
     }
 
     fun uaFor(context: Context, host: String?, forceDesktop: Boolean, path: String? = null): String {

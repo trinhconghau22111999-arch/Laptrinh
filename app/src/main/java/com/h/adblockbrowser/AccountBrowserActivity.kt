@@ -618,12 +618,12 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 if (legacyMode) LegacyProfileCookies.noteHost(request?.url?.host)
                 val scheme = request?.url?.scheme ?: return false
-                if ((scheme == "http" || scheme == "https") && view != null) UserAgentManager.applyFor(view, request.url.toString())
+                if ((scheme == "http" || scheme == "https") && view != null && request.method == "GET") {
+                    // Đổi UA giữa chừng làm WebView huỷ lần chuyển trang -> tự tải lại URL với UA mới.
+                    val target = request.url.toString()
+                    if (UserAgentManager.applyFor(view, target)) { view.post { view.loadUrl(target) }; return true }
+                }
                 return scheme != "http" && scheme != "https"
-            }
-            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                super.onPageStarted(view, url, favicon)
-                if (view != null) UserAgentManager.applyFor(view, url)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)

@@ -377,7 +377,10 @@ class IncognitoActivity : AppCompatActivity() {
                 val scheme = request?.url?.scheme ?: return false
                 // Chặn scheme không phải http/https (tel:, intent:, v.v.)
                 if (scheme != "http" && scheme != "https") return true
-                if (view != null) UserAgentManager.applyFor(view, request.url.toString())
+                if (view != null && request.method == "GET") {
+                    val target = request.url.toString()
+                    if (UserAgentManager.applyFor(view, target)) { view.post { view.loadUrl(target) }; return true }
+                }
 
                 // ── ẨN DANH: KHÔNG cho phép nhấp link thông thường mở trang ──
                 // Chỉ cho load nếu lệnh đến từ code (loadInTab / goBack / newTab).
