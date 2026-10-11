@@ -403,7 +403,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
 
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun newTab(url: String) {
+    private fun newTab(url: String?): WebView {
         val webView = WebView(this).apply {
             layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             settings.javaScriptEnabled = true
@@ -434,9 +434,10 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         setupWebViewCallbacks(webView, index)
         setupLongPress(webView)
         activeIndex = index
-        webView.loadUrl(url)
+        if (url != null) webView.loadUrl(url)
         layoutWebArea()
         renderTabBar()
+        return webView
     }
 
     /** Nhấn giữ vào 1 link/ảnh trong trang -> hiện tuỳ chọn "Mở trong tab mới" */
@@ -495,19 +496,17 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                 // dùng URL đó mở tab mới đúng cách qua newTab() có đầy đủ settings/cookies/callbacks.
                 if (resultMsg == null) return false
                 val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
-                val helperWebView = WebView(this@AccountBrowserActivityBase).apply {
-                    settings.javaScriptEnabled = true
-                    webViewClient = object : android.webkit.WebViewClient() {
-                        override fun shouldOverrideUrlLoading(v: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
-                            val url = request?.url?.toString() ?: return false
-                            if (url != "about:blank") newTab(url)
-                            return true
-                        }
-                    }
-                }
-                transport.webView = helperWebView
+                // Gắn THẲNG WebView của tab mới làm cửa sổ popup (giữ window.opener) để các luồng như
+                // đăng nhập Google (accounts.google.com/gsi/transform) gửi được kết quả về trang gốc.
+                // Trước đây mở lại bằng URL ở tab rời nên mất opener -> trang trắng/treo.
+                transport.webView = newTab(null)
                 resultMsg.sendToTarget()
                 return true
+            }
+
+            override fun onCloseWindow(window: WebView?) {
+                val i = tabs.indexOfFirst { it.webView === window }
+                if (i >= 0) closeTab(i)
             }
 
             // FIX (lý do "bấm mở mic là tắt liền"): trước đây CẤP LUÔN mọi quyền WebView yêu
