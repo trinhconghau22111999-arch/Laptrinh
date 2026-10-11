@@ -58,7 +58,7 @@ object CrashReporter {
             .setPositiveButton("Sao chép") { _, _ ->
                 val cm = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 cm.setPrimaryClip(ClipData.newPlainText("crash", text))
-                Toast.makeText(activity, "Đã sao chép", Toast.LENGTH_SHORT).show()
+                SafeToast.make(activity, "Đã sao chép", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Đóng", null)
             .show()

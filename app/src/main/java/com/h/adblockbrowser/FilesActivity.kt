@@ -255,14 +255,14 @@ class FilesActivity : AppCompatActivity() {
             val missingAllFilesAccess = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R &&
                 !android.os.Environment.isExternalStorageManager()
             if (missingAllFilesAccess) {
-                Toast.makeText(
+                SafeToast.make(
                     this,
                     "Không truy cập được thư mục này - thiếu quyền \"Truy cập mọi tệp\"",
                     Toast.LENGTH_LONG
                 ).show()
                 checkAllFilesAccess()
             } else {
-                Toast.makeText(this, "Không truy cập được thư mục này", Toast.LENGTH_SHORT).show()
+                SafeToast.make(this, "Không truy cập được thư mục này", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -400,10 +400,10 @@ class FilesActivity : AppCompatActivity() {
             val missingAllFilesAccess = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R &&
                 !android.os.Environment.isExternalStorageManager()
             if (missingAllFilesAccess) {
-                Toast.makeText(this, "Không mở được tệp - thiếu quyền \"Truy cập mọi tệp\"", Toast.LENGTH_LONG).show()
+                SafeToast.make(this, "Không mở được tệp - thiếu quyền \"Truy cập mọi tệp\"", Toast.LENGTH_LONG).show()
                 checkAllFilesAccess()
             } else {
-                Toast.makeText(this, "Không mở được tệp này (có thể chưa cài app hỗ trợ định dạng này)", Toast.LENGTH_SHORT).show()
+                SafeToast.make(this, "Không mở được tệp này (có thể chưa cài app hỗ trợ định dạng này)", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -449,7 +449,7 @@ class FilesActivity : AppCompatActivity() {
                 if (deletedPaths.isNotEmpty()) {
                     MediaScannerConnection.scanFile(this, deletedPaths.toTypedArray(), null, null)
                 }
-                Toast.makeText(this, "Đã xoá $okCount/${toDelete.size} mục", Toast.LENGTH_SHORT).show()
+                SafeToast.make(this, "Đã xoá $okCount/${toDelete.size} mục", Toast.LENGTH_SHORT).show()
                 openDir(currentDir)
             }
             .setNegativeButton("Huỷ", null)

@@ -360,7 +360,7 @@ class IncognitoActivity : AppCompatActivity() {
                     request.deny()
                 }
                 if (granted.size < request.resources.size) {
-                    Toast.makeText(
+                    SafeToast.make(
                         this@IncognitoActivity,
                         "Chưa cấp quyền micro/camera cho ứng dụng - vào Cài đặt máy để cấp quyền",
                         Toast.LENGTH_LONG
@@ -510,7 +510,7 @@ class IncognitoActivity : AppCompatActivity() {
         if (url.isBlank()) return
         val nowStarred = IncognitoStarredStore.toggle(this, url)
         refreshStarIcon()
-        Toast.makeText(this, if (nowStarred) "Đã gắn dấu sao" else "Đã bỏ dấu sao", Toast.LENGTH_SHORT).show()
+        SafeToast.make(this, if (nowStarred) "Đã gắn dấu sao" else "Đã bỏ dấu sao", Toast.LENGTH_SHORT).show()
     }
 
     /** Bấm "Mở hết" -> mở LUÔN tất cả trang đã gắn dấu sao thành tab mới, KHÔNG hiện màn lưới
@@ -518,7 +518,7 @@ class IncognitoActivity : AppCompatActivity() {
     private fun openAllStarred() {
         val urls = IncognitoStarredStore.getAll(this)
         if (urls.isEmpty()) {
-            Toast.makeText(this, "Chưa có trang nào được đánh dấu sao", Toast.LENGTH_SHORT).show()
+            SafeToast.make(this, "Chưa có trang nào được đánh dấu sao", Toast.LENGTH_SHORT).show()
             return
         }
         urls.forEach { newTab(it) }

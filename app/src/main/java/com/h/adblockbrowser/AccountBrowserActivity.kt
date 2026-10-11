@@ -325,7 +325,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
      *  Cần ÍT NHẤT 2 tab đang mở thì mới có gì để chia. */
     private fun toggleSplit3() {
         if (!splitMode && tabs.size < 2) {
-            Toast.makeText(this, "Cần mở ít nhất 2 tab để chia màn hình", Toast.LENGTH_SHORT).show()
+            SafeToast.make(this, "Cần mở ít nhất 2 tab để chia màn hình", Toast.LENGTH_SHORT).show()
             return
         }
         splitMode = !splitMode
@@ -535,7 +535,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                     request.deny()
                 }
                 if (granted.size < request.resources.size) {
-                    Toast.makeText(
+                    SafeToast.make(
                         this@AccountBrowserActivityBase,
                         "Chưa cấp quyền micro/camera cho ứng dụng - vào Cài đặt máy để cấp quyền",
                         Toast.LENGTH_LONG
@@ -597,7 +597,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                     true
                 } catch (e: Exception) {
                     fileUploadCallback = null
-                    Toast.makeText(
+                    SafeToast.make(
                         this@AccountBrowserActivityBase,
                         "Không mở được trình chọn tệp trên máy này",
                         Toast.LENGTH_SHORT
@@ -708,7 +708,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         // đang có sẵn 1 parent (webArea) rồi nên cũng KHÔNG THỂ đưa vào cửa sổ nổi được nữa
         // (1 View chỉ có 1 parent tại 1 thời điểm).
         if (target.webView.parent != null) {
-            Toast.makeText(this, "Tab này đang hiển thị rồi", Toast.LENGTH_SHORT).show()
+            SafeToast.make(this, "Tab này đang hiển thị rồi", Toast.LENGTH_SHORT).show()
             return
         }
         val bubble = tabBubbleHandle ?: return
@@ -791,7 +791,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         if (url.isBlank()) return
         val nowStarred = AccountStarredStore.toggle(this, slot, url)
         refreshStarIcon()
-        Toast.makeText(this, if (nowStarred) "Đã gắn dấu trang" else "Đã bỏ dấu trang", Toast.LENGTH_SHORT).show()
+        SafeToast.make(this, if (nowStarred) "Đã gắn dấu trang" else "Đã bỏ dấu trang", Toast.LENGTH_SHORT).show()
     }
 
     /** Bấm icon sao xanh -> mở LUÔN tất cả trang đã gắn dấu (bookmark) của hồ sơ này thành tab
@@ -800,7 +800,7 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private fun openAllStarred() {
         val urls = AccountStarredStore.getAll(this, slot)
         if (urls.isEmpty()) {
-            Toast.makeText(this, "Chưa có trang nào được đánh dấu", Toast.LENGTH_SHORT).show()
+            SafeToast.make(this, "Chưa có trang nào được đánh dấu", Toast.LENGTH_SHORT).show()
             return
         }
         urls.forEach { newTab(it) }

@@ -194,7 +194,7 @@ class LockScreenActivity : AppCompatActivity() {
             patternView = PatternLockView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(dp(280), dp(280))
                 onPatternComplete = { pattern -> checkPattern(pattern) }
-                onPatternTooShort = { Toast.makeText(this@LockScreenActivity, "Cần nối tối thiểu 4 chấm", Toast.LENGTH_SHORT).show() }
+                onPatternTooShort = { SafeToast.make(this@LockScreenActivity, "Cần nối tối thiểu 4 chấm", Toast.LENGTH_SHORT).show() }
             }
             root.addView(patternView)
         } else {
@@ -226,7 +226,7 @@ class LockScreenActivity : AppCompatActivity() {
                         setResult(RESULT_OK)
                         finish()
                     } else if (pin.length >= 6) {
-                        Toast.makeText(this@LockScreenActivity, "Sai mã PIN", Toast.LENGTH_SHORT).show()
+                        SafeToast.make(this@LockScreenActivity, "Sai mã PIN", Toast.LENGTH_SHORT).show()
                         input.setText("")
                     }
                 }
@@ -244,7 +244,7 @@ class LockScreenActivity : AppCompatActivity() {
             setResult(RESULT_OK)
             finish()
         } else {
-            Toast.makeText(this, "Sai hình mở khoá", Toast.LENGTH_SHORT).show()
+            SafeToast.make(this, "Sai hình mở khoá", Toast.LENGTH_SHORT).show()
         }
     }
 

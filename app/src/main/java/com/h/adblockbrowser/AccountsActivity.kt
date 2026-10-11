@@ -198,7 +198,7 @@ class AccountsActivity : AppCompatActivity() {
             val name = input.text.toString().trim()
             val profile = AccountProfileStore.add(this, name)
             if (profile == null) {
-                Toast.makeText(this, "Đã đạt tối đa ${AccountProfileStore.MAX_PROFILES} tài khoản", Toast.LENGTH_SHORT).show()
+                SafeToast.make(this, "Đã đạt tối đa ${AccountProfileStore.MAX_PROFILES} tài khoản", Toast.LENGTH_SHORT).show()
             } else {
                 render()
                 openProfile(profile)
@@ -284,7 +284,7 @@ class AccountsActivity : AppCompatActivity() {
             // Android < 9: tất cả hồ sơ chạy chung 1 tiến trình, mỗi lúc chỉ giữ đăng nhập của 1 hồ sơ.
             val prev = LegacyProfileCookies.activeSlot(this)
             if (prev != 0 && prev != profile.slot) {
-                Toast.makeText(this, "Android 7: mỗi lúc chỉ giữ đăng nhập 1 hồ sơ - đang chuyển hồ sơ...", Toast.LENGTH_SHORT).show()
+                SafeToast.make(this, "Android 7: mỗi lúc chỉ giữ đăng nhập 1 hồ sơ - đang chuyển hồ sơ...", Toast.LENGTH_SHORT).show()
             }
             startActivityWp(Intent(this, AccountBrowserActivityLegacy::class.java)
                 .putExtra(AccountBrowserActivityLegacy.EXTRA_SLOT, profile.slot))

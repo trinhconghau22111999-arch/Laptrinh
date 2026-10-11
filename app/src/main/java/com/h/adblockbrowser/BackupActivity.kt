@@ -133,7 +133,7 @@ class BackupActivity : AppCompatActivity() {
                 ui {
                     hideProgress()
                     if (result.webViewFiles == 0 && result.profiles > 0) {
-                        Toast.makeText(this, "Chưa thấy dữ liệu đăng nhập nào để sao lưu - hãy mở hồ sơ và đăng nhập trước.", Toast.LENGTH_LONG).show()
+                        SafeToast.make(this, "Chưa thấy dữ liệu đăng nhập nào để sao lưu - hãy mở hồ sơ và đăng nhập trước.", Toast.LENGTH_LONG).show()
                     }
                     onDone(result.file)
                 }
@@ -168,14 +168,14 @@ class BackupActivity : AppCompatActivity() {
         val src = pendingSaveFile
         pendingSaveFile = null
         if (uri == null || src == null || !src.exists()) {
-            Toast.makeText(this, "Đã huỷ lưu tệp", Toast.LENGTH_SHORT).show()
+            SafeToast.make(this, "Đã huỷ lưu tệp", Toast.LENGTH_SHORT).show()
             return
         }
         Thread {
             try {
                 val out = contentResolver.openOutputStream(uri) ?: throw IOException("Không ghi được vào vị trí đã chọn")
                 out.use { o -> src.inputStream().use { it.copyTo(o) } }
-                ui { Toast.makeText(this, "Đã lưu tệp sao lưu", Toast.LENGTH_LONG).show() }
+                ui { SafeToast.make(this, "Đã lưu tệp sao lưu", Toast.LENGTH_LONG).show() }
             } catch (e: Exception) {
                 ui { showMessage("Lưu tệp thất bại", e.message ?: e.toString()) }
             }
