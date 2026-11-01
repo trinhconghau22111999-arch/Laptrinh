@@ -42,10 +42,16 @@ object DownloadHelper {
     private const val REQ_WRITE_STORAGE = 7711
     private val main = Handler(Looper.getMainLooper())
 
-    fun attach(activity: Activity, webView: WebView) {
+    /** onStarted: gọi khi 1 lượt tải đã BẮT ĐẦU thật (dùng để đóng tab popup trắng do trang mở ra chỉ để tải). */
+    fun attach(activity: Activity, webView: WebView, onStarted: (() -> Unit)? = null) {
         webView.addJavascriptInterface(Bridge(activity), "AndroidBlobSaver")
         webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
-            start(activity, webView, url, userAgent, contentDisposition, mimeType)
+            // Không để lỗi trong khâu tải làm văng cả app.
+            try {
+                if (start(activity, webView, url, userAgent, contentDisposition, mimeType)) onStarted?.invoke()
+            } catch (t: Throwable) {
+                toast(activity, "Tải xuống lỗi: ${t.message}")
+            }
         }
     }
 
@@ -66,22 +72,22 @@ object DownloadHelper {
         Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
             ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
 
-    private fun start(activity: Activity, webView: WebView, url: String, ua: String?, cd: String?, mime: String?) {
+    private fun start(activity: Activity, webView: WebView, url: String, ua: String?, cd: String?, mime: String?): Boolean {
         if (needsLegacyWritePermission(activity)) {
             ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), REQ_WRITE_STORAGE)
             toast(activity, "Hãy cho phép quyền lưu tệp, rồi bấm tải lại")
-            return
+            return false
         }
-        when {
-            url.startsWith("blob:") -> fetchBlob(webView, url, cd, mime)
-            url.startsWith("data:") -> saveDataUrl(activity, url, cd)
+        return when {
+            url.startsWith("blob:") -> { fetchBlob(webView, url, cd, mime); true }
+            url.startsWith("data:") -> { saveDataUrl(activity, url, cd); true }
             url.startsWith("http://") || url.startsWith("https://") -> enqueue(activity, webView, url, ua, cd, mime)
-            else -> toast(activity, "Không hỗ trợ tải liên kết này")
+            else -> { toast(activity, "Không hỗ trợ tải liên kết này"); false }
         }
     }
 
-    private fun enqueue(activity: Activity, webView: WebView, url: String, ua: String?, cd: String?, mime: String?) {
-        try {
+    private fun enqueue(activity: Activity, webView: WebView, url: String, ua: String?, cd: String?, mime: String?): Boolean {
+        return try {
             val name = URLUtil.guessFileName(url, cd, mime)
             val req = DownloadManager.Request(Uri.parse(url)).apply {
                 setTitle(name)
@@ -98,8 +104,10 @@ object DownloadHelper {
             val id = dm.enqueue(req)
             toast(activity, "Đang tải: $name (lưu vào thư mục Download)")
             watchCompletion(activity, dm, id, name)
+            true
         } catch (e: Exception) {
             toast(activity, "Tải xuống lỗi: ${e.message}")
+            false
         }
     }
 
@@ -109,6 +117,7 @@ object DownloadHelper {
             override fun onReceive(context: Context, intent: Intent) {
                 if (intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) != id) return
                 try { app.unregisterReceiver(this) } catch (_: Exception) {}
+                try {
                 var ok = false
                 var uri: Uri? = null
                 var mime: String? = null
@@ -120,8 +129,11 @@ object DownloadHelper {
                 }
                 if (ok) uri = dm.getUriForDownloadedFile(id)
                 main.post {
-                    if (ok) showDone(activity, name, uri, mime) else toast(app, "Tải thất bại: $name")
+                    try {
+                        if (ok) showDone(activity, name, uri, mime) else toast(app, "Tải thất bại: $name")
+                    } catch (_: Throwable) { toast(app, "Đã tải xong: $name (thư mục Download)") }
                 }
+                } catch (t: Throwable) { toast(app, "Đã tải: $name (xem thư mục Download)") }
             }
         }
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)

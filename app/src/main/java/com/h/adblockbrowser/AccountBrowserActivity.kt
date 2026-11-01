@@ -429,7 +429,13 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
         // FIX: không tải xuống được tệp - trước đây thiếu DownloadListener nên bấm tải không có gì xảy ra.
-        DownloadHelper.attach(this, webView)
+        DownloadHelper.attach(this, webView) {
+            // Trang hay mở 1 tab popup TRẮNG chỉ để kích hoạt tải xuống -> tải bắt đầu thì đóng tab trắng đó.
+            val u = webView.url
+            if ((u.isNullOrBlank() || u == "about:blank") && tabs.size > 1) {
+                webView.post { closeTab(tabs.indexOfFirst { it.webView === webView }) }
+            }
+        }
         val tab = Tab(webView)
         val index = tabs.size
         tabs.add(tab)
