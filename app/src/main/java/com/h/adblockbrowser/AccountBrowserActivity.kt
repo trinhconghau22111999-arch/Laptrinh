@@ -92,6 +92,9 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
     private val tabs = ArrayList<Tab>()
     private var activeIndex = 0
 
+    // Các WebView được tạo qua onCreateWindow (popup do trang mở) - CHỈ những tab này mới được trang tự đóng bằng window.close().
+    private val popupViews: MutableSet<WebView> = java.util.Collections.newSetFromMap(java.util.WeakHashMap<WebView, Boolean>())
+
     // ── Chia 3 màn hình (xem nhiều tab cùng lúc) ──
     private var splitMode = false
 
@@ -507,12 +510,18 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
                 // Gắn THẲNG WebView của tab mới làm cửa sổ popup (giữ window.opener) để các luồng như
                 // đăng nhập Google (accounts.google.com/gsi/transform) gửi được kết quả về trang gốc.
                 // Trước đây mở lại bằng URL ở tab rời nên mất opener -> trang trắng/treo.
-                transport.webView = newTab(null)
+                val popup = newTab(null)
+                popupViews.add(popup)
+                transport.webView = popup
                 resultMsg.sendToTarget()
                 return true
             }
 
             override fun onCloseWindow(window: WebView?) {
+                // FIX: bấm tải tệp (vd. zip) -> trang gọi window.close() -> trước đây đóng LUÔN tab duy nhất
+                // -> closeTab() finish() -> văng ra màn chọn tài khoản. Giờ chỉ đóng tab popup, và không
+                // bao giờ đóng tab cuối cùng theo yêu cầu của trang.
+                if (window == null || window !in popupViews || tabs.size <= 1) return
                 val i = tabs.indexOfFirst { it.webView === window }
                 if (i >= 0) closeTab(i)
             }
