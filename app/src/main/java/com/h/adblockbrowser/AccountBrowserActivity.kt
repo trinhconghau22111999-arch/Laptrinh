@@ -428,6 +428,8 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             settings.javaScriptCanOpenWindowsAutomatically = true
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+        // FIX: không tải xuống được tệp - trước đây thiếu DownloadListener nên bấm tải không có gì xảy ra.
+        DownloadHelper.attach(this, webView)
         val tab = Tab(webView)
         val index = tabs.size
         tabs.add(tab)
@@ -774,6 +776,15 @@ abstract class AccountBrowserActivityBase : AppCompatActivity() {
             setPadding(dp(10), dp(3), dp(10), dp(3))
             isClickable = true
             setOnClickListener { newTab("https://www.google.com") }
+        })
+        // Trang "Tải xuống": mở thư mục Download để xem các tệp đã tải.
+        tabBar.addView(TextView(this).apply {
+            text = "⬇ Tải xuống"
+            textSize = 12f
+            setTextColor(0xFF29B6F6.toInt())
+            setPadding(dp(10), dp(3), dp(10), dp(3))
+            isClickable = true
+            setOnClickListener { DownloadHelper.openDownloadsPage(this@AccountBrowserActivityBase) }
         })
     }
 

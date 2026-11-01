@@ -265,6 +265,7 @@ class IncognitoActivity : AppCompatActivity() {
         android.webkit.WebViewDatabase.getInstance(this).clearFormData()
         @Suppress("DEPRECATION")
         android.webkit.WebViewDatabase.getInstance(this).clearHttpAuthUsernamePassword()
+        DownloadHelper.attach(this, webView)
         val tab = Tab(webView)
         val index = tabs.size
         tabs.add(tab)
@@ -494,6 +495,14 @@ class IncognitoActivity : AppCompatActivity() {
             setPadding(dp(12), dp(8), dp(12), dp(8))
             isClickable = true
             setOnClickListener { newTab("about:blank") }
+        })
+        tabBar.addView(TextView(this).apply {
+            text = "⬇ Tải xuống"
+            textSize = 13f
+            setTextColor(ThemePrefs.accent(this@IncognitoActivity))
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            isClickable = true
+            setOnClickListener { DownloadHelper.openDownloadsPage(this@IncognitoActivity) }
         })
     }
 
