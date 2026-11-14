@@ -100,7 +100,7 @@ public class OmemActivity extends Activity {
         bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL); bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(dp(2), 0, dp(2), 0);
-        bar.addView(Ic.make(this, Ic.CLOSE, new View.OnClickListener() { public void onClick(View v) { finish(); } }));
+        bar.addView(Ic.make(this, Ic.CLOSE, new View.OnClickListener() { public void onClick(View v) { dropSession(); showHome(); } }));   /* X = về danh sách 1-10 để chọn trang khác */
         chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL); chips.setGravity(Gravity.CENTER_VERTICAL);
         for (int i = 0; i < N; i++) {
