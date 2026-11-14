@@ -88,7 +88,7 @@ public class OmemActivity extends Activity {
 
     private void handle(Intent it) {
         String p = it == null ? null : it.getStringExtra("profile");
-        if (p != null && valid(p)) open(p); else open("1"); /* mặc định vào thẳng trang 1 */
+        if (p != null && valid(p)) open(p);   /* không chỉ định trang thì ở màn hình danh sách 1-10 để chọn */
     }
 
     private void buildUi() {
@@ -118,6 +118,7 @@ public class OmemActivity extends Activity {
         chipScroll.setHorizontalScrollBarEnabled(false);
         chipScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         chipScroll.addView(chips, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        chipScroll.setVisibility(View.INVISIBLE);   /* đã bấm vào trang thì không hiện hàng số nữa */
         bar.addView(chipScroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         icBack = Ic.make(this, Ic.BACK, new View.OnClickListener() { public void onClick(View v) { if (session != null && backOk) session.goBack(); } });
         icFwd = Ic.make(this, Ic.FWD, new View.OnClickListener() { public void onClick(View v) { if (session != null && fwdOk) session.goForward(); } });
@@ -290,7 +291,7 @@ public class OmemActivity extends Activity {
 
     @Override public void onBackPressed() {
         if (session != null && backOk) { session.goBack(); return; }
-        if (session != null) { dropSession(); finish(); return; }
+        if (session != null) { dropSession(); showHome(); return; }   /* hết lịch sử: về danh sách để chọn trang khác */
         finish();
     }
 
