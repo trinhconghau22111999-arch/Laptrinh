@@ -59,6 +59,7 @@ public class OmemActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        GeckoCore.born();
         GeckoCore.rt(this);
         closeRx = CloseRx.reg(this);
         buildUi();
@@ -303,5 +304,5 @@ public class OmemActivity extends Activity {
             dropSession(); profile = "";
         }
     }
-    @Override protected void onDestroy() { CloseRx.unreg(this, closeRx); dropSession(); super.onDestroy(); }
+    @Override protected void onDestroy() { CloseRx.unreg(this, closeRx); dropSession(); super.onDestroy(); GeckoCore.gone(this); }
 }

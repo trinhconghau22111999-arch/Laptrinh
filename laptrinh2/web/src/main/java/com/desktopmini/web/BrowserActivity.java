@@ -66,6 +66,7 @@ public class BrowserActivity extends Activity implements Downloads.Listener {
     private CloseRx closeRx;
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        GeckoCore.born();
         closeRx = CloseRx.reg(this);
         st = getSharedPreferences("web_state", MODE_PRIVATE);
         /* Lần mở trước chưa tải xong trang nào mà app đã chết (lỗi mã gốc Gecko): lần 1 về trang chủ, từ lần 2 dùng chế độ nhẹ (SurfaceView). App phụ chết không kéo theo app chính. */
@@ -616,5 +617,6 @@ public class BrowserActivity extends Activity implements Downloads.Listener {
         for (Tab t : tabs) { try { if (t.s != null) t.s.close(); } catch (Throwable e) { } }
         tabs.clear();
         super.onDestroy();
+        GeckoCore.gone(this);
     }
 }

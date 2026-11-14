@@ -1,5 +1,8 @@
 package com.desktopmini.web;
 
+import android.app.Activity;
+import android.os.Handler;
+import android.os.Looper;
 import android.content.Context;
 import android.net.Uri;
 import android.view.KeyEvent;
@@ -17,6 +20,19 @@ final class GeckoCore {
     private static final String SEARCH = "https://www.google.com/search?q=";
     private static GeckoRuntime rt;
     private static float zoom = 1f;
+
+    /* Thoát hẳn là tắt hẳn: màn hình nào cũng báo sinh/hủy; khi không còn màn hình nào và đang thoát (Back, vuốt khỏi đa nhiệm) thì tắt luôn tiến trình app,
+       giải phóng toàn bộ RAM của Gecko. Ra màn hình chính (chưa thoát) thì giữ nguyên. Đang có tệp tải xuống thì chưa tắt. */
+    private static int alive;
+    static synchronized void born() { alive++; }
+    static void gone(Activity a) {
+        synchronized (GeckoCore.class) { if (alive > 0) alive--; }
+        if (!a.isFinishing()) return;
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() { public void run() {
+            boolean any; synchronized (GeckoCore.class) { any = alive > 0; }
+            if (!any && !Downloads.anyRunning()) android.os.Process.killProcess(android.os.Process.myPid());
+        } }, 500);
+    }
 
     static synchronized GeckoRuntime rt(Context c) {
         if (rt == null) {
