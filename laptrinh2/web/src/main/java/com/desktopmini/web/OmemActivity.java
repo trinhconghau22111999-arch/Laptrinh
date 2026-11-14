@@ -48,6 +48,9 @@ public class OmemActivity extends Activity {
     private GeckoSession.PromptDelegate.FilePrompt filePrompt;
     private GeckoResult<GeckoSession.PromptDelegate.PromptResponse> fileRes;
     private final TextView[] chipViews = new TextView[N];
+    private final TextView[] nmViews = new TextView[N];
+    private final GradientDrawable[] rowBgs = new GradientDrawable[N];
+    private String lastProfile = "";   /* trang vừa thoát ra, được đánh dấu ở màn hình danh sách */
 
     private static String startUrl(String p) { return START_URL; }
     private static boolean valid(String p) {
@@ -150,8 +153,8 @@ public class OmemActivity extends Activity {
             row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(dp(16), dp(10), dp(16), dp(10));
             GradientDrawable bg = new GradientDrawable(); bg.setColor(Color.WHITE); bg.setCornerRadius(dp(14)); bg.setStroke(dp(3), Color.parseColor(COLORS[i]));
-            row.setBackground(bg);
-            TextView nm = new TextView(this); nm.setText("Trang " + id); nm.setTextSize(18); nm.setTypeface(Typeface.DEFAULT_BOLD); nm.setTextColor(0xFF1C1C1E);
+            row.setBackground(bg); rowBgs[i] = bg;
+            TextView nm = new TextView(this); nmViews[i] = nm; nm.setText("Trang " + id); nm.setTextSize(18); nm.setTypeface(Typeface.DEFAULT_BOLD); nm.setTextColor(0xFF1C1C1E);
             row.addView(nm, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(pill("Mở", new View.OnClickListener() { public void onClick(View v) { open(id); } }));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(420), ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -247,9 +250,19 @@ public class OmemActivity extends Activity {
         if (old != null) { try { old.close(); } catch (Throwable t) { } }
     }
 
+    /** Đánh dấu hàng của trang vừa thoát ra (nền vàng nhạt + chữ "vừa thoát") để dễ nhận biết ở màn hình danh sách. */
+    private void markRows() {
+        for (int i = 0; i < N; i++) {
+            boolean last = String.valueOf(i + 1).equals(lastProfile);
+            rowBgs[i].setColor(last ? 0xFFFFF3C4 : Color.WHITE);
+            nmViews[i].setText(last ? "Trang " + (i + 1) + "  \u2022  vừa thoát" : "Trang " + (i + 1));
+        }
+    }
+
     private void showHome() {
+        if (valid(profile)) lastProfile = profile;
         view.setVisibility(View.GONE); bar.setVisibility(View.GONE); homeView.setVisibility(View.VISIBLE);
-        profile = ""; markChips();
+        profile = ""; markChips(); markRows();
     }
 
     /** Mở / chuyển trang (mỗi trang một kho cookie riêng, nên mỗi trang đăng nhập một tài khoản riêng). */
