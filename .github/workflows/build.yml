@@ -89,3 +89,56 @@ jobs:
           # ai biết (trước đây action âm thầm "success" dù 0 file khớp - xem if-no-files-found).
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+
+  # App thứ hai "laptrinh2" (Lập trình 10 trang, mở claude.ai) - project độc lập trong thư mục laptrinh2/,
+  # chạy song song với job build ở trên nên cùng một lần chạy có 2 artifact để tải: app-debug-apk và laptrinh2.
+  build-laptrinh2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK (tải thẳng cmdline-tools từ Google)
+        env:
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          curl -fsSL -o /tmp/cmdline-tools.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+          unzip -q /tmp/cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+
+      - name: Accept SDK licenses + cài platform 34
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build laptrinh2
+        working-directory: laptrinh2
+        run: gradle :web:assembleRelease --no-daemon --stacktrace -Pabis="x86,x86_64"
+
+      - name: Đặt tên APK là laptrinh2.apk
+        run: |
+          mkdir -p out
+          cp laptrinh2/web/build/outputs/apk/release/*.apk out/laptrinh2.apk
+
+      - name: Upload APK artifact (laptrinh2)
+        uses: actions/upload-artifact@v4
+        with:
+          name: laptrinh2
+          path: out/laptrinh2.apk
+          if-no-files-found: error
