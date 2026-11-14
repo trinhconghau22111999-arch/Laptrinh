@@ -183,7 +183,7 @@ public class OmemActivity extends Activity {
 
     private void markChips() {
         for (int i = 0; i < N; i++) {
-            boolean on = String.valueOf(i + 1).equals(profile);
+            boolean on = false;   /* không tô sáng trang đang mở: tất cả số hiển thị giống nhau */
             GradientDrawable bg = new GradientDrawable(); bg.setCornerRadius(dp(16)); bg.setColor(on ? 0xFF0A60D8 : 0xFFFFFFFF);
             chipViews[i].setBackground(bg);
             chipViews[i].setTextColor(on ? Color.WHITE : 0xFF3A3A3C);
