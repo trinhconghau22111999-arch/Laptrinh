@@ -142,3 +142,40 @@ jobs:
           name: laptrinh2
           path: out/laptrinh2.apk
           if-no-files-found: error
+
+  # Sau khi CẢ HAI app build thành công: tạo GitHub Release (tab Releases) và đính kèm 2 APK,
+  # để có link tải trực tiếp. Mỗi lần push lên main sẽ tạo 1 release mới (tag v1.0.<số lần chạy>).
+  # Link cố định luôn trỏ tới bản mới nhất:
+  #   .../releases/latest/download/laptrinh.apk
+  #   .../releases/latest/download/laptrinh2.apk
+  release:
+    needs: [build, build-laptrinh2]
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Tải APK app chính
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+          path: rel/main
+
+      - name: Tải APK laptrinh2
+        uses: actions/download-artifact@v4
+        with:
+          name: laptrinh2
+          path: rel/laptrinh2
+
+      - name: Tạo release và đính kèm APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p out
+          cp "$(find rel/main -name '*.apk' | head -1)" out/laptrinh.apk
+          cp rel/laptrinh2/laptrinh2.apk out/laptrinh2.apk
+          TAG="v1.0.${{ github.run_number }}"
+          gh release create "$TAG" out/laptrinh.apk out/laptrinh2.apk \
+            --title "Laptrinh $TAG" \
+            --notes "Build tự động từ commit ${GITHUB_SHA::7}. Tải: laptrinh.apk (app chính), laptrinh2.apk (Lập trình 2)." \
+            --latest
