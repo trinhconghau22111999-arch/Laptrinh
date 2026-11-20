@@ -143,11 +143,10 @@ jobs:
           path: out/laptrinh2.apk
           if-no-files-found: error
 
-  # Sau khi CẢ HAI app build thành công: tạo GitHub Release (tab Releases) và đính kèm 2 APK,
-  # để có link tải trực tiếp. Mỗi lần push lên main sẽ tạo 1 release mới (tag v1.0.<số lần chạy>).
-  # Link cố định luôn trỏ tới bản mới nhất:
-  #   .../releases/latest/download/laptrinh.apk
-  #   .../releases/latest/download/laptrinh2.apk
+  # Sau khi CẢ HAI app build thành công: tạo GitHub Release (tab Releases) và đính kèm 2 APK.
+  # Link tải cố định (luôn trỏ tới bản mới nhất):
+  #   https://github.com/trinhconghau22111999-arch/Laptrinh/releases/latest/download/laptrinh.apk
+  #   https://github.com/trinhconghau22111999-arch/Laptrinh/releases/latest/download/laptrinh2.apk
   release:
     needs: [build, build-laptrinh2]
     if: success()
@@ -167,15 +166,22 @@ jobs:
           name: laptrinh2
           path: rel/laptrinh2
 
-      - name: Tạo release và đính kèm APK
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Chuẩn bị file
         run: |
           mkdir -p out
-          cp "$(find rel/main -name '*.apk' | head -1)" out/laptrinh.apk
+          APP=$(find rel/main -name '*.apk' | head -1)
+          echo "APK app chính: $APP"
+          cp "$APP" out/laptrinh.apk
           cp rel/laptrinh2/laptrinh2.apk out/laptrinh2.apk
-          TAG="v1.0.${{ github.run_number }}"
-          gh release create "$TAG" out/laptrinh.apk out/laptrinh2.apk \
-            --title "Laptrinh $TAG" \
-            --notes "Build tự động từ commit ${GITHUB_SHA::7}. Tải: laptrinh.apk (app chính), laptrinh2.apk (Lập trình 2)." \
-            --latest
+          ls -la out
+
+      - name: Tạo release và đính kèm APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Laptrinh v1.0.${{ github.run_number }}
+          body: "Build tự động từ commit ${{ github.sha }}. Tải: laptrinh.apk (app chính), laptrinh2.apk (Lập trình 2)."
+          make_latest: true
+          files: |
+            out/laptrinh.apk
+            out/laptrinh2.apk
